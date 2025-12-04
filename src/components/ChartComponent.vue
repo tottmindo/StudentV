@@ -20,6 +20,8 @@
         timeRange: number;
     }>();
 
+
+    
     let chart: Chart<'line', ConsumptionData[]> | null = null;
     
     const timeUnit = computed<'hour' | 'day' | 'week' | 'month'>(() => {
