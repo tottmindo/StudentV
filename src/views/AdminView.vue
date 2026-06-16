@@ -93,7 +93,7 @@ const getWaterData = () => {
 // Function to create a new user
 const createUser = async () => {
   try {
-    const response = await fetch(`https://dorms-server.onrender.com/api/auth/register`, {
+    const response = await fetch(`https://localhost:3000/api/auth/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

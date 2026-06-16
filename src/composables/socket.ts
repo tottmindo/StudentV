@@ -1,7 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 
 let socket: Socket | null = null;
-const serverIP = sessionStorage.getItem("serverIP") || "https://dorms-server.onrender.com";
+const serverIP = sessionStorage.getItem("serverIP") || "http://localhost:3000";
 export function connectSocket(token: string) {
   if (socket) {
     socket.disconnect();
