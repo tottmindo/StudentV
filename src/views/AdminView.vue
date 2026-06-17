@@ -62,7 +62,7 @@ import { getSocket } from '@/composables/socket';
 const socket = getSocket(); // Import the socket instance from socket.ts
 
 // Reactive variables
-const navMenuType = ref('tank'); // Menu type for NavComponent
+const navMenuType = ref('home'); // Menu type for NavComponent
 const address = ref(''); // Address input
 const username = ref(''); // Username input
 const password = ref(''); // Password input

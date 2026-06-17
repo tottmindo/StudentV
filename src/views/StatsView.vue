@@ -32,12 +32,7 @@
                 <div class="bg-text-dark rounded-md col-start-3 row-start-1 text-gray-800 text-center">
                     Total cold water consumption
                 </div>
-                <div class="bg-text-dark rounded-md col-start-1 row-start-2 row-span-2 text-gray-800 text-center">
-                    <ChartComponent chart-id="totHourlyGraph" dataset-label="Total consumption" :raw-data="rawConsumption" :timeRange="computedTimeRangeHourly"/>
-                </div>
-                <div class="bg-text-dark rounded-md col-start-2 row-start-2 row-span-2 text-gray-800 text-center">
-                    <ChartComponent chart-id="warmHourlyGraph" dataset-label="Warm water consumption" :raw-data="rawConsumption" :timeRange="computedTimeRangeHourly"/>
-                </div>
+
                 <div class="bg-text-dark rounded-md col-start-3 row-start-2 text-gray-800 text-center">
                     Average shower time
                 </div>
@@ -68,18 +63,8 @@
                 </div>
                 </div>
 
-                <div class="bg-text-dark rounded-md col-start-1 row-start-2 row-span-2 text-gray-800 text-center">
-                    <div class="totGraph w-full h-60">
-                        <ChartComponent chart-id="totDailyGraph" dataset-label="Total consumption" :raw-data="rawConsumption" :timeRange="computedTimeRangeDaily"/>
-                        <button @click="showTotGraphModal = true">Expand</button>
-                    </div>
-                </div>
-                <div class="bg-text-dark rounded-md col-start-2 row-start-2 row-span-2 text-gray-800 text-center">
-                <div class="warmGraph w-full h-60">
-                    <ChartComponent chart-id="warmDailyGraph" dataset-label="Warm water consumption" :raw-data="rawConsumption" :timeRange="computedTimeRangeDaily"/>
-                    <button @click="showWarmGraphModal = true">Expand</button>
-                </div>
-                </div>
+
+    
 
                 <div class="bg-text-dark rounded-md col-start-3 row-start-2 text-gray-800 text-center">
                 Average shower time
@@ -105,14 +90,7 @@
                 <div class="bg-text-dark rounded-md col-start-3 row-start-1 text-gray-800 text-center">
                     Total cold water consumption
                 </div>
-                <div class="bg-text-dark rounded-md col-start-1 row-start-2 row-span-2 text-center">
-                <div class="totGraph">
-                 <ChartComponent chart-id="totWeeklyGraph" dataset-label="Total consumption" :raw-data="rawConsumption" :timeRange="computedTimeRangeWeekly"/>
-                </div>
-                </div>
-                <div class="bg-text-dark rounded-md col-start-2 row-start-2 row-span-2 text-gray-800 text-center">
-                <ChartComponent chart-id="warmWeeklyGraph" dataset-label="Warm water consumption" :raw-data="rawConsumption" :timeRange="computedTimeRangeWeekly"/>
-                </div>
+
 
                 <div class="bg-text-dark rounded-md col-start-3 row-start-2 text-gray-800 text-center">
                 Average shower time
@@ -138,12 +116,7 @@
                 <div class="bg-text-dark rounded-md col-start-3 row-start-1 text-gray-800 text-center">
                     Total cold water consumption
                 </div>
-                <div class="bg-text-dark rounded-md col-start-1 row-start-2 row-span-2 text-gray-800 text-center">
-                    <ChartComponent chart-id="totMonthlyGraph" dataset-label="Total consumption" :raw-data="rawConsumption" :timeRange="computedTimeRangeMonthly"/>
-                </div>
-                <div class="bg-text-dark rounded-md col-start-2 row-start-2 row-span-2 text-gray-800 text-center">
-                    <ChartComponent chart-id="warmMonthlyGraph" dataset-label="Warm water consumption" :raw-data="rawConsumption" :timeRange="computedTimeRangeMonthly"/>
-                </div>
+
                 <div class="bg-text-dark rounded-md col-start-3 row-start-2 text-gray-800 text-center">
                     Average shower time
                 </div>
@@ -178,30 +151,18 @@
     import { Chart, registerables } from 'chart.js';
     import 'chartjs-adapter-date-fns';
     import ModalComponent from '@/components/ModalComponent.vue';
-    import { time } from 'console';
-    import type { DailyConsumption } from '@/composables/prototypes/pointsPrototype';
-    import ChartComponent from '@/components/ChartComponent.vue';
-    import { useScoreData } from '@/composables/useScoreData';
-    import type { HourlyConsumption } from '@/composables/statsTypes'
-    import { dormID } from '@/composables/shopState';
+
 
     Chart.register(...registerables);
 
     const showWarmGraphModal = ref(false);
     const showTotGraphModal = ref(false);
-    const navMenuType = ref('tank');
+    const navMenuType = ref('home');
     const selectedContent = ref<'hourly' | 'daily' | 'weekly' | 'monthly'> ('daily');
 
     const socket = getSocket(); // Import the socket instance from socket.ts
 
-    const { stats } = useScoreData(socket);
 
-    const rawConsumption = computed(() => {
-        return stats.value.map(item => ({
-            x: item.hour,
-            y: item.amount
-        }));
-    });
 
     const computedTimeRangeHourly = computed(() => 24);
     const computedTimeRangeDaily = computed(() => 24*7);
@@ -218,9 +179,6 @@
     let totChart: Chart|null = null;
     let warmChart: Chart|null = null;
 
-      onMounted(() => {
-        socket.emit('getStats', dormID.value)
-    });
     
     </script>
     

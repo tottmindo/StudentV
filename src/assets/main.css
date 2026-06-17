@@ -14,28 +14,6 @@
   @apply bg-primary text-white dark:bg-primary-dark dark:text-white;
 }
 
-@keyframes swim-wiggle {
-  0%, 100% {
-    transform: rotate(0deg) skewX(0deg) translateY(0px);
-  }
-  25% {
-    transform: rotate(2deg) skewX(3deg) translateY(-3px);
-  }
-  50% {
-    transform: rotate(0deg) skewX(0deg) translateY(0px);
-  }
-  75% {
-    transform: rotate(-2deg) skewX(-3deg) translateY(3px);
-  }
-}
-
-.fish-wiggle {
-  animation: swim-wiggle 3s infinite ease-in-out;
-}
-
-.blurred {
-  filter:blur(5px);
-}
 
 .glow-effect {
   background-color: rgba(255, 223, 0, 0.8); 

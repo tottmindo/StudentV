@@ -1,26 +1,15 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import HomeView from '../views/HomeView.vue';
+import LoginView from '../views/LoginView.vue';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/',
-      name: 'home',
-      component: HomeView,
+      name: 'login',
+      component: LoginView,
     },
-    {
-      path: '/challenges',
-      name: 'challenges',
-      component: () => import('../views/ChallengesView.vue'),
-      meta: { requiresAuth: true }, // Add meta field for protected routes
-    },
-    {
-      path: '/leaderboard',
-      name: 'leaderboard',
-      component: () => import('../views/LeaderboardView.vue'),
-      meta: { requiresAuth: true },
-    },
+
     {
       path: '/stats',
       name: 'stats',
@@ -28,9 +17,9 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: '/tank',
-      name: 'tank',
-      component: () => import('../views/TankView.vue'),
+      path: '/home',
+      name: 'home',
+      component: () => import('../views/HomeView.vue'),
       meta: { requiresAuth: true },
     },
     {
@@ -48,11 +37,11 @@ router.beforeEach((to, from, next) => {
   const userRole = sessionStorage.getItem('userRole'); // Retrieve the user's role
 
   if (to.meta.requiresAuth && !token) {
-    // If the route requires authentication and no token is found, redirect to home
-    next({ name: 'home' });
+    // If the route requires authentication and no token is found, redirect to login
+    next({ name: 'login' });
   } else if (to.name === 'admin' && userRole !== 'admin') {
-    // If the user tries to access the AdminView but is not an admin, redirect to home
-    next({ name: 'home' });
+    // If the user tries to access the AdminView but is not an admin, redirect to login
+    next({ name: 'login' });
   } else {
     next(); // Allow navigation
   }

@@ -100,7 +100,7 @@ const role = sessionStorage.getItem('userRole')
 const router = useRouter()
 const logout = () => {
   sessionStorage.clear()
-  router.push({ name: 'home' })
+  router.push({ name: 'login' })
 }
 
 const menuItems = ref<MenuItem[]>([])

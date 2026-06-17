@@ -1,14 +1,9 @@
-# DORMS Water Consumption Dashboard
+# Water Consumption Dashboard
 
-A Vue 3 web application for visualizing and tracking water consumption statistics, including XP progress, feedback, and unlockable items.
-Part of a bachebachelor's project with the report available at: https://www.diva-portal.org/smash/record.jsf?pid=diva2:1964288
 
 ## Features
 
 - View water consumption stats (hourly, daily, weekly, monthly)
-- Interactive graphs and progress bars
-- XP and feedback tracking
-- Unlockable items (fish, hats, etc.)
 - Responsive design
 
 ## Tech Stack
@@ -43,16 +38,12 @@ Part of a bachebachelor's project with the report available at: https://www.diva
 
 ## Usage
 
-- Select a time range (hourly, daily, weekly, monthly) to view stats.
-- View XP progress and feedback bars.
-- Unlock new items as you gain XP.
 
 ## Folder Structure
 
 - `src/views/StatsView.vue` — Main statistics dashboard
-- `src/components/ProgressBarComponent.vue` — XP and feedback progress bars
 - `src/components/NavComponent.vue` — Navigation menu
-- `src/views/TankView.vue` — Main view
+
 
 ## Contributing
 

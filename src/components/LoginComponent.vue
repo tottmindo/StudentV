@@ -103,8 +103,8 @@
         console.error('Failed to connect socket: socket is undefined.');
       }
 
-      // Redirect to the tank view
-      router.push('/tank');
+      // Redirect to the home view
+      router.push('/home');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Login failed. Please try again.';
       alert(errorMessage);
