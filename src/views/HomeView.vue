@@ -1,98 +1,242 @@
+```vue
 <template>
-  <div class="h-screen w-full p-[1rem]">
-    <div class="grid gap-4 grid-cols-[80%_18%] grid-rows-[8%_90%] h-full">
+  <div class="min-h-screen p-4 bg-background dark:bg-background-dark">
+    <div class="flex flex-col gap-4">
 
-      <!-- Background Image Section -->
-      <div class="row-start-2 col-start-1 relative w-full h-full border-2 bg-cover bg-center bg-background dark:bg-background-dark">
+      <!-- Header -->
+      <header
+        class="bg-secondary dark:bg-secondary-dark rounded-lg px-6 py-4 flex justify-between items-center"
+      >
+        <div>
+          <h1 class="text-2xl font-bold text-text-headline">
+            Welcome back, {{ user.name }}
+          </h1>
 
-      <!-- Sidebar Section -->
-      <div class="row-start-2 col-start-2 grid grid-rows-3 gap-4 h-full"> 
-        </div>
-        <!-- News and Updates -->
-        <div class="bg-secondary dark:bg-secondary-dark text-center rounded-md p-4">
-          <button @click="showNewsModal=true" class="text-text-headline hover:text-primary text-xl">News and Updates</button>
-          <ul class="font-semibold text-l text-text dark:text-text-dark">
-            <li> - Fire alarm maintenance between 12:00-16:30</li>
-            <li> - Available dormrooms in corridor 5</li>
-          </ul>
-        </div>
-
-        <!-- Challenges Section -->
-        <div class="bg-secondary dark:bg-secondary-dark text-center rounded-md p-4">
-          <div class="swiper challenges-swiper">
-            <div class="swiper-wrapper">
-              <div class="swiper-slide flex flex-col items-center justify-center">
-                <h3 class="text-xl text-text-headline">Keep It Short & Sweet</h3>
-                <p class="font-semibold  text-text dark:text-text-dark">Try a shorter shower today, every minute counts!</p>
-              </div>import aboutSeascape from '@/assets/about-seascape.json';
-              <div class="swiper-slide">
-                <h3 class="text-xl text-text-headline">Pause While You Soap</h3>
-                <p class="font-semibold  text-text dark:text-text-dark">Turn off the water while you lather, it’s a small action with a big impact.</p>
-              </div>
-              <div class="swiper-slide">
-                <h3 class="text-xl text-text-headline">Brush Smart</h3>
-                <p class="font-semibold  text-text dark:text-text-dark">Don't let the tap run while brushing your teeth, turn it off and save!</p>
-              </div>
-              <div class="swiper-slide">
-                <h3 class="text-xl text-text-headline">Shower Together</h3>
-                <p class="font-semibold  text-text dark:text-text-dark">Shower with a friend, it’s fun and saves water!</p>
-              </div>
-              <div class="swiper-slide">
-                <h3 class="text-xl text-text-headline">Cool Water, Smarter Way</h3>
-                <p class="font-semibold  text-text dark:text-text-dark">Keep a jug of water in the fridge instead of running the tap for cold water.</p>
-              </div>
-            </div>
-
-            <div class="">
-              <div class="swiper-button-prev"></div>
-              <div class="swiper-button-next"></div>
-            </div>
-          </div>
+          <p class="text-text dark:text-text-dark">
+            Room {{ user.room }} • Corridor {{ user.corridor }}
+          </p>
         </div>
 
-        <!-- Stats Section -->
-        <div class="bg-secondary dark:bg-secondary-dark text-center rounded-md p-4">
-          <div class="swiper stats-swiper">
-            <div class="swiper-wrapper">
-              <div class="swiper-slide flex flex-col items-center justify-center">
-                <router-link to="/stats" class="text-text-headline hover:text-primary text-xl">Average shower time</router-link>
-                <p class="font-semibold text-5xl text-text dark:text-text-dark">8m 12s</p>
-              </div>
-              <div class="swiper-slide">
-                <router-link to="/stats" class="text-text-headline hover:text-primary text-xl">Yesterday's water consumption</router-link>
-                <p class="font-semibold text-5xl text-text dark:text-text-dark">1230 litres</p>
-              </div>
-              <div class="swiper-slide">
-                <router-link to="/stats" class="text-text-headline hover:text-primary text-xl">Average water temperature</router-link>
-                <p class="font-semibold text-5xl text-text dark:text-text-dark">25,7°C</p>
-              </div>
-            </div>
-            <div class="swiper-pagination"></div>
-            <div class="">
-              <div class="swiper-button-prev"></div>
-              <div class="swiper-button-next"></div>
-            </div>
-          </div>
-        </div>
-      </div>
+        <NavComponent
+          :key="navKey"
+          :socket="socket"
+          :menu="menuType"
+        />
+      </header>
 
-      <!-- About Section -->
-      <div class="col-span-2 row-start-1 bg-secondary dark:bg-secondary-dark rounded-md pt-2 h-full flex relative">
-          <button @click="showAboutModal=true" class="absolute hover:opacity-50 pt-1 left-3">
-            <img src="https://cdn-icons-png.flaticon.com/512/1/1176.png" alt="Info" width="40" height="40">
-          </button>
-          <NavComponent :key="navKey" :socket="socket" :menu="menuType" class="absolute pt-2 right-4"/>
+      <div class="grid lg:grid-cols-[2fr_1fr] gap-4">
+
+        <!-- MAIN CONTENT -->
+        <main class="flex flex-col gap-4">
+
+          <!-- News -->
+          <section
+            class="bg-secondary dark:bg-secondary-dark rounded-lg p-5"
+          >
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-xl font-semibold">
+                Community News
+              </h2>
+
+              <button
+                @click="showNewsModal = true"
+                class="text-primary hover:underline"
+              >
+                View All
+              </button>
+            </div>
+
+            <div class="space-y-4">
+              <article
+                v-for="item in news"
+                :key="item.id"
+                class="border-b last:border-0 pb-3"
+              >
+                <h3 class="font-semibold">
+                  {{ item.title }}
+                </h3>
+
+                <p class="text-sm opacity-70">
+                  {{ item.date }}
+                </p>
+
+                <p>
+                  {{ item.summary }}
+                </p>
+              </article>
+            </div>
+          </section>
+
+          <!-- Events -->
+          <section
+            class="bg-secondary dark:bg-secondary-dark rounded-lg p-5"
+          >
+            <h2 class="text-xl font-semibold mb-4">
+              Upcoming Events
+            </h2>
+
+            <div class="space-y-3">
+              <div
+                v-for="event in events"
+                :key="event.id"
+                class="flex justify-between items-center"
+              >
+                <div>
+                  <span class="mr-2">{{ event.icon }}</span>
+                  {{ event.title }}
+                </div>
+
+                <span class="text-sm opacity-70">
+                  {{ event.time }}
+                </span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Statistics -->
+          <section
+            class="bg-secondary dark:bg-secondary-dark rounded-lg p-5"
+          >
+            <h2 class="text-xl font-semibold mb-4">
+              Sustainability Overview
+            </h2>
+
+            <div class="grid md:grid-cols-3 gap-4">
+
+              <div
+                v-for="stat in stats"
+                :key="stat.id"
+                class="bg-background dark:bg-background-dark rounded-lg p-4 text-center"
+              >
+                <h3 class="font-medium mb-2">
+                  {{ stat.label }}
+                </h3>
+
+                <p class="text-4xl font-bold">
+                  {{ stat.value }}
+                </p>
+              </div>
+
+            </div>
+          </section>
+
+        </main>
+
+        <!-- SIDEBAR -->
+        <aside class="flex flex-col gap-4">
+
+          <!-- Alerts -->
+          <section
+            class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-5"
+          >
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-xl font-bold text-red-700 dark:text-red-400">
+                Attention Required
+              </h2>
+
+              <span
+                class="bg-red-600 text-white px-2 py-1 rounded-full text-xs"
+              >
+                {{ alerts.length }}
+              </span>
+            </div>
+
+            <div class="space-y-3">
+              <div
+                v-for="alert in alerts"
+                :key="alert.id"
+                class="bg-white dark:bg-slate-800 rounded-md p-3"
+              >
+                <h3 class="font-semibold">
+                  {{ alert.title }}
+                </h3>
+
+                <p class="text-sm">
+                  {{ alert.description }}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <!-- Quick Actions -->
+          <section
+            class="bg-secondary dark:bg-secondary-dark rounded-lg p-5"
+          >
+            <h2 class="text-xl font-semibold mb-4">
+              Quick Actions
+            </h2>
+
+            <div class="grid grid-cols-2 gap-3">
+
+              <router-link
+                v-for="action in quickActions"
+                :key="action.route"
+                :to="action.route"
+                class="p-3 rounded-md bg-primary text-white text-center hover:opacity-90"
+              >
+                {{ action.label }}
+              </router-link>
+
+            </div>
+          </section>
+
+          <!-- Community Challenges -->
+          <section
+            class="bg-secondary dark:bg-secondary-dark rounded-lg p-5"
+          >
+            <h2 class="text-xl font-semibold mb-4">
+              Community Challenges
+            </h2>
+
+            <div
+              v-for="challenge in challenges"
+              :key="challenge.id"
+              class="mb-4 last:mb-0"
+            >
+              <h3 class="font-semibold">
+                {{ challenge.title }}
+              </h3>
+
+              <p>
+                {{ challenge.description }}
+              </p>
+            </div>
+          </section>
+
+        </aside>
+
       </div>
     </div>
+
+    <!-- News Modal -->
+    <ModalComponent v-model="showNewsModal">
+      <div class="p-4">
+        <h2 class="text-2xl font-bold mb-4">
+          News & Updates
+        </h2>
+
+        <div
+          v-for="item in news"
+          :key="item.id"
+          class="mb-6"
+        >
+          <h3 class="font-semibold">
+            {{ item.title }}
+          </h3>
+
+          <p class="text-sm opacity-70 mb-2">
+            {{ item.date }}
+          </p>
+
+          <p>
+            {{ item.content }}
+          </p>
+        </div>
+      </div>
+    </ModalComponent>
+
   </div>
-  
-  <!-- Modal Component for News -->
-  <ModalComponent v-model="showNewsModal">
-    NEWS AND UPDATES
-  </ModalComponent>
-
 </template>
-
 
 <script setup lang="ts">
 import NavComponent from '@/components/NavComponent.vue';
@@ -106,6 +250,163 @@ import Swiper from 'swiper/bundle';
 import '@/assets/custom-swiper.css'
 import ModalComponent from '@/components/ModalComponent.vue';
 
+/*
+|--------------------------------------------------------------------------
+| User
+|--------------------------------------------------------------------------
+*/
+
+const user = ref({
+  name: "John Doe",
+  room: 314,
+  corridor: 5,
+});
+
+/*
+|--------------------------------------------------------------------------
+| Alerts
+|--------------------------------------------------------------------------
+*/
+
+const alerts = ref([
+  {
+    id: 1,
+    title: "Kitchen Cleaning Duty",
+    description: "Your cleaning shift is scheduled for Thursday.",
+  },
+  {
+    id: 2,
+    title: "Laundry Booking Conflict",
+    description: "Please confirm your reservation.",
+  },
+  {
+    id: 3,
+    title: "Maintenance Ticket Updated",
+    description: "Your request has received a response.",
+  },
+]);
+
+/*
+|--------------------------------------------------------------------------
+| News
+|--------------------------------------------------------------------------
+*/
+
+const news = ref([
+  {
+    id: 1,
+    title: "Fire Alarm Inspection",
+    date: "June 25",
+    summary: "Annual fire inspection.",
+    content:
+      "The annual fire inspection will take place between 12:00 and 16:30.",
+  },
+  {
+    id: 2,
+    title: "New Residents Arriving",
+    date: "June 28",
+    summary: "8 new students moving in.",
+    content:
+      "Please welcome the new residents joining Corridor 5.",
+  },
+]);
+
+/*
+|--------------------------------------------------------------------------
+| Events
+|--------------------------------------------------------------------------
+*/
+
+const events = ref([
+  {
+    id: 1,
+    icon: "🍕",
+    title: "Pizza Night",
+    time: "Friday 18:00",
+  },
+  {
+    id: 2,
+    icon: "🎮",
+    title: "Game Night",
+    time: "Saturday 19:00",
+  },
+  {
+    id: 3,
+    icon: "🧹",
+    title: "Community Cleaning Day",
+    time: "Sunday 12:00",
+  },
+]);
+
+/*
+|--------------------------------------------------------------------------
+| Stats
+|--------------------------------------------------------------------------
+*/
+
+const stats = ref([
+  {
+    id: 1,
+    label: "Avg Shower Time",
+    value: "8m 12s",
+  },
+  {
+    id: 2,
+    label: "Water Usage",
+    value: "1230L",
+  },
+  {
+    id: 3,
+    label: "Avg Water Temp",
+    value: "25.7°C",
+  },
+]);
+
+/*
+|--------------------------------------------------------------------------
+| Quick Actions
+|--------------------------------------------------------------------------
+*/
+
+const quickActions = ref([
+  {
+    label: "Report Issue",
+    route: "/maintenance",
+  },
+  {
+    label: "Book Laundry",
+    route: "/laundry",
+  },
+  {
+    label: "Study Room",
+    route: "/study-room",
+  },
+  {
+    label: "Contact Admin",
+    route: "/contact",
+  },
+]);
+
+/*
+|--------------------------------------------------------------------------
+| Challenges
+|--------------------------------------------------------------------------
+*/
+
+const challenges = ref([
+  {
+    id: 1,
+    title: "Save Water This Week",
+    description:
+      "Reduce your average shower time by 1 minute.",
+  },
+  {
+    id: 2,
+    title: "Corridor Competition",
+    description:
+      "Corridor 5 is currently ranked #2 in water savings.",
+  },
+]);
 
 
 const menuType = ref('home');
@@ -114,7 +415,59 @@ socket.on('connect', () => {
 });
 
 const showNewsModal = ref(false);
-const showAboutModal = ref(false);
+
+
+type AlertItem = {
+  id: number;
+  title: string;
+  description: string;
+};
+
+type NewsItem = {
+  id: number;
+  title: string;
+  date: string;
+  summary: string;
+  content: string;
+};
+
+type EventItem = {
+  id: number;
+  icon: string;
+  title: string;
+  time: string;
+};
+
+type StatItem = {
+  id: number;
+  label: string;
+  value: string;
+};
+
+type QuickActionItem = {
+  label: string;
+  route: string;
+};
+
+type ChallengeItem = {
+  id: number;
+  title: string;
+  description: string;
+};
+
+type DashboardPayload = {
+  user: {
+    name: string;
+    room: number;
+    corridor: number;
+  };
+  alerts: AlertItem[];
+  news: NewsItem[];
+  events: EventItem[];
+  stats: StatItem[];
+  quickActions: QuickActionItem[];
+  challenges: ChallengeItem[];
+};
 
 type MenuItem = {
   name: string;
@@ -125,8 +478,7 @@ const navKey = ref(0); // Reactive key for NavComponent
 const refreshNav = () => {
   
   navKey.value++; // Increment the key to force re-render
-};
-//Göra dessa reaktiva?
+}
 onMounted(() => {
   socket.emit("getMenuData", "en"); // Fetch menu items from server, switch between "sv" and "en" for desired language
   socket.on("menuData", (labels: Record<string, MenuItem[]>) => {
@@ -178,6 +530,27 @@ onMounted(() => {
     clickable: true,
   },
   })
+  /** Data form
+  {
+    "user": {},
+    "alerts": [],
+    "news": [],
+    "events": [],
+    "stats": [],
+    "quickActions": [],
+    "challenges": []
+  }
+   */
+  socket.on("dashboard", (dashboard: DashboardPayload) => {
+    user.value = dashboard.user;
+    alerts.value = dashboard.alerts;
+    news.value = dashboard.news;
+    events.value = dashboard.events;
+    stats.value = dashboard.stats;
+    quickActions.value = dashboard.quickActions;
+    challenges.value = dashboard.challenges;
+  });
+
 
 });
 
