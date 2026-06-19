@@ -382,8 +382,8 @@ const quickActions = ref([
     route: "/study-room",
   },
   {
-    label: "Contact Admin",
-    route: "/contact",
+    label: "Events",
+    route: "/events",
   },
 ]);
 

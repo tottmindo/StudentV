@@ -23,6 +23,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/events',
+      name: 'events',
+      component: () => import('../views/EventView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/admin',
       name: 'admin',
       component: () => import('../views/AdminView.vue'),
