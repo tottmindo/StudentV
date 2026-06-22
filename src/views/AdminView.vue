@@ -8,12 +8,31 @@
       <h1 class="text-2xl font-bold text-headline mb-6">Create New User</h1>
 
       
-      <!-- Address Input -->
+      <!-- roomID Input -->
       <input
         type="text"
         class="rounded p-3 w-full mb-4 border border-border dark:border-dark focus:ring-2 focus:ring-primary dark:focus:ring-primary-dark"
-        placeholder="Enter address"
-        v-model="address"
+        placeholder="Enter roomID"
+        v-model="roomID"
+        autocomplete="off"
+        required
+      />
+
+      <!-- roodormID Input -->
+      <input
+        type="text"
+        class="rounded p-3 w-full mb-4 border border-border dark:border-dark focus:ring-2 focus:ring-primary dark:focus:ring-primary-dark"
+        placeholder="Enter dormID"
+        v-model="dormID"
+        autocomplete="off"
+        required
+      />
+      <!-- role Input -->
+      <input
+        type="text"
+        class="rounded p-3 w-full mb-4 border border-border dark:border-dark focus:ring-2 focus:ring-primary dark:focus:ring-primary-dark"
+        placeholder="Enter role"
+        v-model="role"
         autocomplete="off"
         required
       />
@@ -63,9 +82,12 @@ const socket = getSocket(); // Import the socket instance from socket.ts
 
 // Reactive variables
 const navMenuType = ref('home'); // Menu type for NavComponent
-const address = ref(''); // Address input
+
+const roomID = ref(''); // roomID input
+const dormID = ref(''); // dormID input
 const username = ref(''); // Username input
 const password = ref(''); // Password input
+const role = ref(''); // Role input
 const feedbackMessage = ref(''); // Feedback message for the user
 const feedbackClass = ref(''); // CSS class for feedback message
 const waterData = ref(null); // Water data received from the server
@@ -81,11 +103,11 @@ onUnmounted(() => {
 });
 // Function to handle form submission
 const handleSubmit = () => {
-  if (address.value && username.value && password.value) {
+  if (roomID.value && username.value && password.value && role.value) {
     createUser();
   }
 };
-const dormID = sessionStorage.getItem('dormID');
+
 const getWaterData = () => {
   socket.emit('getDbWaterData', dormID); // Emit event to get water data from the server
 }
@@ -99,9 +121,10 @@ const createUser = async () => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        address: address.value,
+        roomID: roomID.value,
         username: username.value,
         password: password.value,
+        role: role.value,
       }),
     });
 
@@ -109,8 +132,9 @@ const createUser = async () => {
       feedbackMessage.value = 'User created successfully!';
       feedbackClass.value = 'text-green-500';
       username.value = ''; // Clear the input fields
-      address.value = '';
+      roomID.value = '';
       password.value = '';
+      role.value = '';
     } else {
       const errorData = await response.json();
       feedbackMessage.value = errorData.message || 'Failed to create user.';
