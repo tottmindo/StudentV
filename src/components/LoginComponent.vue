@@ -83,17 +83,29 @@
 
       const data = await response.json();
 
+      const token = data?.token;
+      const dormID = data?.dormID ?? data?.dormId;
+      const userID = data?.userID ?? data?.userId;
+      const role = data?.role;
+
+      if (!token || !dormID || !userID || !role) {
+        throw new Error('Login response is missing required fields.');
+      }
+
       // Save the token in sessionStorage
-      sessionStorage.setItem('authToken', data.token);
-      sessionStorage.setItem('dormID', data.dormID.toString());
-      if (data.dormID === 1) {
+      sessionStorage.setItem('authToken', String(token));
+      sessionStorage.setItem('dormID', String(dormID));
+      sessionStorage.setItem('role', String(role));
+      sessionStorage.setItem('userID', String(userID));
+
+      if (role === 'ADMIN') {
         sessionStorage.setItem('userRole', 'admin');
       } else {
         sessionStorage.setItem('userRole', 'user');
       }
 
       // After successful login
-      const socket = connectSocket(data.token);
+      const socket = connectSocket(String(token));
 
       if (socket) {
         socket.on('connect', () => {

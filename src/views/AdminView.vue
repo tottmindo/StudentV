@@ -115,13 +115,14 @@ const getWaterData = () => {
 // Function to create a new user
 const createUser = async () => {
   try {
-    const response = await fetch(`https://localhost:3000/api/auth/register`, {
+    const response = await fetch(`http://localhost:3000/api/auth/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         roomID: roomID.value,
+        dormID: dormID.value,
         username: username.value,
         password: password.value,
         role: role.value,
@@ -133,6 +134,7 @@ const createUser = async () => {
       feedbackClass.value = 'text-green-500';
       username.value = ''; // Clear the input fields
       roomID.value = '';
+      dormID.value = '';
       password.value = '';
       role.value = '';
     } else {
