@@ -56,6 +56,7 @@ export default {
       date: '',
       description: ''
     })
+    
     const upcomingEvents = ref([
     {
         id: 1,
