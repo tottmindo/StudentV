@@ -49,11 +49,20 @@
             {{ props.survey ? "Save changes" : "Create survey" }}
         </button>
     </form>
+    <button 
+          v-if="props.survey"
+          class="danger"
+          @click="deleteSurvey">DELETE SURVEY</button>
 </template>
 
 
 <script setup lang="ts">
-  import { ref } from 'vue';
+import { getSocket } from '@/composables/socket'
+import { ref, watch } from 'vue';
+import { useRouter } from "vue-router";
+
+const router = useRouter();
+const socket = getSocket();
 
     const oneMonthFromNow = () => {
         const date = new Date();
@@ -71,57 +80,94 @@
     }
     }>();
 
-  const question = ref(props.survey?.question ?? '');
-  const active = ref(props.survey?.active ?? true);
-  const expiresAt = ref(props.survey?.expiresAt ?? oneMonthFromNow());
-  const multipleChoice = ref(props.survey?.multipleChoice ?? false);
+    const eID = ref();
+    const question = ref('');
+    const active = ref(true);
+    const expiresAt = ref(oneMonthFromNow());
+    const multipleChoice = ref(false);
+
+
+    watch(
+      () => props.survey,
+      (survey) => {
+
+        if(survey){
+          eID.value = survey.eID;
+          question.value = survey.question;
+          active.value = survey.active;
+          expiresAt.value = survey.expiresAt;
+          multipleChoice.value = survey.multipleChoice;
+        }
+      },
+      {
+        immediate: true
+      }
+    )
 
   const message = ref("");
 
-  const saveSurvey = async () => {
-    const method = props.survey ? 'PUT' : 'POST';
+  const saveSurvey = () => {
+    console.log("saveSurvey fired")
+    const surveyData = {
+      eID: props.survey?.eID,
+      question: question.value,
+      active: active.value,
+      expiresAt: expiresAt.value,
+      multipleChoice: multipleChoice.value
+    }
 
-    const url = props.survey
-        ? `http://localhost:3000/api/surveys/${props.survey.eID}` //ELLER VAD ENDPOINTEN NU KOMMER BLI (UPPDATERA)
-        : `http://localhost:3000/api/survey`; //SKAPA NY SURVEY
+    console.log("sending survey:", surveyData);
+    console.log("socket connected:", socket.connected);
+    const event = props.survey
+      ? "updateSurvey"
+      : "createSurvey"
+
 
     try {
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          question: question.value,
-          active: active.value,
-          expiresAt: expiresAt.value,
-          multipleChoice: multipleChoice.value
-        }),
-      });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        const errorMessage = typeof errorData.error === 'string' 
-          ? errorData.error 
-          : JSON.stringify(errorData.error || 'Login failed');
-        throw new Error(errorMessage);
+      socket.emit(event, surveyData, (response:any) => {
+          console.log("server response:", response)
+        if (response?.error) {
+          console.error("Survey error:", response.error)
+          alert(response.error)
+          return
+        }
+
+        message.value = props.survey
+          ? "Survey updated!"
+          : "Survey created!"
+
+        if (!props.survey) {
+          question.value = ""
+          active.value = true
+          multipleChoice.value = false
+        }
+      })
+
+    } catch(err) {
+
+      console.error("Failed to emit survey:", err)
+      alert("Survey could not be created or edited")
+
+    }
+  }
+
+  const deleteSurvey = () =>{
+      
+      if(!confirm("Delete this survey")){
+        return;
       }
 
-    await response.json();
-    
-    message.value = props.survey
-        ? "Survey updated!"
-        : "Survey created!"
-      
-    if (!props.survey) {
-        question.value = "";
-        active.value = true;
-        multipleChoice.value = false;
-    }
+      socket.emit("deleteSurvey", props.survey?.eID, (response:any) =>{
 
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Survey could not be created or edited';
-      alert(errorMessage);
+        if (response.error){
+          alert(response.error)
+          return
+        }
+
+        if(response.success){
+          router.push("/survey");
+        }
+      })
     }
-  };
 </script>

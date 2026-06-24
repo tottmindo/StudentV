@@ -11,9 +11,16 @@ const router = createRouter({
     },
 
     {
-      path: '/createSurvey',
+      path: '/survey',
+      name: 'survey',
+      component: () => import('../views/SurveyView.vue')
+    },
+
+    {
+      path: '/createSurvey/:id?',
       name: 'createSurvey',
-      component: () => import('../views/CreateSurveyView.vue')
+      component: () => import('../views/CreateSurveyView.vue'),
+      meta: { requiresAuth: true },
     },
 
     {
