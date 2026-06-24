@@ -1,6 +1,8 @@
 ```vue
 <template>
   <div class="min-h-screen p-4 bg-background dark:bg-background-dark">
+    <NavComponent :key="navKey" :socket="socket" :menu="menuType" class="fixed top-4 right-4 z-50" />
+
     <div class="flex flex-col gap-4">
 
       <!-- Header -->
@@ -16,12 +18,6 @@
             Room {{ user.room }} • Corridor {{ user.corridor }}
           </p>
         </div>
-
-        <NavComponent
-          :key="navKey"
-          :socket="socket"
-          :menu="menuType"
-        />
       </header>
 
       <div class="grid lg:grid-cols-[2fr_1fr] gap-4">
@@ -476,9 +472,9 @@ type MenuItem = {
 const navKey = ref(0); // Reactive key for NavComponent
 
 const refreshNav = () => {
-  
   navKey.value++; // Increment the key to force re-render
 }
+
 onMounted(() => {
   socket.emit("getMenuData", "en"); // Fetch menu items from server, switch between "sv" and "en" for desired language
   socket.on("menuData", (labels: Record<string, MenuItem[]>) => {
@@ -491,67 +487,45 @@ onMounted(() => {
     console.error("Error from server:", error.message);
   });
 
-  new Swiper('.challenges-swiper', {
-    loop: true,
-    autoplay: {
-      delay: 15000,
-      disableOnInteraction: false,
-    },
-
-  // Navigation arrows
-  navigation: {
-    nextEl: '.swiper-button-next',
-    prevEl: '.swiper-button-prev',
-  },
-
-  // If we need pagination
-  pagination: {
-    el: '.swiper-pagination',
-    clickable: true,
-  },
-  }) 
-
-  new Swiper('.stats-swiper', {
-    loop: true,
-    autoplay: {
-      delay: 15000,
-      disableOnInteraction: false,
-    },
-
-  // Navigation arrows
-  navigation: {
-    nextEl: '.swiper-button-next',
-    prevEl: '.swiper-button-prev',
-  },
-
-  // If we need pagination
-  pagination: {
-    el: '.swiper-pagination',
-    clickable: true,
-  },
-  })
-  /** Data form
-  {
-    "user": {},
-    "alerts": [],
-    "news": [],
-    "events": [],
-    "stats": [],
-    "quickActions": [],
-    "challenges": []
-  }
-   */
+  // Handler for dashboard payload from server — always update refs and cache
   socket.on("dashboard", (dashboard: DashboardPayload) => {
     user.value = dashboard.user;
+    sessionStorage.setItem('user', JSON.stringify(dashboard.user));
     alerts.value = dashboard.alerts;
+    sessionStorage.setItem('alerts', JSON.stringify(dashboard.alerts));
     news.value = dashboard.news;
+    sessionStorage.setItem('news', JSON.stringify(dashboard.news));
     events.value = dashboard.events;
+    sessionStorage.setItem('events', JSON.stringify(dashboard.events));
     stats.value = dashboard.stats;
-    quickActions.value = dashboard.quickActions;
-    challenges.value = dashboard.challenges;
+    sessionStorage.setItem('stats', JSON.stringify(dashboard.stats));
+    console.log("Received Events:", dashboard.events);
   });
 
+  // If dashboard data already exists in sessionStorage, use it instead of fetching
+  try {
+    const storedUser = sessionStorage.getItem('user');
+    const storedAlerts = sessionStorage.getItem('alerts');
+    const storedNews = sessionStorage.getItem('news');
+    const storedEvents = sessionStorage.getItem('events');
+    const storedStats = sessionStorage.getItem('stats');
 
+    if (storedUser && storedAlerts && storedNews && storedEvents && storedStats) {
+      // Parse and apply cached data
+      user.value = JSON.parse(storedUser);
+      alerts.value = JSON.parse(storedAlerts);
+      news.value = JSON.parse(storedNews);
+      events.value = JSON.parse(storedEvents);
+      stats.value = JSON.parse(storedStats);
+      console.log('Loaded dashboard data from sessionStorage');
+    } else {
+      // Missing some data — request fresh dashboard from server
+      socket.emit("getDashboard");
+    }
+  } catch (err) {
+    console.warn('Failed to read cached dashboard data, requesting from server.', err);
+    socket.emit("getDashboard");
+  }
 });
 
 </script>
