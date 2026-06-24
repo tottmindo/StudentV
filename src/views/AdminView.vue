@@ -4,14 +4,14 @@
   <div class="flex flex-col justify-center items-center h-screen px-4">
 
     <!-- Form -->
-    <form @submit.prevent="handleSubmit" class="w-full max-w-md space-y-4 p-8 rounded-2xl bg-secondary shadow-lg">
-      <h1 class="text-2xl font-bold text-headline mb-6">Create New User</h1>
+    <form @submit.prevent="handleSubmit" class="w-full max-w-md space-y-4 p-8 rounded-2xl bg-surface dark:bg-surface-dark shadow-lg">
+      <h1 class="text-2xl font-bold text-headline dark:text-text-dark mb-6">Create New User</h1>
 
       
       <!-- roomID Input -->
       <input
         type="text"
-        class="rounded p-3 w-full mb-4 border border-border dark:border-dark focus:ring-2 focus:ring-primary dark:focus:ring-primary-dark"
+        class="rounded p-3 w-full mb-4 border border-border dark:border-border focus:ring-2 focus:ring-accent dark:focus:ring-accent-dark"
         placeholder="Enter roomID"
         v-model="roomID"
         autocomplete="off"
@@ -21,7 +21,7 @@
       <!-- roodormID Input -->
       <input
         type="text"
-        class="rounded p-3 w-full mb-4 border border-border dark:border-dark focus:ring-2 focus:ring-primary dark:focus:ring-primary-dark"
+        class="rounded p-3 w-full mb-4 border border-border dark:border-border focus:ring-2 focus:ring-accent dark:focus:ring-accent-dark"
         placeholder="Enter dormID"
         v-model="dormID"
         autocomplete="off"
@@ -30,7 +30,7 @@
       <!-- role Input -->
       <input
         type="text"
-        class="rounded p-3 w-full mb-4 border border-border dark:border-dark focus:ring-2 focus:ring-primary dark:focus:ring-primary-dark"
+        class="rounded p-3 w-full mb-4 border border-border dark:border-border focus:ring-2 focus:ring-accent dark:focus:ring-accent-dark"
         placeholder="Enter role"
         v-model="role"
         autocomplete="off"
@@ -40,7 +40,7 @@
       <!-- Username Input -->
       <input
         type="text"
-        class="rounded p-3 w-full mb-4 border border-border dark:border-dark focus:ring-2 focus:ring-primary dark:focus:ring-primary-dark"
+        class="rounded p-3 w-full mb-4 border border-border dark:border-border focus:ring-2 focus:ring-accent dark:focus:ring-accent-dark"
         placeholder="Enter username"
         v-model="username"
         autocomplete="off"
@@ -50,7 +50,7 @@
       <!-- Password Input -->
       <input
         type="password"
-        class="rounded p-3 w-full mb-4 border border-border dark:border-dark focus:ring-2 focus:ring-primary dark:focus:ring-primary-dark"
+        class="rounded p-3 w-full mb-4 border border-border dark:border-border focus:ring-2 focus:ring-accent dark:focus:ring-accent-dark"
         placeholder="Enter password"
         v-model="password"
         autocomplete="off"
@@ -60,7 +60,7 @@
       <!-- Create User Button -->
       <button
         type="submit"
-        class="w-full p-3 text-white bg-primary dark:bg-primary-dark hover:bg-primary-dark dark:hover:bg-primary text-center rounded-xl font-semibold transition-colors duration-300"
+        class="w-full p-3 text-background-light bg-accent dark:bg-accent-dark hover:bg-accent-dark dark:hover:bg-accent text-center rounded-xl font-semibold transition-colors duration-300"
       >
         Create User
       </button>

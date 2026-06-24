@@ -36,6 +36,7 @@
         v-for="(cell, index) in calendarCells"
         :key="index"
         class="aspect-square flex items-center justify-center rounded text-sm"
+          @click="cell.day && emitDayClick(cell.dateKey)"
         :class="cellClasses(cell)"
       >
         <span v-if="cell.day">{{ cell.day }}</span>
@@ -44,7 +45,7 @@
 
     <!-- Legend -->
     <div class="flex items-center gap-2 text-xs opacity-70">
-      <span class="w-3 h-3 rounded bg-primary inline-block"></span>
+      <span class="w-3 h-3 rounded bg-accent inline-block"></span>
       Today
     </div>
   </div>
@@ -60,6 +61,8 @@ const props = defineProps({
     default: () => []
   }
 })
+
+const emit = defineEmits(['day-click'])
 
 const today = new Date()
 const viewDate = ref(new Date(today.getFullYear(), today.getMonth(), 1))
@@ -119,13 +122,18 @@ function cellClasses(cell) {
   if (!cell.day) return ''
   const classes = []
   if (cell.isToday) {
-    classes.push('bg-primary text-white font-semibold')
+    classes.push('bg-accent text-background-light font-semibold')
   } else if (cell.hasEvent) {
-    classes.push('border border-primary')
+    classes.push('border border-accent text-text dark:text-text-dark')
   } else {
     classes.push('hover:bg-gray-100 dark:hover:bg-gray-700')
   }
   return classes.join(' ')
+}
+
+function emitDayClick(dateKey) {
+  if (!dateKey) return
+  emit('day-click', dateKey)
 }
 
 function goToPrevMonth() {

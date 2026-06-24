@@ -14,7 +14,7 @@
     <!-- Slide-out Menu -->
     <div
       class="fixed top-0 right-0 h-full w-64 z-40 transform transition-transform duration-300 ease-in-out shadow-xl
-             bg-background p-6 dark:bg-background-dark"
+             bg-surface dark:bg-surface-dark p-6"
       :class="{ 'translate-x-0': isOpen, 'translate-x-full': !isOpen }"
     >
       <ul class="space-y-4">
@@ -41,14 +41,12 @@
         >
           <div
             class="inline-flex items-center gap-2 w-full cursor-pointer py-2 px-4 rounded-xl font-semibold
-                  text-text dark:text-text-dark bg-secondary dark:bg-secondary-dark
-                  hover:bg-primary-dark dark:hover:bg-primary transition-colors duration-300"
+                  text-text dark:text-text-dark bg-surface dark:bg-surface-dark
+                  hover:bg-accent-dark dark:hover:bg-accent transition-colors duration-300"
           >
             {{ item.name }}
           </div>
         </router-link>
-
-        
 
         <!-- Admin Link -->
         <router-link
@@ -60,8 +58,8 @@
         >
           <div
             class="inline-flex items-center gap-2 w-full cursor-pointer py-2 px-4 rounded-xl font-semibold
-                  text-text dark:text-text-dark bg-secondary dark:bg-secondary-dark
-                  hover:bg-primary-dark dark:hover:bg-primary transition-colors duration-300"
+                  text-text dark:text-text-dark bg-surface dark:bg-surface-dark
+                  hover:bg-accent-dark dark:hover:bg-accent transition-colors duration-300"
           >
             Admin
           </div>
@@ -82,11 +80,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-
-type MenuItem = {
-  name: string
-  link: string
-}
+import type { MenuItem } from '@/types'
 
 const props = defineProps<{
   menu: string
@@ -113,9 +107,9 @@ onMounted(() => {
 
 const barClass = (index: number) => {
   return [
-    'block h-0.5 w-full rounded-sm transition-all duration-300 ease-in-out',
+    'block h-1 w-full rounded-sm transition-all duration-300 ease-in-out',
     // Color adjustments for light and dark modes
-    'bg-text dark:bg-text-dark', // This ensures the hamburger icon is visible in both modes
+    'bg-accent dark:bg-accent-dark', // Use the red accent color for the hamburger icon
     isOpen.value
       ? index === 1
         ? 'transform translate-y-[9px] rotate-45' // First bar (rotates into X)

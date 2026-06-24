@@ -1,39 +1,47 @@
 export default {
   darkMode: "media",
   content: ['./index.html', './src/**/*.{vue,js,ts,jsx,tsx}'],
+
   theme: {
     extend: {
       colors: {
+        // Primary typography and page text
         primary: {
-          light: '#FDD877',      // Soft amber - for hover states or accents
-          DEFAULT: '#FF7F11',    // Vibrant orange - main branding / CTA
-          dark: '#B54708',       // Burnt orange - for buttons, bold UI elements
+          light: '#F5F2EE', // soft off-white for muted elements
+          DEFAULT: '#1B1C1C', // almost-black primary body text
+          dark: '#0F1010', // deep charcoal for strong contrast
         },
-        secondary: {
-          light: '#A4C3B2',      // Pale green-gray - subtle backgrounds
-          DEFAULT: '#6B9080',    // Muted teal-green - secondary buttons / UI
-          dark: '#3A6351',       // Deep forest green - hover/active states
-        },
-        background: {
-          light: '#F0F4EF',      // Very light sage - full-page background
-          DEFAULT: '#E4EFE7',    // Clean, soft green-gray - cards and sections
-          dark: '#2F3E46',       // Dark slate - for dark mode or footer
-        },
-        text: {
-          light: '#6B9080',      // Soft muted green - secondary/caption text
-          DEFAULT: '#2F3E46',    // Slate gray - primary body text
-          dark: '#DAD7CD',       // Light sage - readable on dark backgrounds
-          headline: '#F8F9FA ', 
-        },
-        border: {
-          DEFAULT: '#D6D3CD',    // Neutral gray - for subtle borders
-          dark: '#3A6351',       // Dark green - for strong separations
-        },
+
+        // Accent red used for buttons and interactive states
         accent: {
-          DEFAULT: '#FFC857',    // Warm yellow - alerts, highlights, icons
-          subtle: '#FBEEDB',     // Pale peach - gentle attention backgrounds
+          light: '#F8D6D6', // pale red for hover/active backgrounds
+          DEFAULT: '#CF2E2E', // main red accent color
+          dark: '#9C2525', // darker red for pressed states
         },
+
+        // Page backgrounds
+        'background-light': '#F7F7F5', // warm very light page background
+        background: '#FFFFFF', // plain white page background
+        'background-dark': '#121212', // near-black dark mode background
+
+        // Card surface / content background
+        card: '#F0F0F3', // soft neutral surface for cards
+        surface: '#F2EEE6', // slightly warm surface tone in light mode
+        'surface-dark': '#1F1F1F', // dark surface tone in dark mode
+
+        // Typography
+        'text': '#1B1C1C', // default body text in light mode
+        'text-headline': '#111111', // headline text in light mode
+        'text-dark': '#F5F2EE', // light text used in dark mode
+
+        // Borders
+        'border-border': '#D8D8D8', // neutral border and divider color
+
+        // Semantic helpers
+        success: '#2E7D32', // success green
+        warning: '#F2A63C', // warning orange
+        error: '#CF2E2E', // error red
       },
-    }, 
-  }
+    },
+  },
 }

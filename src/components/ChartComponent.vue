@@ -8,10 +8,11 @@
     import { ref, watch , onMounted, onBeforeUnmount, computed } from 'vue';
     import { Chart, registerables } from 'chart.js';
     import 'chartjs-adapter-date-fns';
+    import type { ConsumptionData } from '@/types';
 
     Chart.register(...registerables);
 
-    interface ConsumptionData {x: string; y:number }
+    
 
     const props = defineProps<{
         chartId: string;

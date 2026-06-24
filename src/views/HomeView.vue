@@ -1,21 +1,21 @@
 ```vue
 <template>
-  <div class="min-h-screen p-4 bg-background dark:bg-background-dark">
+  <div class="min-h-screen p-4 bg-background-light dark:bg-background-dark">
     <NavComponent :key="navKey" :socket="socket" :menu="menuType" class="fixed top-4 right-4 z-50" />
 
     <div class="flex flex-col gap-4">
 
       <!-- Header -->
       <header
-        class="bg-secondary dark:bg-secondary-dark rounded-lg px-6 py-4 flex justify-between items-center"
+        class="bg-surface dark:bg-surface-dark rounded-lg px-6 py-4 flex justify-between items-center"
       >
         <div>
-          <h1 class="text-2xl font-bold text-text-headline">
-            Welcome back, {{ user.name }}
+          <h1 class="text-2xl font-bold text-headline dark:text-text-dark">
+            Welcome back, {{ username }}
           </h1>
 
           <p class="text-text dark:text-text-dark">
-            Room {{ user.room }} • Corridor {{ user.corridor }}
+            Room {{ room }} • Corridor {{ corridor }}
           </p>
         </div>
       </header>
@@ -27,7 +27,7 @@
 
           <!-- News -->
           <section
-            class="bg-secondary dark:bg-secondary-dark rounded-lg p-5"
+            class="bg-surface dark:bg-surface-dark rounded-lg p-5"
           >
             <div class="flex justify-between items-center mb-4">
               <h2 class="text-xl font-semibold">
@@ -36,7 +36,7 @@
 
               <button
                 @click="showNewsModal = true"
-                class="text-primary hover:underline"
+                class="text-accent hover:underline"
               >
                 View All
               </button>
@@ -65,7 +65,7 @@
 
           <!-- Events -->
           <section
-            class="bg-secondary dark:bg-secondary-dark rounded-lg p-5"
+            class="bg-surface dark:bg-surface-dark rounded-lg p-5"
           >
             <h2 class="text-xl font-semibold mb-4">
               Upcoming Events
@@ -91,7 +91,7 @@
 
           <!-- Statistics -->
           <section
-            class="bg-secondary dark:bg-secondary-dark rounded-lg p-5"
+            class="bg-surface dark:bg-surface-dark rounded-lg p-5"
           >
             <h2 class="text-xl font-semibold mb-4">
               Sustainability Overview
@@ -102,7 +102,7 @@
               <div
                 v-for="stat in stats"
                 :key="stat.id"
-                class="bg-background dark:bg-background-dark rounded-lg p-4 text-center"
+                class="bg-surface dark:bg-surface-dark rounded-lg p-4 text-center"
               >
                 <h3 class="font-medium mb-2">
                   {{ stat.label }}
@@ -141,7 +141,7 @@
               <div
                 v-for="alert in alerts"
                 :key="alert.id"
-                class="bg-white dark:bg-slate-800 rounded-md p-3"
+                class="bg-surface dark:bg-surface-dark rounded-md p-3"
               >
                 <h3 class="font-semibold">
                   {{ alert.title }}
@@ -156,9 +156,9 @@
 
           <!-- Quick Actions -->
           <section
-            class="bg-secondary dark:bg-secondary-dark rounded-lg p-5"
+            class="bg-surface dark:bg-surface-dark rounded-lg p-5"
           >
-            <h2 class="text-xl font-semibold mb-4">
+          <h2>
               Quick Actions
             </h2>
 
@@ -168,7 +168,7 @@
                 v-for="action in quickActions"
                 :key="action.route"
                 :to="action.route"
-                class="p-3 rounded-md bg-primary text-white text-center hover:opacity-90"
+                class="p-3 rounded-md bg-accent text-background-light text-center hover:opacity-90"
               >
                 {{ action.label }}
               </router-link>
@@ -178,9 +178,9 @@
 
           <!-- Community Challenges -->
           <section
-            class="bg-secondary dark:bg-secondary-dark rounded-lg p-5"
+            class="bg-surface dark:bg-surface-dark rounded-lg p-5"
           >
-            <h2 class="text-xl font-semibold mb-4">
+            <h2>
               Community Challenges
             </h2>
 
@@ -241,169 +241,20 @@ import {  onMounted, ref } from 'vue';
 import { getSocket } from '@/composables/socket';
 const socket = getSocket(); // Import the socket instance from socket.ts
 
-import Swiper from 'swiper/bundle';
-//import 'swiper/css/bundle';
-import '@/assets/custom-swiper.css'
+
 import ModalComponent from '@/components/ModalComponent.vue';
+import type { AlertItem, NewsItem, HomeEventItem, ActivatedEventItem, StatItem, QuickActionItem, ChallengeItem, DashboardPayload, MenuItem } from '@/types';
 
-/*
-|--------------------------------------------------------------------------
-| User
-|--------------------------------------------------------------------------
-*/
-
-const user = ref({
-  name: "John Doe",
-  room: 314,
-  corridor: 5,
-});
-
-/*
-|--------------------------------------------------------------------------
-| Alerts
-|--------------------------------------------------------------------------
-*/
-
-const alerts = ref([
-  {
-    id: 1,
-    title: "Kitchen Cleaning Duty",
-    description: "Your cleaning shift is scheduled for Thursday.",
-  },
-  {
-    id: 2,
-    title: "Laundry Booking Conflict",
-    description: "Please confirm your reservation.",
-  },
-  {
-    id: 3,
-    title: "Maintenance Ticket Updated",
-    description: "Your request has received a response.",
-  },
-]);
-
-/*
-|--------------------------------------------------------------------------
-| News
-|--------------------------------------------------------------------------
-*/
-
-const news = ref([
-  {
-    id: 1,
-    title: "Fire Alarm Inspection",
-    date: "June 25",
-    summary: "Annual fire inspection.",
-    content:
-      "The annual fire inspection will take place between 12:00 and 16:30.",
-  },
-  {
-    id: 2,
-    title: "New Residents Arriving",
-    date: "June 28",
-    summary: "8 new students moving in.",
-    content:
-      "Please welcome the new residents joining Corridor 5.",
-  },
-]);
-
-/*
-|--------------------------------------------------------------------------
-| Events
-|--------------------------------------------------------------------------
-*/
-
-const events = ref([
-  {
-    id: 1,
-    icon: "🍕",
-    title: "Pizza Night",
-    time: "Friday 18:00",
-  },
-  {
-    id: 2,
-    icon: "🎮",
-    title: "Game Night",
-    time: "Saturday 19:00",
-  },
-  {
-    id: 3,
-    icon: "🧹",
-    title: "Community Cleaning Day",
-    time: "Sunday 12:00",
-  },
-]);
-
-/*
-|--------------------------------------------------------------------------
-| Stats
-|--------------------------------------------------------------------------
-*/
-
-const stats = ref([
-  {
-    id: 1,
-    label: "Avg Shower Time",
-    value: "8m 12s",
-  },
-  {
-    id: 2,
-    label: "Water Usage",
-    value: "1230L",
-  },
-  {
-    id: 3,
-    label: "Avg Water Temp",
-    value: "25.7°C",
-  },
-]);
-
-/*
-|--------------------------------------------------------------------------
-| Quick Actions
-|--------------------------------------------------------------------------
-*/
-
-const quickActions = ref([
-  {
-    label: "Report Issue",
-    route: "/maintenance",
-  },
-  {
-    label: "Book Laundry",
-    route: "/laundry",
-  },
-  {
-    label: "Study Room",
-    route: "/study-room",
-  },
-  {
-    label: "Events",
-    route: "/events",
-  },
-]);
-
-/*
-|--------------------------------------------------------------------------
-| Challenges
-|--------------------------------------------------------------------------
-*/
-
-const challenges = ref([
-  {
-    id: 1,
-    title: "Save Water This Week",
-    description:
-      "Reduce your average shower time by 1 minute.",
-  },
-  {
-    id: 2,
-    title: "Corridor Competition",
-    description:
-      "Corridor 5 is currently ranked #2 in water savings.",
-  },
-]);
-
+const username = ref("John Doe")
+const room = ref(314)
+const corridor = ref(5)
+const alerts = ref<AlertItem[]>([]);
+const news = ref<NewsItem[]>([]);
+const events = ref<HomeEventItem[]>([]);
+const activatedEvents = ref<ActivatedEventItem[]>([]);
+const stats = ref<StatItem[]>([]);
+const quickActions = ref<QuickActionItem[]>([]);
+const challenges = ref<ChallengeItem[]>([]);
 
 const menuType = ref('home');
 socket.on('connect', () => {
@@ -411,64 +262,6 @@ socket.on('connect', () => {
 });
 
 const showNewsModal = ref(false);
-
-
-type AlertItem = {
-  id: number;
-  title: string;
-  description: string;
-};
-
-type NewsItem = {
-  id: number;
-  title: string;
-  date: string;
-  summary: string;
-  content: string;
-};
-
-type EventItem = {
-  id: number;
-  icon: string;
-  title: string;
-  time: string;
-};
-
-type StatItem = {
-  id: number;
-  label: string;
-  value: string;
-};
-
-type QuickActionItem = {
-  label: string;
-  route: string;
-};
-
-type ChallengeItem = {
-  id: number;
-  title: string;
-  description: string;
-};
-
-type DashboardPayload = {
-  user: {
-    name: string;
-    room: number;
-    corridor: number;
-  };
-  alerts: AlertItem[];
-  news: NewsItem[];
-  events: EventItem[];
-  stats: StatItem[];
-  quickActions: QuickActionItem[];
-  challenges: ChallengeItem[];
-};
-
-type MenuItem = {
-  name: string;
-  link: string;
-};
 const navKey = ref(0); // Reactive key for NavComponent
 
 const refreshNav = () => {
@@ -488,44 +281,51 @@ onMounted(() => {
   });
 
   // Handler for dashboard payload from server — always update refs and cache
+  const DASHBOARD_CACHE_KEY = "dashboard";
+
+  function saveDashboardCache(data: DashboardPayload) {
+    sessionStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify(data));
+  }
+
+  function loadDashboardCache(): DashboardPayload | null {
+    const raw = sessionStorage.getItem(DASHBOARD_CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  }
   socket.on("dashboard", (dashboard: DashboardPayload) => {
-    user.value = dashboard.user;
-    sessionStorage.setItem('user', JSON.stringify(dashboard.user));
+    console.log("Received dashboard:", dashboard);
+
+    username.value = dashboard.user.username;
+    room.value = dashboard.user.roomID;
+    corridor.value = dashboard.user.dormID;
+
     alerts.value = dashboard.alerts;
-    sessionStorage.setItem('alerts', JSON.stringify(dashboard.alerts));
     news.value = dashboard.news;
-    sessionStorage.setItem('news', JSON.stringify(dashboard.news));
     events.value = dashboard.events;
-    sessionStorage.setItem('events', JSON.stringify(dashboard.events));
+    activatedEvents.value = dashboard.activatedEvents;
     stats.value = dashboard.stats;
-    sessionStorage.setItem('stats', JSON.stringify(dashboard.stats));
-    console.log("Received Events:", dashboard.events);
+
+    saveDashboardCache(dashboard);
   });
 
-  // If dashboard data already exists in sessionStorage, use it instead of fetching
-  try {
-    const storedUser = sessionStorage.getItem('user');
-    const storedAlerts = sessionStorage.getItem('alerts');
-    const storedNews = sessionStorage.getItem('news');
-    const storedEvents = sessionStorage.getItem('events');
-    const storedStats = sessionStorage.getItem('stats');
+  const cached = loadDashboardCache();
 
-    if (storedUser && storedAlerts && storedNews && storedEvents && storedStats) {
-      // Parse and apply cached data
-      user.value = JSON.parse(storedUser);
-      alerts.value = JSON.parse(storedAlerts);
-      news.value = JSON.parse(storedNews);
-      events.value = JSON.parse(storedEvents);
-      stats.value = JSON.parse(storedStats);
-      console.log('Loaded dashboard data from sessionStorage');
-    } else {
-      // Missing some data — request fresh dashboard from server
-      socket.emit("getDashboard");
-    }
-  } catch (err) {
-    console.warn('Failed to read cached dashboard data, requesting from server.', err);
+  if (cached) {
+    console.log("Loaded dashboard from cache");
+
+    username.value = cached.user.username;
+    room.value = cached.user.roomID;
+    corridor.value = cached.user.dormID;
+
+    alerts.value = cached.alerts;
+    news.value = cached.news;
+    events.value = cached.events;
+    activatedEvents.value = cached.activatedEvents;
+    stats.value = cached.stats;
+  } else {
     socket.emit("getDashboard");
   }
-});
+
+  }
+);
 
 </script>
