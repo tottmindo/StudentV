@@ -5,7 +5,7 @@
       <button
         type="button"
         @click="goToPrevMonth"
-        class="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 hover:opacity-80 cursor-pointer"
+        class="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-300 dark:hover:bg-gray-700 cursor-pointer"
         aria-label="Previous month"
       >
         &lsaquo;
@@ -18,7 +18,7 @@
       <button
         type="button"
         @click="goToNextMonth"
-        class="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 hover:opacity-80 cursor-pointer"
+        class="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-300 dark:hover:bg-gray-700 cursor-pointer"
         aria-label="Next month"
       >
         &rsaquo;
@@ -35,7 +35,7 @@
       <div
         v-for="(cell, index) in calendarCells"
         :key="index"
-        class="aspect-square flex items-center justify-center rounded text-sm"
+        class="aspect-square flex items-center justify-center rounded text-sm hover:bg-gray-300 dark:hover:bg-gray-700 cursor-pointer"
           @click="cell.day && emitDayClick(cell.dateKey)"
         :class="cellClasses(cell)"
       >
@@ -122,11 +122,9 @@ function cellClasses(cell) {
   if (!cell.day) return ''
   const classes = []
   if (cell.isToday) {
-    classes.push('bg-accent text-background-light font-semibold')
+    classes.push('bg-accent text-background-light font-semibold ')
   } else if (cell.hasEvent) {
     classes.push('border border-accent text-text dark:text-text-dark')
-  } else {
-    classes.push('hover:bg-gray-100 dark:hover:bg-gray-700')
   }
   return classes.join(' ')
 }
