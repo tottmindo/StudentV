@@ -4,6 +4,17 @@ export type AlertItem = {
   description: string
 }
 
+export type SurveyAnswer = {
+  id: number
+  eID: number
+  answer: string
+}
+
+export type SurveyItem = {
+  eID: number
+  question: string
+}
+
 export type NewsItem = {
   id: number
   title: string
@@ -64,6 +75,7 @@ export type DashboardPayload = {
   stats: StatItem[]
   quickActions: QuickActionItem[]
   challenges: ChallengeItem[]
+  pendingSurveys: SurveyItem[]
 }
 
 export type MenuItem = {

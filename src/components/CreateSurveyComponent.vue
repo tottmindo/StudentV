@@ -1,63 +1,48 @@
 <template>
-    <form @submit.prevent="saveSurvey">
-        <h2>
-            {{ props.survey ? "Edit Survey" : "Create survey" }}
-        </h2>
+  <form @submit.prevent="saveSurvey">
+    <h2> {{ props.survey ? "Edit Survey" : "Create survey" }} </h2>
+    <p v-if="message"> {{ message }} </p>
+    <label> Question </label> 
+    <input type="text" v-model="question" placeholder="Enter survey question" /> 
+    <label> Active </label> 
+    <input type="checkbox" v-model="active" /> 
+    <label> Expires at </label> 
+    <input type="date" v-model="expiresAt" /> 
+    <label> Multiple choice </label> 
+    <input type="checkbox" v-model="multipleChoice" /> 
+    <button type="submit"> {{ props.survey ? "Save changes" : "Create survey" }} </button>
+  </form>
 
-        <p v-if="message">
-            {{ message }}
-        </p>
+  <button
+    v-if="props.survey"
+    class="danger"
+    @click="deleteSurvey"
+  >
+    DELETE SURVEY
+  </button>
 
-        <label> 
-            Question 
-        </label>
+  <div v-if="props.survey" class="answers-section">
+    <h3>Answers</h3>
 
-        <input
-            type="text"
-            v-model="question"
-            placeholder="Enter survey question"
-        />
+    <div v-if="answers.length === 0">
+      No answers yet.
+    </div>
 
-        <label>
-            Active
-        </label>
-
-        <input
-            type="checkbox"
-            v-model="active"
-        />
-
-        <label>
-            Expires at
-        </label>
-
-        <input
-            type="date"
-            v-model="expiresAt"
-        />
-
-        <label>
-            Multiple choice
-        </label>
-
-        <input
-            type="checkbox"
-            v-model="multipleChoice"
-        />
-
-        <button type="submit">
-            {{ props.survey ? "Save changes" : "Create survey" }}
-        </button>
-    </form>
-    <button 
-          v-if="props.survey"
-          class="danger"
-          @click="deleteSurvey">DELETE SURVEY</button>
+    <ul v-else>
+      <li
+        v-for="answer in answers"
+        :key="answer.id"
+      >
+        {{ answer.answer }}
+      </li>
+    </ul>
+  </div>
 </template>
 
 
 <script setup lang="ts">
 import { getSocket } from '@/composables/socket'
+import type { SurveyAnswer } from '@/types';
 import { ref, watch } from 'vue';
 import { useRouter } from "vue-router";
 
@@ -97,6 +82,8 @@ const socket = getSocket();
           active.value = survey.active;
           expiresAt.value = survey.expiresAt;
           multipleChoice.value = survey.multipleChoice;
+
+          getAnswers(survey.eID);
         }
       },
       {
@@ -170,4 +157,16 @@ const socket = getSocket();
         }
       })
     }
+
+  const answers = ref<SurveyAnswer[]>([]);
+  const getAnswers = (eID: number) => {
+    socket.emit("getAnswers", eID, (response: any) => {
+      if (response.error) {
+        console.error(response.error);
+        return;
+      }
+      answers.value = response.answers;
+    });
+  };
+
 </script>
