@@ -3,23 +3,32 @@
   <div class="min-h-screen p-6 bg-background dark:bg-background-dark">
     <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
       <div>
-        <h1 class="text-3xl font-bold text-text-headline">Events</h1>
-        <p class="text-sm text-text opacity-70">View the calendar and upcoming event schedule.</p>
+        <h1 class="text-3xl font-bold text-headline dark:text-text-dark">Events</h1>
+        <p class="text-sm text-text dark:text-text-dark opacity-70">View the calendar and upcoming event schedule.</p>
       </div>
     </div>
 
     <div class="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-      <section class="bg-secondary dark:bg-secondary-dark rounded-lg p-5 border border-gray-200 dark:border-gray-700">
+      <section class="bg-surface dark:bg-surface-dark rounded-lg p-5 border border-gray-200 dark:border-gray-700">
         <h2 class="text-2xl font-bold mb-4">Calendar</h2>
         <div class="w-full max-w-full">
-          <CalendarComponent :marked-dates="upcomingEvents.map(e => e.startDate)" class="w-full h-full" />
+                <CalendarComponent
+                  :marked-dates="allEventDates"
+                  @day-click="onCalendarDayClick"
+                  class="w-full h-full"
+                />
         </div>
       </section>
 
-      <section class="bg-secondary dark:bg-secondary-dark rounded-lg p-5 border border-gray-200 dark:border-gray-700">
+      <section class="bg-surface dark:bg-surface-dark rounded-lg p-5 border border-gray-200 dark:border-gray-700">
         <h2 class="text-xl font-semibold mb-4">Upcoming Events</h2>
-        <ul v-if="upcomingEvents.length" class="list-none">
-          <li v-for="event in upcomingEvents" :key="event.id" class="flex flex-col gap-2 py-3 border-b border-gray-100 dark:border-gray-700 last:border-0">
+        <ul v-if="filteredEvents.length" class="list-none">
+          <li
+            v-for="event in filteredEvents"
+            :key="event.id"
+            @click="openEventDetail(event)"
+            class="cursor-pointer flex flex-col gap-2 py-3 border-b border-gray-100 dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800"
+          >
             <div class="flex items-center justify-between">
               <div>
                 <strong class="font-semibold">{{ event.title }}</strong>
@@ -36,7 +45,28 @@
       </section>
     </div>
 
-    <section class="bg-secondary dark:bg-secondary-dark rounded-lg p-5 border border-gray-200 dark:border-gray-700 mt-6">
+    <ModalComponent v-model="showEventDetailsModal">
+      <div class="space-y-4">
+        <h3 class="text-xl font-semibold">{{ eventModalTitle }}</h3>
+        <template v-if="selectedEvents.length">
+          <div v-for="event in selectedEvents" :key="event.id" class="space-y-2 rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-surface dark:bg-surface-dark">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <p class="text-lg font-semibold">{{ event.title }}</p>
+                <p class="text-sm opacity-70">{{ event.type }} <span v-if="!event.active" class="text-red-500">(inactive)</span></p>
+              </div>
+              <div class="text-sm opacity-70 text-right">
+                <div>{{ formatDateRange(event.startDate, event.endDate) }}</div>
+              </div>
+            </div>
+            <p class="text-sm opacity-80">{{ event.description }}</p>
+          </div>
+        </template>
+        <p v-else class="text-sm opacity-70">No events found for this day.</p>
+      </div>
+    </ModalComponent>
+
+    <section class="bg-surface dark:bg-surface-dark rounded-lg p-5 border border-gray-200 dark:border-gray-700 mt-6">
       <h2 class="text-xl font-semibold mb-4">Create New Event</h2>
       <form @submit.prevent="addEvent" class="grid gap-4">
         <label class="grid gap-1">
@@ -77,32 +107,24 @@
           </label>
         </div>
 
-        <button type="submit" class="w-fit px-4 py-2 bg-primary text-white rounded cursor-pointer hover:opacity-90">Add Event</button>
+        <button type="submit" class="w-fit px-4 py-2 bg-accent text-background-light rounded cursor-pointer hover:opacity-90">Add Event</button>
       </form>
     </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import CalendarComponent from '@/components/CalendarComponent.vue'
+import ModalComponent from '@/components/ModalComponent.vue'
 import NavComponent from '@/components/NavComponent.vue'
 import { getSocket } from '@/composables/socket'
-
-type EventItem = {
-  id: number
-  title: string
-  description: string
-  startDate: string // 'YYYY-MM-DD HH:mm:ss'
-  endDate?: string
-  active: boolean
-  type: string
-}
+import type { CalendarEvent } from '@/types'
 
 const navMenuType = ref('home')
 const socket = getSocket()
 
-const defaultEvents: EventItem[] = [
+const defaultEvents: CalendarEvent[] = [
   {
     id: 1,
     title: 'Movie Night',
@@ -123,12 +145,12 @@ const defaultEvents: EventItem[] = [
   }
 ]
 
-const upcomingEvents = ref<EventItem[]>(
+const upcomingEvents = ref<CalendarEvent[]>(
   (() => {
     try {
       const raw = sessionStorage.getItem('events')
       if (raw) {
-        const parsed = JSON.parse(raw) as EventItem[]
+        const parsed = JSON.parse(raw) as CalendarEvent[]
         if (Array.isArray(parsed)) return parsed
       }
     } catch (e) {
@@ -138,7 +160,76 @@ const upcomingEvents = ref<EventItem[]>(
   })()
 )
 
-const newEvent = ref<Partial<EventItem> & { startDateLocal?: string; endDateLocal?: string }>({
+const parseEventDate = (dateString?: string) => {
+  if (!dateString) return undefined
+  return new Date(dateString.replace(' ', 'T'))
+}
+
+const eventHasNotEnded = (event: CalendarEvent) => {
+  const end = parseEventDate(event.endDate || event.startDate)
+  if (!end) return false
+  return end.getTime() >= Date.now()
+}
+
+const allEvents = computed(() => {
+  return upcomingEvents.value.slice().sort((a, b) => {
+    const aStart = parseEventDate(a.startDate)
+    const bStart = parseEventDate(b.startDate)
+    if (!aStart || !bStart) return 0
+    return aStart.getTime() - bStart.getTime()
+  })
+})
+
+const allEventDates = computed(() => {
+  const dates = new Set<string>()
+  allEvents.value.forEach((event) => {
+    if (event.startDate) {
+      dates.add(event.startDate.slice(0, 10))
+    }
+  })
+  return Array.from(dates)
+})
+
+const filteredEvents = computed(() => {
+  return upcomingEvents.value
+    .filter(eventHasNotEnded)
+    .slice()
+    .sort((a, b) => {
+      const aStart = parseEventDate(a.startDate)
+      const bStart = parseEventDate(b.startDate)
+      if (!aStart || !bStart) return 0
+      return aStart.getTime() - bStart.getTime()
+    })
+})
+
+const showEventDetailsModal = ref(false)
+const selectedEvents = ref<CalendarEvent[]>([])
+const selectedEventDay = ref('')
+
+const eventModalTitle = computed(() => {
+  if (selectedEventDay.value) {
+    return `Events on ${new Date(selectedEventDay.value).toLocaleDateString()}`
+  }
+  if (selectedEvents.value.length === 1) {
+    return selectedEvents.value[0].title
+  }
+  return 'Event details'
+})
+
+const openEventDetails = (events: CalendarEvent[], dayKey = '') => {
+  selectedEvents.value = events
+  selectedEventDay.value = dayKey
+  showEventDetailsModal.value = true
+}
+
+const onCalendarDayClick = (dateKey: string) => {
+  const matchingEvents = allEvents.value.filter((event) => event.startDate.startsWith(dateKey))
+  openEventDetails(matchingEvents, dateKey)
+}
+
+const openEventDetail = (event: CalendarEvent) => openEventDetails([event])
+
+const newEvent = ref<Partial<CalendarEvent> & { startDateLocal?: string; endDateLocal?: string }>({
   title: '',
   description: '',
   active: true,
@@ -161,7 +252,7 @@ const addEvent = () => {
 
   // temporary negative id for optimistic UI
   const tempId = -Date.now()
-  const item: EventItem = {
+  const item: CalendarEvent = {
     id: tempId,
     title: String(newEvent.value.title),
     description: String(newEvent.value.description || ''),

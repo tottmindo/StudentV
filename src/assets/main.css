@@ -11,7 +11,7 @@
 }
 
 .menu-active > div {
-  @apply bg-primary text-white dark:bg-primary-dark dark:text-white;
+  @apply bg-accent text-background-light dark:bg-accent-dark dark:text-background-light;
 }
 
 
@@ -23,28 +23,4 @@
     0 0 100px 40px rgba(255, 180, 0, 0.4); 
   border-radius: 50%; 
   transition: box-shadow 0.5s ease-in-out, background-color 0.5s ease-in-out; /* Smooth transitions */
-}
-
-.toggle-button{ /*Not used right now*/
-  color: white;
-  font-size: x-large;
-  background-color: blue;
-}
-
-
-
-
-/*Alternative glow effect
-
-.glow-effect {
-  background-color: rgba(0, 255, 255, 0.5);
-  box-shadow: 0 0 20px 5px rgba(0, 255, 255, 0.8);
-  border-radius: 50%;
-  transition: box-shadow 0.9s ease-in-out;
-}
-*/
-
-.swiper {
-  width: 220px;
-  height: 150px;
 }

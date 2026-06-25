@@ -11,9 +11,9 @@
         :placeholder="usernamePlaceholder"
         autocomplete="off"
         required
-        class="w-full p-3 rounded border border-border text-text placeholder-text-light bg-background-light
-               focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent
-               dark:bg-background-dark dark:text-text-dark dark:placeholder-text-dark dark:border-border-dark"
+        class="w-full p-3 rounded border border-border text placeholder-text-light bg-background-light
+               focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent
+               dark:bg-background-dark dark:text-text-dark dark:placeholder-text-text-dark dark:border-border"
       />
 
       <!-- Password Input -->
@@ -24,16 +24,16 @@
         :placeholder="passwordPlaceholder"
         autocomplete="off"
         required
-        class="w-full p-3 rounded border border-border text-text placeholder-text-light bg-background-light
-               focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent
-               dark:bg-background-dark dark:text-text-dark dark:placeholder-text-dark dark:border-border-dark"
+        class="w-full p-3 rounded border border-border text placeholder-text-light bg-background-light
+               focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent
+               dark:bg-background-dark dark:text-text-dark dark:placeholder-text-text-dark dark:border-border"
       />
 
       <!-- Submit Button -->
       <button
         type="submit"
-        class="w-full p-3 rounded font-semibold text-white bg-primary hover:bg-primary-light transition-colors
-               dark:bg-primary-dark dark:hover:bg-secondary-dark"
+        class="w-full p-3 rounded font-semibold text-background-light bg-accent hover:bg-accent-dark transition-colors
+               dark:bg-accent-dark dark:hover:bg-accent"
       >
         Login
       </button>
