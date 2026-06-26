@@ -1,295 +1,315 @@
 <template>
   <NavComponent :socket="socket" :menu="navMenuType" class="fixed top-4 right-4 z-50" />
+
   <div class="min-h-screen p-6 bg-background dark:bg-background-dark">
     <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
       <div>
-        <h1 class="text-3xl font-bold text-headline dark:text-text-dark">Cleaning Schedule</h1>
-        <p class="text-sm text-text dark:text-text-dark opacity-70">See whose week it is to clean shared spaces and complete your personal checklist.</p>
+        <h1 class="text-3xl font-bold text-headline dark:text-text-dark">
+          Cleaning Schedule
+        </h1>
+        <p class="text-sm text-text dark:text-text-dark opacity-70">
+          See whose week it is and complete your cleaning checklist.
+        </p>
       </div>
     </div>
 
     <div class="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+
+      <!-- =====================================================
+           WEEKS LIST
+      ====================================================== -->
       <section class="bg-surface dark:bg-surface-dark rounded-lg p-5 border border-gray-200 dark:border-gray-700">
-        <div class="flex items-center justify-between mb-4">
-          <div>
-            <h2 class="text-2xl font-bold">Weekly assignments</h2>
-            <p class="text-sm opacity-70">Tap any week to view tasks assigned to you.</p>
-          </div>
+        <div class="mb-4">
+          <h2 class="text-2xl font-bold">Cleaning weeks</h2>
+          <p class="text-sm opacity-70">Select a week to view your tasks.</p>
         </div>
-        <div v-if="schedule.length" class="space-y-3">
+
+        <div v-if="weeks.length" class="space-y-3">
           <button
-            v-for="entry in schedule"
-            :key="entry.weekId"
-            @click="selectWeek(entry)"
+            v-for="week in weeks"
+            :key="week.weekID"
+            @click="selectWeek(week)"
             :class="[
               'w-full text-left rounded-lg border p-4 transition hover:border-accent hover:bg-accent/10',
-              entry.weekId === selectedWeek?.weekId ? 'border-accent bg-accent/10' : 'border-gray-200 dark:border-gray-700'
+              week.weekID === selectedWeek?.weekID
+                ? 'border-accent bg-accent/10'
+                : 'border-gray-200 dark:border-gray-700'
             ]"
           >
-            <div class="flex items-center justify-between gap-4">
+            <div class="flex items-center justify-between">
               <div>
-                <p class="font-semibold">{{ weekEntryTitle(entry) }}</p>
-                <p class="text-sm opacity-70">{{ formatDateRange(entry) }}</p>
+                <p class="font-semibold">
+                  Week {{ week.weekID }}
+                </p>
+                <p class="text-sm opacity-70">
+                  {{ new Date(week.startDate).toLocaleDateString() }}
+                  —
+                  {{ new Date(week.endDate).toLocaleDateString() }}
+                </p>
               </div>
-              <div class="text-sm text-right opacity-80">
-                <p>{{ entry.assignedTo }}</p>
-                <p class="mt-1 uppercase text-xs">{{ entry.notes || 'Shared areas' }}</p>
+
+              <div class="text-sm opacity-80 text-right">
+                <p>Assigned user: {{ week.assignedUserID }}</p>
               </div>
             </div>
           </button>
         </div>
-        <p v-else class="text-sm opacity-70">Loading schedule...</p>
-        <p v-if="scheduleError" class="mt-4 text-sm text-red-500">{{ scheduleError }}</p>
+
+        <p v-else class="text-sm opacity-70">Loading cleaning weeks...</p>
+        <p v-if="scheduleError" class="mt-4 text-sm text-red-500">
+          {{ scheduleError }}
+        </p>
       </section>
 
+      <!-- =====================================================
+           TASKS
+      ====================================================== -->
       <section class="bg-surface dark:bg-surface-dark rounded-lg p-5 border border-gray-200 dark:border-gray-700">
+
         <div class="mb-4">
           <h2 class="text-2xl font-bold">My cleaning tasks</h2>
-          <p class="text-sm opacity-70">A per-user checklist for the selected cleaning week.</p>
+          <p class="text-sm opacity-70">
+            Checklist for the selected week.
+          </p>
         </div>
 
         <div v-if="selectedWeek">
+
+          <!-- Week header -->
           <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-background-light dark:bg-background-dark p-4 mb-4">
-            <p class="font-semibold">{{ weekEntryTitle(selectedWeek) }}</p>
-            <p class="text-sm opacity-70">Assigned to: {{ selectedWeek.assignedTo }}</p>
-            <p class="text-sm opacity-70">{{ formatDateRange(selectedWeek) }}</p>
+            <p class="font-semibold">
+              Week {{ selectedWeek.weekID }}
+            </p>
+            <p class="text-sm opacity-70">
+              {{ new Date(selectedWeek.startDate).toLocaleDateString() }}
+              —
+              {{ new Date(selectedWeek.endDate).toLocaleDateString() }}
+            </p>
+            <p class="text-sm opacity-70">
+              Assigned to user: {{ selectedWeek.assignedUserID }}
+            </p>
           </div>
 
+          <!-- Task list -->
           <ol class="space-y-3">
+
             <li
-              v-for="task in cleaningTasks"
-              :key="task.id"
+              v-for="task in tasks"
+              :key="task.weekTaskID"
               class="rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-surface dark:bg-surface-dark"
             >
-              <label class="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  :checked="task.completed"
-                  @change="handleTaskToggle(task.id, $event)"
-                  class="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent"
-                />
-                <span :class="task.completed ? 'line-through opacity-70' : ''">{{ task.title }}</span>
-              </label>
+
+              <div class="flex items-center justify-between gap-4">
+
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    :checked="task.isCompleted"
+                    @change="toggleTask(task)"
+                    class="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent"
+                  />
+
+                  <span :class="task.isCompleted ? 'line-through opacity-70' : ''">
+                    {{ task.title }}
+                  </span>
+                </label>
+
+                <button
+                  @click="deleteTask(task)"
+                >
+                  Delete
+                </button>
+
+              </div>
+
+              <p v-if="task.description" class="text-xs opacity-70 mt-1">
+                {{ task.description }}
+              </p>
+
+              <p v-if="task.isImportant" class="text-xs text-red-500 mt-1">
+                Important
+              </p>
+
             </li>
+
           </ol>
 
-          <p v-if="!cleaningTasks.length" class="mt-4 text-sm opacity-70">No tasks assigned for this week yet.</p>
-          <p v-if="tasksError" class="mt-4 text-sm text-red-500">{{ tasksError }}</p>
+          <p v-if="!tasks.length" class="mt-4 text-sm opacity-70">
+            No tasks for this week.
+          </p>
+
+          <button
+            @click="addTask"
+            class="mt-4 px-4 py-2 rounded-lg bg-accent text-white hover:opacity-90"
+          >
+            + Add task
+          </button>
+
         </div>
 
-        <p v-else class="text-sm opacity-70">Select a week to load your cleaning checklist.</p>
+        <p v-else class="text-sm opacity-70">
+          Select a week to load tasks.
+        </p>
+
+        <p v-if="tasksError" class="mt-4 text-sm text-red-500">
+          {{ tasksError }}
+        </p>
+
       </section>
+
     </div>
   </div>
 </template>
-
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
 import NavComponent from '@/components/NavComponent.vue'
 import { getSocket } from '@/composables/socket'
-import type { CleaningScheduleEntry, CleaningTask } from '@/types'
 
-const navMenuType = ref('home')
 const socket = getSocket()
 const userID = Number(sessionStorage.getItem('userID') || 0)
 const dormID = Number(sessionStorage.getItem('dormID') || 0)
 
-const schedule = ref<CleaningScheduleEntry[]>([])
-const selectedWeek = ref<CleaningScheduleEntry | null>(null)
-const cleaningTasks = ref<CleaningTask[]>([])
+type CleaningWeek = {
+  weekID: number
+  dormID: number
+  startDate: string
+  endDate: string
+  assignedUserID: number
+}
+
+type CleaningWeekTask = {
+  weekTaskID: number
+  weekID: number
+  assignedUserID: number
+  title: string
+  description?: string
+  isCompleted: boolean
+  isImportant: boolean
+}
+
+const navMenuType = ref('home')
+
+const weeks = ref<CleaningWeek[]>([])
+const selectedWeek = ref<CleaningWeek | null>(null)
+const tasks = ref<CleaningWeekTask[]>([])
+
 const scheduleError = ref('')
 const tasksError = ref('')
 
-const scheduleCacheKey = 'cleaningScheduleCache'
-const cacheTTL = 1000 * 60 * 10
+/* -------------------------
+   SOCKET CLEANUP HELPERS
+--------------------------*/
 
-const parseDate = (value?: string) => {
-  if (!value) return undefined
-  return new Date(value.replace(' ', 'T'))
-}
+const bindSocket = () => {
+  socket.off('cleaningWeeks')
+  socket.off('cleaningWeekTasks')
+  socket.off('cleaningTaskUpdated')
+  socket.off('cleaningTaskDeleted')
 
-const formatDate = (value: string) => {
-  const date = parseDate(value)
-  if (!date) return ''
-  return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
-}
-
-const formatDateRange = (entry: CleaningScheduleEntry) => {
-  if (!entry.weekStart || !entry.weekEnd) return ''
-  return `${formatDate(entry.weekStart)} — ${formatDate(entry.weekEnd)}`
-}
-
-const weekEntryTitle = (entry: CleaningScheduleEntry) => `Week ${entry.weekNumber}, ${entry.year}`
-
-const weekCacheKey = (weekId: string | undefined) => {
-  if (!weekId) return ''
-  return `cleaningTasks_${userID}_${weekId}`
-}
-
-const saveScheduleCache = (items: CleaningScheduleEntry[]) => {
-  sessionStorage.setItem(scheduleCacheKey, JSON.stringify({
-    fetchedAt: Date.now(),
-    schedule: items,
-  }))
-}
-
-const loadScheduleCache = (): { fetchedAt: number; schedule: CleaningScheduleEntry[] } | null => {
-  try {
-    const raw = sessionStorage.getItem(scheduleCacheKey)
-    if (!raw) return null
-    const parsed = JSON.parse(raw) as { fetchedAt: number; schedule: CleaningScheduleEntry[] }
-    if (!parsed || !Array.isArray(parsed.schedule)) return null
-    return parsed
-  } catch {
-    return null
-  }
-}
-
-const saveTasksCache = (weekId: string, tasks: CleaningTask[]) => {
-  const key = weekCacheKey(weekId)
-  sessionStorage.setItem(key, JSON.stringify(tasks))
-}
-
-const loadTasksCache = (weekId: string) => {
-  try {
-    const key = weekCacheKey(weekId)
-    const raw = sessionStorage.getItem(key)
-    if (!raw) return null
-    const parsed = JSON.parse(raw) as CleaningTask[]
-    if (!Array.isArray(parsed)) return null
-    return parsed
-  } catch {
-    return null
-  }
-}
-
-const buildDefaultTasks = (weekId: string) => [
-  { id: 1, weekId, title: 'Empty shared trash bins', completed: false },
-  { id: 2, weekId, title: 'Wipe kitchen counters and tables', completed: false },
-  { id: 3, weekId, title: 'Sweep and mop common area floors', completed: false },
-  { id: 4, weekId, title: 'Clean door handles and light switches', completed: false },
-  { id: 5, weekId, title: 'Restock shared cleaning supplies', completed: false },
-]
-
-const sortSchedule = (items: CleaningScheduleEntry[]) => {
-  return items.slice().sort((a, b) => {
-    const aStart = parseDate(a.weekStart)
-    const bStart = parseDate(b.weekStart)
-    if (!aStart || !bStart) return 0
-    return aStart.getTime() - bStart.getTime()
-  })
-}
-
-const isCurrentWeekEntry = (entry: CleaningScheduleEntry) => {
-  const start = parseDate(entry.weekStart)
-  const end = parseDate(entry.weekEnd)
-  if (!start || !end) return false
-  const now = Date.now()
-  return now >= start.getTime() && now <= end.getTime()
-}
-
-const determineDefaultWeek = (items: CleaningScheduleEntry[]) => {
-  if (!items.length) return null
-  const sorted = sortSchedule(items)
-  const current = sorted.find(isCurrentWeekEntry)
-  if (current) return current
-  const next = sorted.find((entry) => {
-    const start = parseDate(entry.weekStart)
-    return start ? start.getTime() > Date.now() : false
-  })
-  return next || sorted[0]
-}
-
-const selectWeek = (entry: CleaningScheduleEntry) => {
-  selectedWeek.value = entry
-}
-
-const loadTasksForWeek = (weekId: string) => {
-  if (!weekId) return
-  const cachedTasks = loadTasksCache(weekId)
-  if (cachedTasks) {
-    cleaningTasks.value = cachedTasks
-  }
-
-  if (!userID) {
-    tasksError.value = 'Missing user identity. Tasks cannot be loaded.'
-    return
-  }
-
-    socket.emit("getCleaningTasks", { userID, weekId });
-
-    socket.on("cleaningTasks", (tasks) => {
-    cleaningTasks.value = tasks;
-    });
-}
-
-const persistTaskState = () => {
-  const weekId = selectedWeek.value?.weekId
-  if (!weekId) return
-
-  saveTasksCache(weekId, cleaningTasks.value)
-
-  if (!userID) return
-  socket.emit('saveCleaningTasks', { userID, weekId, tasks: cleaningTasks.value }, (response: { success?: boolean; error?: string }) => {
-    if (response?.error) {
-      tasksError.value = response.error
+  socket.on('cleaningWeeks', (data: CleaningWeek[]) => {
+    weeks.value = sortWeeks(data)
+    if (!selectedWeek.value && weeks.value.length) {
+      selectedWeek.value = weeks.value[0]
     }
   })
+
+  socket.on('cleaningWeekTasks', (data: CleaningWeekTask[]) => {
+    tasks.value = data
+  })
+
+  socket.on('cleaningTaskUpdated', (payload) => {
+    const t = tasks.value.find(t => t.weekTaskID === payload.weekTaskID)
+    if (t) t.isCompleted = payload.completed
+  })
+
+  socket.on('cleaningTaskDeleted', (payload) => {
+    tasks.value = tasks.value.filter(t => t.weekTaskID !== payload.weekTaskID)
+  })
 }
 
-const handleTaskToggle = (id: number, event: Event) => {
-  const input = event.target as HTMLInputElement
-  toggleTask(id, input.checked)
+/* -------------------------
+   FETCH DATA
+--------------------------*/
+const generateCleaningSchedule = () => {
+  console.log('generateCleaningSchedule')
+  socket.emit('rungenerateCleaningWeekForDorm')
 }
-
-const toggleTask = (id: number, completed: boolean) => {
-  const index = cleaningTasks.value.findIndex((task) => task.id === id)
-  if (index === -1) return
-  cleaningTasks.value[index].completed = completed
-  persistTaskState()
-}
-
-const fetchSchedule = () => {
+const fetchWeeks = () => {
   if (!dormID) {
-    scheduleError.value = 'Dorm ID is missing from session.'
+    scheduleError.value = 'Missing dormID'
     return
   }
+  socket.emit('getCleaningWeeks')
+}
 
-  socket.emit('getCleaningSchedule', { dormID }, (response: { schedule?: CleaningScheduleEntry[]; error?: string }) => {
-    if (response?.schedule && Array.isArray(response.schedule) && response.schedule.length) {
-      schedule.value = sortSchedule(response.schedule)
-      saveScheduleCache(schedule.value)
-      if (!selectedWeek.value) {
-        selectedWeek.value = determineDefaultWeek(schedule.value)
-      }
-      if (selectedWeek.value) {
-        loadTasksForWeek(selectedWeek.value.weekId)
-      }
-    } else {
-      scheduleError.value = response?.error || 'Could not load cleaning schedule from server.'
-    }
+const fetchTasks = (weekID: number) => {
+  if (!userID) return
+  socket.emit('getCleaningWeekTasks', { weekID })
+}
+
+/* -------------------------
+   ACTIONS
+--------------------------*/
+
+const toggleTask = (task: CleaningWeekTask) => {
+  socket.emit('toggleCleaningTask', {
+    weekTaskID: task.weekTaskID,
+    completed: !task.isCompleted
+  })
+
+  task.isCompleted = !task.isCompleted
+}
+
+const addTask = () => {
+  if (!selectedWeek.value) return
+
+  socket.emit('addCleaningTask', {
+    weekID: selectedWeek.value.weekID,
+    title: 'New task',
+    description: '',
+    isImportant: false
   })
 }
 
-const loadCachedSchedule = () => {
-  const cached = loadScheduleCache()
-  if (!cached || !cached.schedule?.length) return
-  schedule.value = sortSchedule(cached.schedule)
-  selectedWeek.value = determineDefaultWeek(schedule.value)
-  const age = Date.now() - cached.fetchedAt
-  if (age <= cacheTTL && selectedWeek.value) {
-    loadTasksForWeek(selectedWeek.value.weekId)
-  }
+const deleteTask = (task: CleaningWeekTask) => {
+  socket.emit('deleteCleaningTask', {
+    weekTaskID: task.weekTaskID
+  })
 }
 
-watch(selectedWeek, (newWeek) => {
-  if (newWeek) {
-    loadTasksForWeek(newWeek.weekId)
-  }
+/* -------------------------
+   WEEK SELECTION
+--------------------------*/
+
+const selectWeek = (week: CleaningWeek) => {
+  selectedWeek.value = week
+  fetchTasks(week.weekID)
+}
+
+/* -------------------------
+   HELPERS
+--------------------------*/
+
+const sortWeeks = (items: CleaningWeek[]) => {
+  return items.slice().sort((a, b) =>
+    new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+  )
+}
+
+/* -------------------------
+   WATCHERS
+--------------------------*/
+
+watch(selectedWeek, (w) => {
+  if (w) fetchTasks(w.weekID)
 })
 
+/* -------------------------
+   INIT
+--------------------------*/
+
 onMounted(() => {
-  loadCachedSchedule()
-  fetchSchedule()
+  bindSocket()
+  fetchWeeks()
 })
 </script>
