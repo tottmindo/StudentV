@@ -49,7 +49,8 @@
               </div>
 
               <div class="text-sm opacity-80 text-right">
-                <p>Assigned user: {{ week.assignedUserID }}</p>
+                <p>{{ week.assignedUsername }}</p>
+                <p>{{ week.completedTasks }} / {{ week.totalTasks }} done</p>
               </div>
             </div>
           </button>
@@ -67,7 +68,7 @@
       <section class="bg-surface dark:bg-surface-dark rounded-lg p-5 border border-gray-200 dark:border-gray-700">
 
         <div class="mb-4">
-          <h2 class="text-2xl font-bold">My cleaning tasks</h2>
+          <h2 class="text-2xl font-bold">Cleaning tasks</h2>
           <p class="text-sm opacity-70">
             Checklist for the selected week.
           </p>
@@ -86,7 +87,10 @@
               {{ new Date(selectedWeek.endDate).toLocaleDateString() }}
             </p>
             <p class="text-sm opacity-70">
-              Assigned to user: {{ selectedWeek.assignedUserID }}
+              Assigned: {{ selectedWeek.assignedUsername }}
+            </p>
+            <p class="text-sm opacity-70">
+              {{ selectedWeek.completedTasks }} of {{ selectedWeek.totalTasks }} tasks completed
             </p>
           </div>
 
@@ -105,17 +109,25 @@
                   <input
                     type="checkbox"
                     :checked="task.isCompleted"
+                    :disabled="!isAssignedToCurrentUser(task)"
                     @change="toggleTask(task)"
-                    class="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent"
+                    class="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
                   />
 
-                  <span :class="task.isCompleted ? 'line-through opacity-70' : ''">
-                    {{ task.title }}
+                  <span>
+                    <span :class="task.isCompleted ? 'line-through opacity-70' : ''">
+                      {{ task.title }}
+                    </span>
+                    <span class="block text-xs opacity-60">
+                      {{ task.assignedUsername ? `Assigned to ${task.assignedUsername}` : 'Unassigned' }}
+                    </span>
                   </span>
                 </label>
 
                 <button
+                  v-if="isAssignedToCurrentUser(task)"
                   @click="deleteTask(task)"
+                  class="text-sm text-red-500 hover:underline"
                 >
                   Delete
                 </button>
@@ -138,12 +150,33 @@
             No tasks for this week.
           </p>
 
-          <button
-            @click="addTask"
-            class="mt-4 px-4 py-2 rounded-lg bg-accent text-white hover:opacity-90"
+          <form
+            v-if="isSelectedWeekAssignedToCurrentUser()"
+            class="mt-4 space-y-3 rounded-lg border border-gray-200 dark:border-gray-700 p-4"
+            @submit.prevent="addTask"
           >
-            + Add task
-          </button>
+            <input
+              v-model.trim="newTaskTitle"
+              class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-background-dark dark:text-text-dark"
+              placeholder="Task title"
+            />
+            <textarea
+              v-model.trim="newTaskDescription"
+              class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-background-dark dark:text-text-dark"
+              rows="2"
+              placeholder="Description"
+            />
+            <button
+              type="submit"
+              class="px-4 py-2 rounded-lg bg-accent text-white hover:opacity-90 disabled:opacity-50"
+              :disabled="!newTaskTitle || isSavingTask"
+            >
+              Add task
+            </button>
+          </form>
+          <p v-else class="mt-4 text-sm opacity-70">
+            Only {{ selectedWeek.assignedUsername }} can add tasks for this week.
+          </p>
 
         </div>
 
@@ -161,7 +194,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import NavComponent from '@/components/NavComponent.vue'
 import { getSocket } from '@/composables/socket'
 
@@ -172,9 +205,13 @@ const dormID = Number(sessionStorage.getItem('dormID') || 0)
 type CleaningWeek = {
   weekID: number
   dormID: number
+  assignedUserID: number
+  assignedUsername: string
   startDate: string
   endDate: string
-  assignedUserID: number
+  totalTasks: number
+  completedTasks: number
+  pendingTasks: number
 }
 
 type CleaningWeekTask = {
@@ -183,6 +220,7 @@ type CleaningWeekTask = {
   assignedUserID: number
   title: string
   description?: string
+  assignedUsername?: string | null
   isCompleted: boolean
   isImportant: boolean
 }
@@ -195,6 +233,9 @@ const tasks = ref<CleaningWeekTask[]>([])
 
 const scheduleError = ref('')
 const tasksError = ref('')
+const newTaskTitle = ref('')
+const newTaskDescription = ref('')
+const isSavingTask = ref(false)
 
 /* -------------------------
    SOCKET CLEANUP HELPERS
@@ -205,25 +246,37 @@ const bindSocket = () => {
   socket.off('cleaningWeekTasks')
   socket.off('cleaningTaskUpdated')
   socket.off('cleaningTaskDeleted')
+  socket.off('error')
 
   socket.on('cleaningWeeks', (data: CleaningWeek[]) => {
     weeks.value = sortWeeks(data)
     if (!selectedWeek.value && weeks.value.length) {
-      selectedWeek.value = weeks.value[0]
+      selectedWeek.value = getCurrentWeek(weeks.value) ?? weeks.value[0]
+    } else if (selectedWeek.value) {
+      selectedWeek.value = weeks.value.find(week => week.weekID === selectedWeek.value?.weekID) ?? selectedWeek.value
     }
   })
 
   socket.on('cleaningWeekTasks', (data: CleaningWeekTask[]) => {
     tasks.value = data
+    tasksError.value = ''
   })
 
   socket.on('cleaningTaskUpdated', (payload) => {
     const t = tasks.value.find(t => t.weekTaskID === payload.weekTaskID)
     if (t) t.isCompleted = payload.completed
+    fetchWeeks()
   })
 
   socket.on('cleaningTaskDeleted', (payload) => {
     tasks.value = tasks.value.filter(t => t.weekTaskID !== payload.weekTaskID)
+    fetchWeeks()
+  })
+
+  socket.on('error', (error: { message?: string }) => {
+    const message = error?.message || 'Something went wrong.'
+    scheduleError.value = message
+    tasksError.value = message
   })
 }
 
@@ -244,6 +297,7 @@ const fetchWeeks = () => {
 
 const fetchTasks = (weekID: number) => {
   if (!userID) return
+  tasksError.value = ''
   socket.emit('getCleaningWeekTasks', { weekID })
 }
 
@@ -252,28 +306,56 @@ const fetchTasks = (weekID: number) => {
 --------------------------*/
 
 const toggleTask = (task: CleaningWeekTask) => {
+  if (!isAssignedToCurrentUser(task)) {
+    tasksError.value = 'Only the assigned user can update this task.'
+    return
+  }
+
+  const nextValue = !task.isCompleted
+  task.isCompleted = nextValue
+
   socket.emit('toggleCleaningTask', {
     weekTaskID: task.weekTaskID,
-    completed: !task.isCompleted
+    completed: nextValue
+  }, (response: { success?: boolean; error?: string }) => {
+    if (response?.error) {
+      task.isCompleted = !nextValue
+      tasksError.value = response.error
+    }
   })
-
-  task.isCompleted = !task.isCompleted
 }
 
 const addTask = () => {
-  if (!selectedWeek.value) return
+  if (!selectedWeek.value || !isSelectedWeekAssignedToCurrentUser() || !newTaskTitle.value || isSavingTask.value) return
 
+  isSavingTask.value = true
   socket.emit('addCleaningTask', {
     weekID: selectedWeek.value.weekID,
-    title: 'New task',
-    description: '',
+    title: newTaskTitle.value,
+    description: newTaskDescription.value,
     isImportant: false
+  }, (response: { success?: boolean; error?: string }) => {
+    isSavingTask.value = false
+    if (response?.error) {
+      tasksError.value = response.error
+      return
+    }
+
+    newTaskTitle.value = ''
+    newTaskDescription.value = ''
+    fetchWeeks()
   })
 }
 
 const deleteTask = (task: CleaningWeekTask) => {
+  if (!isAssignedToCurrentUser(task)) return
+
   socket.emit('deleteCleaningTask', {
     weekTaskID: task.weekTaskID
+  }, (response: { success?: boolean; error?: string }) => {
+    if (response?.error) {
+      tasksError.value = response.error
+    }
   })
 }
 
@@ -283,7 +365,6 @@ const deleteTask = (task: CleaningWeekTask) => {
 
 const selectWeek = (week: CleaningWeek) => {
   selectedWeek.value = week
-  fetchTasks(week.weekID)
 }
 
 /* -------------------------
@@ -291,9 +372,40 @@ const selectWeek = (week: CleaningWeek) => {
 --------------------------*/
 
 const sortWeeks = (items: CleaningWeek[]) => {
-  return items.slice().sort((a, b) =>
-    new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
-  )
+  const now = Date.now()
+  return items.slice().sort((a, b) => {
+    const aStart = new Date(a.startDate).getTime()
+    const aEnd = new Date(a.endDate).getTime()
+    const bStart = new Date(b.startDate).getTime()
+    const bEnd = new Date(b.endDate).getTime()
+
+    const aCurrent = aStart <= now && aEnd >= now
+    const bCurrent = bStart <= now && bEnd >= now
+    if (aCurrent !== bCurrent) return aCurrent ? -1 : 1
+
+    const aFuture = aStart > now
+    const bFuture = bStart > now
+    if (aFuture !== bFuture) return aFuture ? -1 : 1
+
+    return aFuture ? aStart - bStart : bStart - aStart
+  })
+}
+
+const getCurrentWeek = (items: CleaningWeek[]) => {
+  const now = Date.now()
+  return items.find((week) => {
+    const start = new Date(week.startDate).getTime()
+    const end = new Date(week.endDate).getTime()
+    return start <= now && end >= now
+  })
+}
+
+const isAssignedToCurrentUser = (task: CleaningWeekTask) => {
+  return task.assignedUserID === userID
+}
+
+const isSelectedWeekAssignedToCurrentUser = () => {
+  return selectedWeek.value?.assignedUserID === userID
 }
 
 /* -------------------------
@@ -311,5 +423,13 @@ watch(selectedWeek, (w) => {
 onMounted(() => {
   bindSocket()
   fetchWeeks()
+})
+
+onUnmounted(() => {
+  socket.off('cleaningWeeks')
+  socket.off('cleaningWeekTasks')
+  socket.off('cleaningTaskUpdated')
+  socket.off('cleaningTaskDeleted')
+  socket.off('error')
 })
 </script>
