@@ -35,18 +35,32 @@
       <div
         v-for="(cell, index) in calendarCells"
         :key="index"
-        class="aspect-square flex items-center justify-center rounded text-sm hover:bg-gray-300 dark:hover:bg-gray-700 cursor-pointer"
+        class="aspect-square flex flex-col items-center justify-center gap-1 rounded text-sm hover:bg-gray-300 dark:hover:bg-gray-700 cursor-pointer"
           @click="cell.day && emitDayClick(cell.dateKey)"
         :class="cellClasses(cell)"
       >
         <span v-if="cell.day">{{ cell.day }}</span>
+        <span v-if="cell.day && (cell.hasEvent || cell.hasCleaning)" class="flex gap-1">
+          <span v-if="cell.hasEvent" class="h-1.5 w-1.5 rounded-full bg-accent"></span>
+          <span v-if="cell.hasCleaning" class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+        </span>
       </div>
     </div>
 
     <!-- Legend -->
-    <div class="flex items-center gap-2 text-xs opacity-70">
-      <span class="w-3 h-3 rounded bg-accent inline-block"></span>
-      Today
+    <div class="flex flex-wrap items-center gap-4 text-xs opacity-70">
+      <span class="inline-flex items-center gap-2">
+        <span class="w-3 h-3 rounded bg-accent inline-block"></span>
+        Today
+      </span>
+      <span class="inline-flex items-center gap-2">
+        <span class="h-2 w-2 rounded-full bg-accent inline-block"></span>
+        Event
+      </span>
+      <span class="inline-flex items-center gap-2">
+        <span class="h-2 w-2 rounded-full bg-emerald-500 inline-block"></span>
+        Cleaning week
+      </span>
     </div>
   </div>
 </template>
@@ -57,6 +71,10 @@ import { ref, computed } from 'vue'
 const props = defineProps({
   // Optional: pass in event dates (YYYY-MM-DD strings) to mark on the calendar
   markedDates: {
+    type: Array,
+    default: () => []
+  },
+  cleaningDates: {
     type: Array,
     default: () => []
   }
@@ -77,6 +95,7 @@ const currentYear = computed(() => viewDate.value.getFullYear())
 const monthLabel = computed(() => monthNames[viewDate.value.getMonth()])
 
 const markedSet = computed(() => new Set(props.markedDates))
+const cleaningSet = computed(() => new Set(props.cleaningDates))
 
 function toDateKey(year, month, day) {
   const mm = String(month + 1).padStart(2, '0')
@@ -111,7 +130,8 @@ const calendarCells = computed(() => {
       day,
       dateKey,
       isToday,
-      hasEvent: markedSet.value.has(dateKey)
+      hasEvent: markedSet.value.has(dateKey),
+      hasCleaning: cleaningSet.value.has(dateKey)
     })
   }
 
@@ -123,8 +143,8 @@ function cellClasses(cell) {
   const classes = []
   if (cell.isToday) {
     classes.push('bg-accent text-background-light font-semibold ')
-  } else if (cell.hasEvent) {
-    classes.push('border border-accent text-text dark:text-text-dark')
+  } else if (cell.hasEvent || cell.hasCleaning) {
+    classes.push(cell.hasCleaning ? 'border border-emerald-500 text-text dark:text-text-dark' : 'border border-accent text-text dark:text-text-dark')
   }
   return classes.join(' ')
 }

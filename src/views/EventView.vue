@@ -14,6 +14,7 @@
         <div class="w-full max-w-full">
                 <CalendarComponent
                   :marked-dates="allEventDates"
+                  :cleaning-dates="cleaningCalendarDates"
                   @day-click="onCalendarDayClick"
                   class="w-full h-full"
                 />
@@ -48,7 +49,7 @@
     <ModalComponent v-model="showEventDetailsModal">
       <div class="space-y-4">
         <h3 class="text-xl font-semibold">{{ eventModalTitle }}</h3>
-        <template v-if="selectedEvents.length">
+        <template v-if="selectedEvents.length || selectedCleaningWeeks.length">
           <div v-for="event in selectedEvents" :key="event.id" class="space-y-2 rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-surface dark:bg-surface-dark">
             <div class="flex items-start justify-between gap-4">
               <div>
@@ -61,8 +62,26 @@
             </div>
             <p class="text-sm opacity-80">{{ event.description }}</p>
           </div>
+          <div
+            v-for="week in selectedCleaningWeeks"
+            :key="week.weekID"
+            class="space-y-2 rounded-lg border border-emerald-500 p-4 bg-emerald-50 text-emerald-950 dark:bg-emerald-950/30 dark:text-emerald-100"
+          >
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <p class="text-lg font-semibold">Cleaning week</p>
+                <p class="text-sm opacity-80">Assigned to {{ week.assignedUsername }}</p>
+              </div>
+              <div class="text-sm opacity-80 text-right">
+                <div>{{ formatDateRange(week.startDate, week.endDate) }}</div>
+              </div>
+            </div>
+            <p class="text-sm opacity-80">
+              {{ week.completedTasks }} of {{ week.totalTasks }} tasks completed.
+            </p>
+          </div>
         </template>
-        <p v-else class="text-sm opacity-70">No events found for this day.</p>
+        <p v-else class="text-sm opacity-70">No events or cleaning weeks found for this day.</p>
       </div>
     </ModalComponent>
 
@@ -114,7 +133,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import CalendarComponent from '@/components/CalendarComponent.vue'
 import ModalComponent from '@/components/ModalComponent.vue'
 import NavComponent from '@/components/NavComponent.vue'
@@ -123,6 +142,19 @@ import type { CalendarEvent } from '@/types'
 
 const navMenuType = ref('home')
 const socket = getSocket()
+const userID = Number(sessionStorage.getItem('userID') || 0)
+
+type CleaningWeek = {
+  weekID: number
+  dormID: number
+  assignedUserID: number
+  assignedUsername: string
+  startDate: string
+  endDate: string
+  totalTasks: number
+  completedTasks: number
+  pendingTasks: number
+}
 
 const defaultEvents: CalendarEvent[] = [
   {
@@ -159,6 +191,7 @@ const upcomingEvents = ref<CalendarEvent[]>(
     return defaultEvents
   })()
 )
+const cleaningWeeks = ref<CleaningWeek[]>([])
 
 const parseEventDate = (dateString?: string) => {
   if (!dateString) return undefined
@@ -190,6 +223,18 @@ const allEventDates = computed(() => {
   return Array.from(dates)
 })
 
+const ownCleaningWeeks = computed(() => {
+  return cleaningWeeks.value.filter((week) => week.assignedUserID === userID)
+})
+
+const cleaningCalendarDates = computed(() => {
+  const dates = new Set<string>()
+  ownCleaningWeeks.value.forEach((week) => {
+    getDateKeysInRange(week.startDate, week.endDate).forEach((dateKey) => dates.add(dateKey))
+  })
+  return Array.from(dates)
+})
+
 const filteredEvents = computed(() => {
   return upcomingEvents.value
     .filter(eventHasNotEnded)
@@ -204,6 +249,7 @@ const filteredEvents = computed(() => {
 
 const showEventDetailsModal = ref(false)
 const selectedEvents = ref<CalendarEvent[]>([])
+const selectedCleaningWeeks = ref<CleaningWeek[]>([])
 const selectedEventDay = ref('')
 
 const eventModalTitle = computed(() => {
@@ -218,6 +264,9 @@ const eventModalTitle = computed(() => {
 
 const openEventDetails = (events: CalendarEvent[], dayKey = '') => {
   selectedEvents.value = events
+  selectedCleaningWeeks.value = dayKey
+    ? ownCleaningWeeks.value.filter((week) => dateIsInRange(dayKey, week.startDate, week.endDate))
+    : []
   selectedEventDay.value = dayKey
   showEventDetailsModal.value = true
 }
@@ -227,7 +276,29 @@ const onCalendarDayClick = (dateKey: string) => {
   openEventDetails(matchingEvents, dateKey)
 }
 
-const openEventDetail = (event: CalendarEvent) => openEventDetails([event])
+const openEventDetail = (event: CalendarEvent) => {
+  selectedCleaningWeeks.value = []
+  openEventDetails([event])
+}
+
+const bindSocket = () => {
+  socket.off('eventsData')
+  socket.off('cleaningWeeks')
+
+  socket.on('eventsData', (events: CalendarEvent[]) => {
+    upcomingEvents.value = events
+    sessionStorage.setItem('events', JSON.stringify(events))
+  })
+
+  socket.on('cleaningWeeks', (weeks: CleaningWeek[]) => {
+    cleaningWeeks.value = weeks
+  })
+}
+
+const fetchCalendarData = () => {
+  socket.emit('getEvents', { active: true })
+  socket.emit('getCleaningWeeks')
+}
 
 const newEvent = ref<Partial<CalendarEvent> & { startDateLocal?: string; endDateLocal?: string }>({
   title: '',
@@ -315,4 +386,44 @@ const formatDateRange = (start?: string, end?: string) => {
   if (!end) return formatDate(start)
   return `${formatDate(start)} — ${formatDate(end)}`
 }
+
+const toDateKey = (date: Date) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const startOfLocalDay = (dateValue: string) => {
+  const [year, month, day] = dateValue.slice(0, 10).split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
+const getDateKeysInRange = (start: string, end: string) => {
+  const dates: string[] = []
+  const cursor = startOfLocalDay(start)
+  const endDate = startOfLocalDay(end)
+
+  while (cursor.getTime() <= endDate.getTime()) {
+    dates.push(toDateKey(cursor))
+    cursor.setDate(cursor.getDate() + 1)
+  }
+
+  return dates
+}
+
+const dateIsInRange = (dateKey: string, start: string, end: string) => {
+  const day = startOfLocalDay(dateKey).getTime()
+  return day >= startOfLocalDay(start).getTime() && day <= startOfLocalDay(end).getTime()
+}
+
+onMounted(() => {
+  bindSocket()
+  fetchCalendarData()
+})
+
+onUnmounted(() => {
+  socket.off('eventsData')
+  socket.off('cleaningWeeks')
+})
 </script>

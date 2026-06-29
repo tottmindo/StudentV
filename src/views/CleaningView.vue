@@ -24,9 +24,17 @@
           <p class="text-sm opacity-70">Select a week to view your tasks.</p>
         </div>
 
-        <div v-if="weeks.length" class="space-y-3">
+        <button
+          type="button"
+          class="mb-4 rounded-lg border border-gray-200 px-3 py-2 text-sm transition hover:border-accent hover:bg-accent/10 dark:border-gray-700"
+          @click="showHistoricalWeeks = !showHistoricalWeeks"
+        >
+          {{ showHistoricalWeeks ? 'Hide historical weeks' : 'Show historical weeks' }}
+        </button>
+
+        <div v-if="visibleWeeks.length" class="space-y-3">
           <button
-            v-for="week in weeks"
+            v-for="week in visibleWeeks"
             :key="week.weekID"
             @click="selectWeek(week)"
             :class="[
@@ -39,7 +47,7 @@
             <div class="flex items-center justify-between">
               <div>
                 <p class="font-semibold">
-                  Week {{ week.weekID }}
+                  Week {{ getWeekLabel(week.startDate) }}
                 </p>
                 <p class="text-sm opacity-70">
                   {{ new Date(week.startDate).toLocaleDateString() }}
@@ -56,7 +64,9 @@
           </button>
         </div>
 
-        <p v-else class="text-sm opacity-70">Loading cleaning weeks...</p>
+        <p v-else class="text-sm opacity-70">
+          {{ weeks.length ? 'No current or upcoming cleaning weeks.' : 'Loading cleaning weeks...' }}
+        </p>
         <p v-if="scheduleError" class="mt-4 text-sm text-red-500">
           {{ scheduleError }}
         </p>
@@ -79,7 +89,7 @@
           <!-- Week header -->
           <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-background-light dark:bg-background-dark p-4 mb-4">
             <p class="font-semibold">
-              Week {{ selectedWeek.weekID }}
+              Week {{ getWeekLabel(selectedWeek.startDate) }}
             </p>
             <p class="text-sm opacity-70">
               {{ new Date(selectedWeek.startDate).toLocaleDateString() }}
@@ -109,7 +119,7 @@
                   <input
                     type="checkbox"
                     :checked="task.isCompleted"
-                    :disabled="!isAssignedToCurrentUser(task)"
+                    :disabled="!canUpdateTask(task)"
                     @change="toggleTask(task)"
                     class="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
                   />
@@ -148,6 +158,10 @@
 
           <p v-if="!tasks.length" class="mt-4 text-sm opacity-70">
             No tasks for this week.
+          </p>
+
+          <p v-if="selectedWeek && !isCurrentWeek(selectedWeek)" class="mt-4 text-sm opacity-70">
+            Tasks can only be checked off during this cleaning week.
           </p>
 
           <form
@@ -194,7 +208,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import NavComponent from '@/components/NavComponent.vue'
 import { getSocket } from '@/composables/socket'
 
@@ -236,6 +250,12 @@ const tasksError = ref('')
 const newTaskTitle = ref('')
 const newTaskDescription = ref('')
 const isSavingTask = ref(false)
+const showHistoricalWeeks = ref(false)
+
+const visibleWeeks = computed(() => {
+  const sorted = sortWeeks(weeks.value)
+  return showHistoricalWeeks.value ? sorted : sorted.filter(isCurrentOrUpcomingWeek)
+})
 
 /* -------------------------
    SOCKET CLEANUP HELPERS
@@ -250,10 +270,12 @@ const bindSocket = () => {
 
   socket.on('cleaningWeeks', (data: CleaningWeek[]) => {
     weeks.value = sortWeeks(data)
-    if (!selectedWeek.value && weeks.value.length) {
-      selectedWeek.value = getCurrentWeek(weeks.value) ?? weeks.value[0]
+    const selectableWeeks = visibleWeeks.value
+    if (!selectedWeek.value && selectableWeeks.length) {
+      selectedWeek.value = getCurrentWeek(selectableWeeks) ?? selectableWeeks[0]
     } else if (selectedWeek.value) {
-      selectedWeek.value = weeks.value.find(week => week.weekID === selectedWeek.value?.weekID) ?? selectedWeek.value
+      selectedWeek.value = selectableWeeks.find(week => week.weekID === selectedWeek.value?.weekID)
+        ?? (selectableWeeks.length ? getCurrentWeek(selectableWeeks) ?? selectableWeeks[0] : null)
     }
   })
 
@@ -308,6 +330,10 @@ const fetchTasks = (weekID: number) => {
 const toggleTask = (task: CleaningWeekTask) => {
   if (!isAssignedToCurrentUser(task)) {
     tasksError.value = 'Only the assigned user can update this task.'
+    return
+  }
+  if (!selectedWeek.value || !isCurrentWeek(selectedWeek.value)) {
+    tasksError.value = 'Cleaning tasks can only be updated during their assigned week.'
     return
   }
 
@@ -372,36 +398,47 @@ const selectWeek = (week: CleaningWeek) => {
 --------------------------*/
 
 const sortWeeks = (items: CleaningWeek[]) => {
-  const now = Date.now()
-  return items.slice().sort((a, b) => {
-    const aStart = new Date(a.startDate).getTime()
-    const aEnd = new Date(a.endDate).getTime()
-    const bStart = new Date(b.startDate).getTime()
-    const bEnd = new Date(b.endDate).getTime()
+  return items.slice().sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
+}
 
-    const aCurrent = aStart <= now && aEnd >= now
-    const bCurrent = bStart <= now && bEnd >= now
-    if (aCurrent !== bCurrent) return aCurrent ? -1 : 1
-
-    const aFuture = aStart > now
-    const bFuture = bStart > now
-    if (aFuture !== bFuture) return aFuture ? -1 : 1
-
-    return aFuture ? aStart - bStart : bStart - aStart
-  })
+const isCurrentOrUpcomingWeek = (week: CleaningWeek) => {
+  const today = startOfLocalDay(new Date()).getTime()
+  return startOfLocalDay(new Date(week.endDate)).getTime() >= today
 }
 
 const getCurrentWeek = (items: CleaningWeek[]) => {
-  const now = Date.now()
   return items.find((week) => {
-    const start = new Date(week.startDate).getTime()
-    const end = new Date(week.endDate).getTime()
-    return start <= now && end >= now
+    return isCurrentWeek(week)
   })
+}
+
+const startOfLocalDay = (date: Date) => {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+}
+
+const getWeekLabel = (dateValue: string) => {
+  const date = startOfLocalDay(new Date(dateValue))
+  const thursday = new Date(date)
+  thursday.setDate(date.getDate() + 3 - ((date.getDay() + 6) % 7))
+  const firstThursday = new Date(thursday.getFullYear(), 0, 4)
+  firstThursday.setDate(firstThursday.getDate() + 3 - ((firstThursday.getDay() + 6) % 7))
+  const week = 1 + Math.round((thursday.getTime() - firstThursday.getTime()) / 604800000)
+  return `${week}, ${thursday.getFullYear()}`
 }
 
 const isAssignedToCurrentUser = (task: CleaningWeekTask) => {
   return task.assignedUserID === userID
+}
+
+const isCurrentWeek = (week: CleaningWeek) => {
+  const start = startOfLocalDay(new Date(week.startDate)).getTime()
+  const end = startOfLocalDay(new Date(week.endDate)).getTime()
+  const current = startOfLocalDay(new Date()).getTime()
+  return start <= current && end >= current
+}
+
+const canUpdateTask = (task: CleaningWeekTask) => {
+  return isAssignedToCurrentUser(task) && Boolean(selectedWeek.value && isCurrentWeek(selectedWeek.value))
 }
 
 const isSelectedWeekAssignedToCurrentUser = () => {
@@ -414,6 +451,12 @@ const isSelectedWeekAssignedToCurrentUser = () => {
 
 watch(selectedWeek, (w) => {
   if (w) fetchTasks(w.weekID)
+})
+
+watch(visibleWeeks, (items) => {
+  if (!selectedWeek.value || !items.some(week => week.weekID === selectedWeek.value?.weekID)) {
+    selectedWeek.value = items.length ? getCurrentWeek(items) ?? items[0] : null
+  }
 })
 
 /* -------------------------

@@ -1,43 +1,42 @@
 <template>
   <NavComponent :socket="socket" :menu="navMenuType" class="fixed top-4 right-4"/>
   
-  <div class="flex flex-col justify-center items-center h-screen px-4">
+  <div class="flex flex-col justify-center items-center min-h-screen px-4">
 
     <!-- Form -->
-    <form @submit.prevent="handleSubmit" class="w-full max-w-md space-y-4 p-8 rounded-2xl bg-surface dark:bg-surface-dark shadow-lg">
+    <form @submit.prevent="handleSubmit" class="w-full max-w-md space-y-4 p-8 rounded-lg bg-surface dark:bg-surface-dark shadow-lg">
       <h1 class="text-2xl font-bold text-headline dark:text-text-dark mb-6">Create New User</h1>
 
-      
-      <!-- roomID Input -->
       <input
-        type="text"
+        type="number"
         class="rounded p-3 w-full mb-4 border border-border dark:border-border focus:ring-2 focus:ring-accent dark:focus:ring-accent-dark"
         placeholder="Enter roomID"
         v-model="roomID"
+        min="1"
         autocomplete="off"
         required
       />
 
-      <!-- roodormID Input -->
       <input
-        type="text"
+        type="number"
         class="rounded p-3 w-full mb-4 border border-border dark:border-border focus:ring-2 focus:ring-accent dark:focus:ring-accent-dark"
         placeholder="Enter dormID"
         v-model="dormID"
-        autocomplete="off"
-        required
-      />
-      <!-- role Input -->
-      <input
-        type="text"
-        class="rounded p-3 w-full mb-4 border border-border dark:border-border focus:ring-2 focus:ring-accent dark:focus:ring-accent-dark"
-        placeholder="Enter role"
-        v-model="role"
+        min="1"
         autocomplete="off"
         required
       />
 
-      <!-- Username Input -->
+      <select
+        class="rounded p-3 w-full mb-4 border border-border dark:border-border focus:ring-2 focus:ring-accent dark:focus:ring-accent-dark"
+        v-model="role"
+        autocomplete="off"
+        required
+      >
+        <option value="STUDENT">Student</option>
+        <option value="ADMIN">Admin</option>
+      </select>
+
       <input
         type="text"
         class="rounded p-3 w-full mb-4 border border-border dark:border-border focus:ring-2 focus:ring-accent dark:focus:ring-accent-dark"
@@ -47,7 +46,6 @@
         required
       />
 
-      <!-- Password Input -->
       <input
         type="password"
         class="rounded p-3 w-full mb-4 border border-border dark:border-border focus:ring-2 focus:ring-accent dark:focus:ring-accent-dark"
@@ -57,12 +55,12 @@
         required
       />
 
-      <!-- Create User Button -->
       <button
         type="submit"
-        class="w-full p-3 text-background-light bg-accent dark:bg-accent-dark hover:bg-accent-dark dark:hover:bg-accent text-center rounded-xl font-semibold transition-colors duration-300"
+        class="w-full p-3 text-background-light bg-accent dark:bg-accent-dark hover:bg-accent-dark dark:hover:bg-accent text-center rounded-lg font-semibold transition-colors duration-300 disabled:opacity-50"
+        :disabled="isSubmitting"
       >
-        Create User
+        {{ isSubmitting ? 'Creating...' : 'Create User' }}
       </button>
     </form>
 
@@ -70,6 +68,38 @@
     <p v-if="feedbackMessage" :class="feedbackClass" class="mt-4 text-center text-lg">
       {{ feedbackMessage }}
     </p>
+
+    <div
+      v-if="pendingReplacement"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+    >
+      <div class="w-full max-w-md rounded-lg bg-surface dark:bg-surface-dark p-6 shadow-xl">
+        <h2 class="text-xl font-bold text-headline dark:text-text-dark">Room already occupied</h2>
+        <p class="mt-3 text-text dark:text-text-dark">
+          Room {{ roomID }} in dorm {{ dormID }} already has active user
+          <strong>{{ pendingReplacement.username }}</strong>.
+        </p>
+        <p class="mt-2 text-sm opacity-75">
+          Creating this account will make {{ pendingReplacement.username }} inactive and move current/future cleaning assignments to the new user.
+        </p>
+        <div class="mt-6 flex justify-end gap-3">
+          <button
+            type="button"
+            class="rounded-lg border border-border px-4 py-2"
+            @click="cancelReplacement"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            class="rounded-lg bg-accent px-4 py-2 font-semibold text-white"
+            @click="confirmReplacement"
+          >
+            Replace user
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -87,10 +117,18 @@ const roomID = ref(''); // roomID input
 const dormID = ref(''); // dormID input
 const username = ref(''); // Username input
 const password = ref(''); // Password input
-const role = ref(''); // Role input
+const role = ref('STUDENT'); // Role input
 const feedbackMessage = ref(''); // Feedback message for the user
 const feedbackClass = ref(''); // CSS class for feedback message
 const waterData = ref(null); // Water data received from the server
+const isSubmitting = ref(false);
+const pendingReplacement = ref<null | {
+  userID: number
+  username: string
+  role: string
+  roomID: number
+  dormID: number
+}>(null);
 
 onMounted(() => {
   socket.on('DbWaterData', (data: any) => {
@@ -103,8 +141,8 @@ onUnmounted(() => {
 });
 // Function to handle form submission
 const handleSubmit = () => {
-  if (roomID.value && username.value && password.value && role.value) {
-    createUser();
+  if (roomID.value && dormID.value && username.value && password.value && role.value) {
+    createUser(false);
   }
 };
 
@@ -113,7 +151,11 @@ const getWaterData = () => {
 }
 
 // Function to create a new user
-const createUser = async () => {
+const createUser = async (replaceExisting: boolean) => {
+  isSubmitting.value = true;
+  feedbackMessage.value = '';
+  feedbackClass.value = '';
+
   try {
     const response = await fetch(`http://localhost:3000/api/auth/register`, {
       method: 'POST',
@@ -126,26 +168,49 @@ const createUser = async () => {
         username: username.value,
         password: password.value,
         role: role.value,
+        replaceExisting,
       }),
     });
 
     if (response.ok) {
-      feedbackMessage.value = 'User created successfully!';
+      const data = await response.json();
+      feedbackMessage.value = data.replacedUser
+        ? `User created. ${data.replacedUser.username} is now inactive.`
+        : 'User created successfully!';
       feedbackClass.value = 'text-green-500';
       username.value = ''; // Clear the input fields
       roomID.value = '';
       dormID.value = '';
       password.value = '';
-      role.value = '';
+      role.value = 'STUDENT';
+      pendingReplacement.value = null;
     } else {
       const errorData = await response.json();
-      feedbackMessage.value = errorData.message || 'Failed to create user.';
+      if (response.status === 409 && errorData.code === 'ROOM_OCCUPIED') {
+        pendingReplacement.value = errorData.existingUser;
+        feedbackMessage.value = '';
+        return;
+      }
+
+      feedbackMessage.value = errorData.error || 'Failed to create user.';
       feedbackClass.value = 'text-red-500';
     }
   } catch (error) {
     feedbackMessage.value = 'An error occurred. Please try again.';
     feedbackClass.value = 'text-red-500';
     console.error('Error creating user:', error);
+  } finally {
+    isSubmitting.value = false;
   }
+};
+
+const confirmReplacement = () => {
+  createUser(true);
+};
+
+const cancelReplacement = () => {
+  pendingReplacement.value = null;
+  feedbackMessage.value = 'User creation cancelled.';
+  feedbackClass.value = 'text-text dark:text-text-dark';
 };
 </script>
