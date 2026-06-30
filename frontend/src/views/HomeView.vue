@@ -277,7 +277,7 @@ const socket = getSocket(); // Import the socket instance from socket.ts
 
 
 import ModalComponent from '@/components/ModalComponent.vue';
-import { type AlertItem, type NewsItem, type HomeEventItem, type ActivatedEventItem, type StatItem, type QuickActionItem, type ChallengeItem, type DashboardPayload, type MenuItem, SurveyItem } from '@/types';
+import { type AlertItem, type NewsItem, type HomeEventItem, type ActivatedEventItem, type StatItem, type QuickActionItem, type ChallengeItem, type DashboardPayload, type MenuItem, type SurveyItem } from '@/types';
 
 const username = ref("John Doe")
 const room = ref(314)

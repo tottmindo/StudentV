@@ -1,0 +1,11 @@
+{
+  "home": [
+    { "name": "Home", "link": "/home" },
+    { "name": "Stats", "link": "/stats" },
+    { "name": "Events", "link": "/events" },
+    { "name": "createSurvey", "link": "/createSurvey"},
+    { "name": "Survey", "link": "/survey"},
+    { "name": "Cleaning", "link": "/cleaning" }
+    
+  ]
+}
