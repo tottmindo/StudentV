@@ -1,6 +1,6 @@
-# DORMS Server
+# StudentV Server
 
-This repository contains the backend server for the [DORMS](https://github.com/your-org/DORMS) project.
+Backend server for the StudentV/DORMS app.
 
 ## Overview
 
@@ -27,20 +27,28 @@ The DORMS server provides REST API endpoints and real-time WebSocket communicati
 
 ## Getting Started
 
-1. Clone this repository.
-2. Install dependencies:
+From the repository root:
 
-   ```sh
-   npm install
-   ```
+```sh
+npm install
+npm run dev:backend
+```
 
-3. Configure your `.env` file with database and JWT settings.
-4. Build and start the server:
+Or from this directory:
 
-   ```sh
-   npm run build
-   npm start
-   ```
+```sh
+npm install
+npm run dev:backend
+```
+
+Configure your `.env` file with database and JWT settings before starting the server.
+
+## Build
+
+```sh
+npm run build
+npm start
+```
 
 ## Project Structure
 
@@ -54,7 +62,3 @@ The DORMS server provides REST API endpoints and real-time WebSocket communicati
 ## License
 
 MIT
-
----
-
-This is the official backend server for the [DORMS](https://github.com/Laitila93/DORMS) project.

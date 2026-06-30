@@ -1,5 +1,6 @@
-# Water Consumption Dashboard
+# StudentV Frontend
 
+Vue/Vite frontend for the StudentV/DORMS app.
 
 ## Features
 
@@ -13,37 +14,42 @@
 - [Chart.js](https://www.chartjs.org/)
 - [Tailwind CSS](https://tailwindcss.com/)
 
-## Installation
+## Development
 
-1. **Clone the repository:**
-   ```sh
-   git clone https://github.com/yourusername/dorms-dashboard.git
-   cd dorms-dashboard
-   ```
+From the repository root:
 
-2. **Install dependencies:**
-   ```sh
-   npm install
-   ```
+```sh
+npm install
+npm run dev
+```
 
-3. **Run the development server:**
-   ```sh
-   npm run dev
-   ```
+To run only the frontend from this directory:
 
-4. **Build for production:**
-   ```sh
-   npm run build
-   ```
+```sh
+npm install
+npm run dev
+```
 
-## Usage
+The frontend uses `VITE_API_BASE_URL` for HTTP and Socket.IO connections. If it is not set, it falls back to `http://localhost:3000`.
 
+## Build
+
+From the repository root:
+
+```sh
+npm run build
+```
+
+Or from this directory:
+
+```sh
+npm run build
+```
 
 ## Folder Structure
 
-- `src/views/StatsView.vue` — Main statistics dashboard
-- `src/components/NavComponent.vue` — Navigation menu
-
+- `src/views/StatsView.vue` - Main statistics dashboard
+- `src/components/NavComponent.vue` - Navigation menu
 
 ## Contributing
 
@@ -52,7 +58,3 @@ Pull requests are welcome! For major changes, please open an issue first to disc
 ## License
 
 This project is open source and available under the [MIT License](LICENSE).
-
-## Contact
-
-For questions or feedback, please contact [joakim.kilbo@gmail.com](mailto:joakim.kilbo@gmail.com).

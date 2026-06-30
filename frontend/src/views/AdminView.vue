@@ -107,6 +107,7 @@
 <script setup lang="ts">
 import NavComponent from '@/components/NavComponent.vue';
 import { ref, onMounted, onUnmounted } from 'vue';
+import { apiUrl } from '@/composables/api';
 import { getSocket } from '@/composables/socket';
 const socket = getSocket(); // Import the socket instance from socket.ts
 
@@ -157,7 +158,7 @@ const createUser = async (replaceExisting: boolean) => {
   feedbackClass.value = '';
 
   try {
-    const response = await fetch(`http://localhost:3000/api/auth/register`, {
+    const response = await fetch(apiUrl('/api/auth/register'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

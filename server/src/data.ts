@@ -47,11 +47,21 @@
  * @throws {Error} If database query fails
  */
 
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
+import "./config/env.js";
 import pool from "./db.js";
-import dotenv from "dotenv";
-dotenv.config();
 
+const currentDir = dirname(fileURLToPath(import.meta.url));
+const dataDir = existsSync(join(currentDir, "data"))
+  ? join(currentDir, "data")
+  : join(currentDir, "..", "src", "data");
+
+function readJsonFile<T = any>(fileName: string): T {
+  const contents = readFileSync(join(dataDir, fileName), "utf-8");
+  return JSON.parse(contents) as T;
+}
 
 //Input to getDbWaterDataByRange
 interface fetchOptions {
@@ -99,17 +109,18 @@ class Data {
     if (!["en", "sv"].some( el => el === lang))
       lang = "en";
     try {
-      const labels = readFileSync("./src/data/menu-" + lang + ".json", 'utf-8');
-      return JSON.parse(labels);
+      return readJsonFile("menu-" + lang + ".json");
     } catch (error) {
+      if (lang !== "en") {
+        return this.getMenuData("en");
+      }
       throw new Error("Failed to load menu labels. Please check the file path and content.");
     }
   }
 
   getWaterData(): any {
     try {
-      const labels = readFileSync("./src/data/testData.json", 'utf-8');
-      return JSON.parse(labels);
+      return readJsonFile("testData.json");
     } catch (error) {
       throw new Error("Failed to load test data. Please check the file path and content.");
     }

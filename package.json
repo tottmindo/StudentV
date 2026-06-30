@@ -1,0 +1,19 @@
+{
+  "name": "studentv",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently -n frontend,server -c cyan,green \"npm run dev -w frontend\" \"npm run dev:backend -w server\"",
+    "dev:frontend": "npm run dev -w frontend",
+    "dev:backend": "npm run dev:backend -w server",
+    "build": "npm run build -w server && npm run build -w frontend",
+    "test": "npm run test -w frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

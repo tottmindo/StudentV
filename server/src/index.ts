@@ -29,7 +29,6 @@
  * @requires jsonwebtoken
  */
 import cors from "cors";
-import dotenv from "dotenv";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import express from "express";
@@ -39,11 +38,10 @@ import { Socket } from "socket.io";
 import { sockets } from "./sockets.js";
 import "./jobs/scheduler.js";
 import jwt from "jsonwebtoken";
+import "./config/env.js";
 import { setIO } from "./routes/socketManager.js";
+import { getJwtSecret } from "./config/jwt.js";
 console.log('Scoring scheduler started...');
-
-
-dotenv.config();
 
 const app = express();
 const httpServer = createServer(app); // Pass express app to HTTP server
@@ -74,7 +72,7 @@ io.on("connection", async (socket: Socket) => {
 
   if (token) {
     try {
-      const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
+      const decoded: any = jwt.verify(token, getJwtSecret());
       dormID = decoded.dormID;
       userID = decoded.userID;
       role = decoded.role;
@@ -108,8 +106,9 @@ io.on("connection", async (socket: Socket) => {
 
 // Start server
 const PORT = process.env.PORT || 3000;
-httpServer.listen(PORT, () => {
-  console.log(`🚀 Server with Socket.io running on port ${PORT}`);
+const HOST = process.env.HOST || "127.0.0.1";
+httpServer.listen(Number(PORT), HOST, () => {
+  console.log(`🚀 Server with Socket.io running on ${HOST}:${PORT}`);
 });
 
 import pool from "./db.js";

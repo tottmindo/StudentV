@@ -22,17 +22,14 @@
  */
 import bcrypt from "bcrypt";
 import jwt, { SignOptions } from "jsonwebtoken";
+import "../config/env.js";
 import pool from "../db.js";
 import type { RowDataPacket, ResultSetHeader } from "mysql2";
 import type { StringValue } from "ms";
+import { getJwtSecret } from "../config/jwt.js";
 
 const SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS || "10", 10);
-const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRATION = process.env.JWT_EXPIRATION || "1h";
-
-if (!JWT_SECRET) {
-  throw new Error("❌ JWT_SECRET is not defined in environment variables.");
-}
 
 export async function registerUser(
   roomID: number,
@@ -166,7 +163,7 @@ export async function loginUser(username: string, password: string) {
     expiresIn: JWT_EXPIRATION as StringValue,
   };
 
-  const token = jwt.sign(payload, JWT_SECRET!, options);
+  const token = jwt.sign(payload, getJwtSecret(), options);
 
   return {
     message: "Login successful",

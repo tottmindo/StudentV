@@ -1,9 +1,10 @@
 import { io, Socket } from 'socket.io-client';
+import { getServerUrl } from './api';
 
 let socket: Socket | null = null;
 
 function getServerIP() {
-  return sessionStorage.getItem("serverIP") || "http://localhost:3000";
+  return getServerUrl();
 }
 
 function createSocket(token?: string) {

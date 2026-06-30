@@ -45,6 +45,7 @@
 <script setup lang="ts">
   import { ref } from 'vue';
   import { useRouter } from 'vue-router';
+  import { apiUrl } from '@/composables/api';
   import { connectSocket } from '@/composables/socket';
 
   const props = defineProps<{
@@ -60,7 +61,7 @@
 
   const login = async () => {
     try {
-      const response = await fetch(`http://localhost:3000/api/auth/login`, {
+      const response = await fetch(apiUrl('/api/auth/login'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -18,15 +18,24 @@
  * The dorms data is loaded at initialization and passed to each update handler.
  */
 import cron from 'node-cron';
-import dotenv from "dotenv";
+import "../config/env.js";
 import { Data } from "../data.js"
 
-dotenv.config();
-
 const data = new Data();
-let dorms = await data.getDorms();
-console.log("Dorms: ", dorms);
-console.log('Scheduler initialized. Dorms data loaded.');
+let dorms: number[] = [];
+
+async function refreshDorms(): Promise<void> {
+  try {
+    dorms = await data.getDorms();
+    console.log("Dorms: ", dorms);
+    console.log('Scheduler initialized. Dorms data loaded.');
+  } catch (err) {
+    dorms = [];
+    console.error("❌ Scheduler could not load dorms. Cleaning rotation will retry on the next run.", err);
+  }
+}
+
+void refreshDorms();
 
 export async function generateCleaningWeekForDorm(dormID: number) {
   try {
@@ -81,6 +90,7 @@ export async function generateCleaningWeekForDorm(dormID: number) {
 cron.schedule('0 8 * * *', async () => {
   console.log('☀️ Daily system update (8:00 AM)');
 
+  await refreshDorms();
 
   // 🧹 CLEANING WEEK ROTATION (daily check safe)
   for (const dormID of dorms) {
@@ -91,6 +101,3 @@ cron.schedule('0 8 * * *', async () => {
   scheduled: true,
   timezone: 'Europe/Stockholm'
 });
-
-
-
