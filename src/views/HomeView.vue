@@ -329,9 +329,9 @@ onMounted(() => {
   socket.on("dashboard", (dashboard: DashboardPayload) => {
     console.log("Received dashboard:", dashboard);
 
-    username.value = dashboard.user.username;
-    room.value = dashboard.user.roomID;
-    corridor.value = dashboard.user.dormID;
+    username.value = dashboard.user.name;
+    room.value = dashboard.user.room;
+    corridor.value = dashboard.user.corridor;
 
     alerts.value = dashboard.alerts;
     news.value = dashboard.news;
@@ -348,9 +348,9 @@ onMounted(() => {
   if (cached) {
     console.log("Loaded dashboard from cache");
 
-    username.value = cached.user.username;
-    room.value = cached.user.roomID;
-    corridor.value = cached.user.dormID;
+    username.value = cached.user.name;
+    room.value = cached.user.room;
+    corridor.value = cached.user.corridor;
 
     alerts.value = cached.alerts;
     news.value = cached.news;

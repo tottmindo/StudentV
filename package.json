@@ -10,8 +10,8 @@
     "type-check": "vue-tsc --build",
     "dev:frontend": "vite",
     "dev:frontendhost": "vite --host",
-    "dev:backend": "nodemon server/index.js",
-    "dev": "concurrently 'npm:dev:frontend' 'npm:dev:backend'",
+    "dev:backend": "npm --prefix StudentV_server run dev:backend",
+    "dev": "concurrently -n frontend,server -c cyan,green \"npm:dev:frontend\" \"npm:dev:backend\"",
     "host": "npm:dev:frontendhost",
     "test": "vitest"
   },

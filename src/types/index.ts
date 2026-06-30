@@ -45,6 +45,24 @@ export type ActivatedEventItem = {
   userID: number
 }
 
+export type CleaningScheduleEntry = {
+  weekId: string
+  weekNumber: number
+  year: number
+  weekStart: string
+  weekEnd: string
+  assignedTo: string
+  assignedUserId?: number
+  notes?: string
+}
+
+export type CleaningTask = {
+  id: number
+  weekId: string
+  title: string
+  completed: boolean
+}
+
 export type StatItem = {
   id: number
   label: string
@@ -64,9 +82,9 @@ export type ChallengeItem = {
 
 export type DashboardPayload = {
   user: {
-    username: string
-    roomID: number
-    dormID: number
+    name: string
+    room: number
+    corridor: number
   }
   alerts: AlertItem[]
   news: NewsItem[]
