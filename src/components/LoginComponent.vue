@@ -47,8 +47,6 @@
   import { useRouter } from 'vue-router';
   import { connectSocket } from '@/composables/socket';
 
-
-
   const props = defineProps<{
       usernameID: string;
       usernamePlaceholder: string;

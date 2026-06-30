@@ -199,6 +199,40 @@
             </div>
           </section>
 
+          <!-- Surveys -->
+          <section
+            v-if="userSurveys.length"
+            class="bg-surface dark:bg-surface-dark rounded-lg p-5"
+          >
+
+          <h2 class="text-xl font-semibold mb-4">
+            Surveys
+          </h2>
+
+
+          <div
+            v-for="survey in userSurveys"
+            :key="survey.eID"
+            class="mb-3 p-3 rounded-md bg-secondary cursor-pointer"
+          >
+
+          <h3 class="font-semibold">
+          {{ survey.question }}
+          </h3>
+
+
+          <router-link
+            :to="`/answerSurvey/${survey.eID}`"
+            class="text-sm underline"
+          >
+          Answer
+          </router-link>
+
+
+          </div>
+
+          </section>
+
         </aside>
 
       </div>
@@ -243,7 +277,7 @@ const socket = getSocket(); // Import the socket instance from socket.ts
 
 
 import ModalComponent from '@/components/ModalComponent.vue';
-import type { AlertItem, NewsItem, HomeEventItem, ActivatedEventItem, StatItem, QuickActionItem, ChallengeItem, DashboardPayload, MenuItem } from '@/types';
+import { type AlertItem, type NewsItem, type HomeEventItem, type ActivatedEventItem, type StatItem, type QuickActionItem, type ChallengeItem, type DashboardPayload, type MenuItem, SurveyItem } from '@/types';
 
 const username = ref("John Doe")
 const room = ref(314)
@@ -255,6 +289,7 @@ const activatedEvents = ref<ActivatedEventItem[]>([]);
 const stats = ref<StatItem[]>([]);
 const quickActions = ref<QuickActionItem[]>([]);
 const challenges = ref<ChallengeItem[]>([]);
+const userSurveys = ref<SurveyItem[]>([]);
 
 const menuType = ref('home');
 socket.on('connect', () => {
@@ -303,6 +338,7 @@ onMounted(() => {
     events.value = dashboard.events;
     activatedEvents.value = dashboard.activatedEvents;
     stats.value = dashboard.stats;
+    userSurveys.value = dashboard.pendingSurveys;
 
     saveDashboardCache(dashboard);
   });
@@ -321,6 +357,7 @@ onMounted(() => {
     events.value = cached.events;
     activatedEvents.value = cached.activatedEvents;
     stats.value = cached.stats;
+    userSurveys.value = cached.pendingSurveys
   } else {
     socket.emit("getDashboard");
   }
