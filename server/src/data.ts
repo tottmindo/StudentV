@@ -703,36 +703,41 @@ async createCleaningWeekTasks(tasks: any[]): Promise<void> {
     throw new Error("Failed to create cleaning week tasks.");
   }
 }
-  async createSurvey(survey: any){
-    const connection = await pool.getConnection();
-    await connection.beginTransaction();
-    
-    try {
+ async createSurvey(survey: any) {
+  const connection = await pool.getConnection();
+  await connection.beginTransaction();
+  
+  try {
+    // 1. Capture the result array from the query
+    const [result] = await connection.query(
+      `INSERT INTO survey (question, active, expiresAt, multipleChoice)
+      VALUES (?, ?, ?, ?)`,
+      [survey.question, survey.active, new Date(survey.expiresAt), survey.multipleChoice]
+    );
 
-      await connection.query(
-        `INSERT INTO survey (question, active, expiresAt, multipleChoice)
-        VALUES (?, ?, ?, ?)`,
-        [survey.question, survey.active, new Date(survey.expiresAt), survey.multipleChoice]
-      );
+    await connection.commit();
 
-      await connection.commit();
+    const newlyCreatedSurvey = {
+      ...survey,
+      eID: (result as any).insertId 
+    };
 
-      return { msg: "Survey created", survey };
-    } catch (error) {
-          await connection.rollback();
-          console.error("Transaction rolled back:", error);
-          throw error;
-    } finally {
-          connection.release();
-    }
+    return newlyCreatedSurvey; 
+
+  } catch (error) {
+    await connection.rollback();
+    console.error("Transaction rolled back:", error);
+    throw error;
+  } finally {
+    connection.release();
   }
+}
 
-  async updateSurvey(survey: any){
+  async  updateSurvey(survey: any) {
     const connection = await pool.getConnection();
     await connection.beginTransaction();
     
     try {
-
       await connection.query(
         `UPDATE survey 
         SET question = ?, active = ?, expiresAt = ?, multipleChoice = ?
@@ -742,13 +747,13 @@ async createCleaningWeekTasks(tasks: any[]): Promise<void> {
 
       await connection.commit();
 
-      return { msg: "Survey updated", survey };
+      return survey; 
     } catch (error) {
-          await connection.rollback();
-          console.error("Transaction rolled back:", error);
-          throw error;
+      await connection.rollback();
+      console.error("Transaction rolled back:", error);
+      throw error;
     } finally {
-          connection.release();
+      connection.release();
     }
   }
 
@@ -780,23 +785,20 @@ async createCleaningWeekTasks(tasks: any[]): Promise<void> {
     }
   }
 
-  async deleteSurvey(eID: number){
+  async deleteSurvey(eID: number) {
     const connection = await pool.getConnection();
     await connection.beginTransaction();
 
     try {
-      await connection.query(
-        `DELETE FROM survey WHERE eID = ?`,
-        [eID]
-      );
+      await connection.query(`DELETE FROM survey WHERE eID = ?`, [eID]);
       await connection.commit();
 
-      return {msg : `Survey ${eID} deleted`}
-    }catch(err){
+      return { eID }; 
+    } catch (err) {
       await connection.rollback();
       console.error("Error deleting survey", err);
       throw new Error("Failed to delete survey from db");
-    }finally{
+    } finally {
       connection.release();
     }
   }

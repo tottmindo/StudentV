@@ -12,6 +12,7 @@
 import { Socket } from "socket.io";
 import { Data } from "./data.js";
 import { generateCleaningWeekForDorm } from "./jobs/scheduler.js";
+import { getIO } from "./routes/socketManager.js";
 function sockets(socket: Socket, data: Data, dormID: number, userID: number, role: string): void {
   if (!dormID || dormID === 0 || !userID || userID === 0) {
     console.warn(`⚠️ Unauthorized socket (${socket.id}) attempted to access restricted features.`);
@@ -258,7 +259,7 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
     console.log("Request to create survey", item);
     try{
         const saved = await data.createSurvey(item);
-        socket.emit("surveyCreated", saved)
+        getIO().emit("surveyCreated", saved)
 
         if (typeof callback === "function"){
           callback(saved);
@@ -269,7 +270,6 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
         if (typeof callback === "function"){
           callback({ error: err.message || "Failed to create survey"});
         }
-      socket.emit("error", {message: "Failed to create survey"});
       }
   });
 
@@ -281,7 +281,7 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
     console.log("Request to update survey", item);
     try{
         const saved = await data.updateSurvey(item);
-        socket.emit("surveyUpdated", saved)
+        getIO().emit("surveyUpdated", saved)
 
         if (typeof callback === "function"){
           callback(saved);
@@ -330,6 +330,7 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
     }try{
       console.log("Deleting survey");
       const result = await data.deleteSurvey(eID);
+      getIO().emit("surveyDeleted", { eID });
       callback({success: true, result});
     }catch(err: any){
       console.log("Error deleting survey", err);
