@@ -52,6 +52,7 @@ import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import "./config/env.js";
 import pool from "./db.js";
+import { error } from "console";
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const dataDir = existsSync(join(currentDir, "data"))
@@ -862,6 +863,28 @@ async createCleaningWeekTasks(tasks: any[]): Promise<void> {
         throw err;
     } finally {
           connection.release();
+    }
+  }
+
+  async getChatRooms(dormID: number){
+    try {
+      const query = 'SELECT * FROM CHAT WHERE dormID = ? ORDER BY chatID';
+      const [rows] = await pool.query(query, [dormID]);
+      return rows as any;
+    }catch (err){
+      console.error(`Error fetching chat rooms for dorm ${dormID}`, err);
+      throw new Error("Error fetching chat rooms");
+    }
+  }
+
+  async getChatHistory(chatID: number){
+    try{
+      const query = "SELECT * FROM chatHistory WHERE chatID = ? ORDER BY sentAt DESC";
+      const [rows] = await pool.query(query, [chatID]);
+      return rows as any;
+    }catch (err){
+      console.error(`Error fetching chat logs for chat ${chatID}`);
+      throw new Error("Error fetiching chat rooms");
     }
   }
 }

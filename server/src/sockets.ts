@@ -251,6 +251,8 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
     }
   });                                         
 
+  //---------------SURVEYS-------------------
+
   socket.on("createSurvey", async(item: any, callback: any) => {
     if (role !== "ADMIN"){
       socket.emit("error", {message: "unauthorized"});
@@ -372,6 +374,28 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
   }
 });
 
+
+//----------------CHAT---------------
+
+  socket.on("getChatRooms", async() => {
+    try{
+      const rooms = await data.getChatRooms(dormID);
+      socket.emit("chatRooms", rooms);
+    } catch(err){
+      socket.emit("error", { message: "Failed to fetch chat rooms" });
+    }
+  });
+
+  socket.on("joinChatRoom", async(chatID: number) => {
+    socket.join(`chat-${chatID}`);
+    try{
+      const logs = await data.getChatHistory(chatID);
+      socket.emit("chatHistory", {chatID, logs});
+    }catch(err:any){
+      socket.leave(`chat-${chatID}`);
+      socket.emit("error", { message: "Failed to fetch chat logs "});
+    }
+  });
 }
 
 export { sockets };
