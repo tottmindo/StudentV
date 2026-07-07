@@ -3,7 +3,6 @@
     { "name": "Home", "link": "/home" },
     { "name": "Stats", "link": "/stats" },
     { "name": "Events", "link": "/events" },
-    { "name": "Survey", "link": "/survey"},
     { "name": "Cleaning", "link": "/cleaning" },
     { "name": "Chat", "link": "/Chat"}
     

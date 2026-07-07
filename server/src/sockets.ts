@@ -388,13 +388,50 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
 
   socket.on("joinChatRoom", async(chatID: number) => {
     socket.join(`chat-${chatID}`);
+    console.log(`Joined socket chat-${chatID}`)
     try{
+      const hasAccess = await data.hasAccessToChat(chatID, userID);
+      if (!hasAccess){
+        console.warn(`Unauthorized access attempt: User ${userID} tried to join Chat ${chatID}`);
+        socket.emit("error", { message: "You do not have access to this chat." });
+        return;
+      }
       const logs = await data.getChatHistory(chatID);
-      socket.emit("chatHistory", {chatID, logs});
+      const name = await data.getChatName(chatID);
+      socket.emit("chatHistory", {chatID, logs, name});
     }catch(err:any){
       socket.leave(`chat-${chatID}`);
       socket.emit("error", { message: "Failed to fetch chat logs "});
     }
+  });
+
+  socket.on("leaveChatRoom", async(chatID: number) => {
+    socket.leave(`chat-${chatID}`);
+    console.log(`Left socket chat-${chatID}`);
+  });
+
+  socket.on("sendMessage", async(chatID: number, message : string, callback: any) => {
+    console.log("time to send message", message);
+    try{
+        const hasAccess = await data.hasAccessToChat(chatID, userID);
+        if (!hasAccess){
+          console.warn(`Unauthorized access attempt: User ${userID} tried to join Chat ${chatID}`);
+          socket.emit("error", { message: "You do not have access to this chat." });
+          return;
+        }
+        const newMessage = await data.newMessage(message, chatID, userID);
+        getIO().to(`chat-${chatID}`).emit("newMessage", newMessage)
+
+        if (typeof callback === "function"){
+          callback(newMessage);
+        }
+      }catch (err: any) {
+        console.error("Error creating survey", err);
+        
+        if (typeof callback === "function"){
+          callback({ error: err.message || "Failed to create survey"});
+        }
+      }
   });
 }
 
