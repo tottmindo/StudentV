@@ -2,8 +2,6 @@
 <template>
 
   <div class="max-w-3xl mx-auto p-6">
-
-
     <!-- Loading -->
     <div
       v-if="loading"
@@ -11,20 +9,14 @@
     >
       Loading survey...
     </div>
-
-
-
     <!-- Survey -->
     <div
       v-else-if="survey && !submitted"
       class="bg-surface dark:bg-surface-dark
              rounded-lg p-6 shadow-sm"
     >
-
-
       <!-- Header -->
       <div class="mb-6">
-
         <h1
           class="text-3xl font-bold
                  text-headline
@@ -32,27 +24,18 @@
         >
           {{ survey.question }}
         </h1>
-
-
         <p class="text-sm opacity-60 mt-2">
           Survey #{{ survey.eID }}
         </p>
-
       </div>
-
-
-
       <!-- Answer -->
       <div class="space-y-3">
-
         <label
           class="block text-sm font-semibold
                  text-text dark:text-text-dark"
         >
           Your answer
         </label>
-
-
         <textarea
           v-model="answer"
           rows="6"
@@ -68,11 +51,7 @@
                  focus:ring-2
                  focus:ring-accent"
         />
-
       </div>
-
-
-
       <!-- Submit -->
       <div class="flex justify-end mt-6">
 
@@ -88,15 +67,8 @@
         >
           Submit Answer
         </button>
-
       </div>
-
-
     </div>
-
-
-
-
     <!-- Submitted -->
     <div
       v-else-if="submitted"
@@ -107,7 +79,6 @@
              shadow-sm
              text-center"
     >
-
       <h2
         class="text-2xl
                font-bold
@@ -117,17 +88,10 @@
       >
         Thank you!
       </h2>
-
-
       <p class="opacity-70">
         Your answer has been submitted successfully.
       </p>
-
-
     </div>
-
-
-
     <!-- Error -->
     <div
       v-else
@@ -135,10 +99,7 @@
     >
       Survey not found.
     </div>
-
-
   </div>
-
 </template>
 
 <script setup lang="ts">

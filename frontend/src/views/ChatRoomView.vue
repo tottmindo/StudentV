@@ -149,13 +149,13 @@ function formatTime(date: string) {
     // IF FROM EARLIER YEAR
     if (d.getFullYear() !== now.getFullYear()){
       return d.toLocaleDateString([], { 
-          year: 'numeric',
-          month: 'short', 
-          day: 'numeric' 
-          }) + ', ' + d.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit"
-          });
+        year: 'numeric',
+        month: 'short', 
+        day: 'numeric' 
+        }) + ', ' + d.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit"
+        });
     }
 
     // IF FROM THIS YEAR BUT NOT TODAY

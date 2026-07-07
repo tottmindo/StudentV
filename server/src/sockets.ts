@@ -325,9 +325,7 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
 
   socket.on("deleteSurvey", async(eID: number, callback: any) => {
     if (role !== "ADMIN"){
-      callback({
-        error: "unauthorized"
-      });
+      callback({ error: "unauthorized" });
       return;
     }try{
       console.log("Deleting survey");

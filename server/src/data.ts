@@ -807,9 +807,9 @@ async createCleaningWeekTasks(tasks: any[]): Promise<void> {
   async getAnswers(eID: number){
     try{
       const query = 'SELECT * FROM surveyanswers WHERE eID = ?';
-
       const [rows] = await pool.query(query, [eID]);
       return rows as any[];
+
     }catch(err){
       console.error("Error fetching survey answers", err);
       throw new Error("Failed to fetch survey answeres from db");
@@ -832,8 +832,8 @@ async createCleaningWeekTasks(tasks: any[]): Promise<void> {
     `;
 
     const [rows] = await pool.query(query, [userID]);
-
     return rows;
+
     }catch(err){
       console.error(`Error fetching surveys for user ${userID}`, err);
       throw new Error("Failed fetching surveys");
