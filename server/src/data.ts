@@ -52,6 +52,7 @@ import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import "./config/env.js";
 import pool from "./db.js";
+import { error } from "console";
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const dataDir = existsSync(join(currentDir, "data"))
@@ -806,9 +807,9 @@ async createCleaningWeekTasks(tasks: any[]): Promise<void> {
   async getAnswers(eID: number){
     try{
       const query = 'SELECT * FROM surveyanswers WHERE eID = ?';
-
       const [rows] = await pool.query(query, [eID]);
       return rows as any[];
+
     }catch(err){
       console.error("Error fetching survey answers", err);
       throw new Error("Failed to fetch survey answeres from db");
@@ -821,6 +822,7 @@ async createCleaningWeekTasks(tasks: any[]): Promise<void> {
       SELECT *
       FROM survey s
       WHERE s.active = 1
+      AND s.expiresAt > NOW()
       AND NOT EXISTS (
         SELECT 1
         FROM surveyAnswers sa
@@ -830,8 +832,8 @@ async createCleaningWeekTasks(tasks: any[]): Promise<void> {
     `;
 
     const [rows] = await pool.query(query, [userID]);
-
     return rows;
+
     }catch(err){
       console.error(`Error fetching surveys for user ${userID}`, err);
       throw new Error("Failed fetching surveys");
@@ -864,6 +866,79 @@ async createCleaningWeekTasks(tasks: any[]): Promise<void> {
           connection.release();
     }
   }
+
+  async getChatRooms(dormID: number){
+    try {
+      const query = 'SELECT * FROM CHAT WHERE dormID = ? ORDER BY chatID';
+      const [rows] = await pool.query(query, [dormID]);
+      return rows as any;
+    }catch (err){
+      console.error(`Error fetching chat rooms for dorm ${dormID}`, err);
+      throw new Error("Error fetching chat rooms");
+    }
+  }
+
+  async getChatHistory(chatID: number){
+    try{
+      const query = `SELECT ch.*, u.username FROM
+                     chatHistory ch JOIN users u ON
+                     ch.userID = u.userID WHERE ch.chatID = ?
+                     ORDER BY ch.sentAt DESC`;
+      const [rows] = await pool.query(query, [chatID]);
+      return rows as any;
+    }catch (err){
+      console.error(`Error fetching chat logs for chat ${chatID}`);
+      throw new Error("Error fetiching chat rooms");
+    }
+  }
+
+  async getChatName(chatID: number){
+    try{
+      const query = `SELECT name FROM chat WHERE chatID = ?`;
+      const [rows]: any = await pool.query(query, [chatID]);
+
+      return rows[0]?.name;
+    }catch (err){
+      console.error(`Error fetching name for chat with id ${chatID}`);
+      throw new Error("Error fetching chat name")
+    }
+  }
+
+  async newMessage(message: string, chatID: number, userID: number) {
+    try {
+      const [result]: any = await pool.query(
+        `INSERT INTO chatHistory (msg, chatID, userID)
+        VALUES (?, ?, ?)`,
+        [message, chatID, userID]
+      );
+
+      const [rows]: any = await pool.query(
+        `SELECT ch.*, u.username
+        FROM chatHistory ch
+        JOIN users u ON u.userID = ch.userID
+        WHERE ch.messageID = ?`,
+        [result.insertId]
+      );
+
+      return rows[0];
+    } catch (err) {
+      console.error("Error creating chat message", err);
+      throw err;
+    }
+  }
+
+async hasAccessToChat(chatID: number, userID: number) {
+  try {
+    const [rows]: any = await pool.query(
+      `SELECT COUNT(1) as count FROM chatmembers WHERE chatID = ? AND userID = ?`, 
+      [chatID, userID]
+    );
+    return rows[0].count > 0; 
+  } catch (err) {
+    console.error("Error checking access to chat", err);
+    throw new Error("Error checking access to chat");
+  }
+}
 }
 
 export { Data };

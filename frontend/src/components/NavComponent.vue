@@ -64,6 +64,21 @@
             Admin
           </div>
         </router-link>
+        <router-link
+          to="/survey"
+          v-if="role === 'admin'"
+          @click="closeMenu"
+          class="block"
+          active-class="menu-active"
+          >
+          <div
+            class="inline-flex items-center gap-2 w-full cursor-pointer py-2 px-4 rounded-xl font-semibold
+                  text-text dark:text-text-dark bg-surface dark:bg-surface-dark
+                  hover:bg-accent-dark dark:hover:bg-accent transition-colors duration-300"
+          >
+            Survey
+          </div>
+        </router-link>
       </ul>
     </div>
 

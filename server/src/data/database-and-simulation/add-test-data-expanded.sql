@@ -65,14 +65,14 @@ INSERT INTO users
 VALUES
 -- Dorm 1
 (1,  'admin1',  '$2a$10$YouE3ep18kTU5uWuUTV4AOpd5BFeQDr7NYqrAhb8RKSfC0ATGNjs6', 'ADMIN',   1, 1, TRUE),
-(2,  'alice',   '$2a$10$zGNeEsyfyloIAc0mM2S04uAa1v6w.8UQGvngA7O15GUKh0zoVpote', 'STUDENT', 1, 1, FALSE),
-(3,  'bob',     '$2a$10$zGNeEsyfyloIAc0mM2S04uAa1v6w.8UQGvngA7O15GUKh0zoVpote', 'STUDENT', 1, 1, FALSE),
-(4,  'clara',   '$2a$10$zGNeEsyfyloIAc0mM2S04uAa1v6w.8UQGvngA7O15GUKh0zoVpote', 'STUDENT', 2, 1, TRUE),
-(5,  'david',   '$2a$10$zGNeEsyfyloIAc0mM2S04uAa1v6w.8UQGvngA7O15GUKh0zoVpote', 'STUDENT', 2, 1, FALSE),
-(6,  'emma',    '$2a$10$zGNeEsyfyloIAc0mM2S04uAa1v6w.8UQGvngA7O15GUKh0zoVpote', 'STUDENT', 3, 1, TRUE),
-(7,  'felix',   '$2a$10$zGNeEsyfyloIAc0mM2S04uAa1v6w.8UQGvngA7O15GUKh0zoVpote', 'STUDENT', 3, 1, FALSE),
-(8,  'grace',   '$2a$10$zGNeEsyfyloIAc0mM2S04uAa1v6w.8UQGvngA7O15GUKh0zoVpote', 'STUDENT', 4, 1, TRUE),
-(9,  'henry',   '$2a$10$zGNeEsyfyloIAc0mM2S04uAa1v6w.8UQGvngA7O15GUKh0zoVpote', 'STUDENT', 4, 1, FALSE),
+(2,  'alice',   '$2a$10$YouE3ep18kTU5uWuUTV4AOpd5BFeQDr7NYqrAhb8RKSfC0ATGNjs6', 'STUDENT', 1, 1, FALSE),
+(3,  'bob',     '$2a$10$YouE3ep18kTU5uWuUTV4AOpd5BFeQDr7NYqrAhb8RKSfC0ATGNjs6', 'STUDENT', 1, 1, FALSE),
+(4,  'clara',   '$2a$10$YouE3ep18kTU5uWuUTV4AOpd5BFeQDr7NYqrAhb8RKSfC0ATGNjs6', 'STUDENT', 2, 1, TRUE),
+(5,  'david',   '$2a$10$YouE3ep18kTU5uWuUTV4AOpd5BFeQDr7NYqrAhb8RKSfC0ATGNjs6', 'STUDENT', 2, 1, FALSE),
+(6,  'emma',    '$2a$10$YouE3ep18kTU5uWuUTV4AOpd5BFeQDr7NYqrAhb8RKSfC0ATGNjs6', 'STUDENT', 3, 1, TRUE),
+(7,  'felix',   '$2a$10$YouE3ep18kTU5uWuUTV4AOpd5BFeQDr7NYqrAhb8RKSfC0ATGNjs6', 'STUDENT', 3, 1, FALSE),
+(8,  'grace',   '$2a$10$YouE3ep18kTU5uWuUTV4AOpd5BFeQDr7NYqrAhb8RKSfC0ATGNjs6', 'STUDENT', 4, 1, TRUE),
+(9,  'henry',   '$2a$10$YouE3ep18kTU5uWuUTV4AOpd5BFeQDr7NYqrAhb8RKSfC0ATGNjs6', 'STUDENT', 4, 1, FALSE),
 
 -- Dorm 2
 (10, 'admin2',  '$2a$10$YouE3ep18kTU5uWuUTV4AOpd5BFeQDr7NYqrAhb8RKSfC0ATGNjs6', 'ADMIN',   5, 2, TRUE),
