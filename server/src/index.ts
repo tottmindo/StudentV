@@ -33,6 +33,7 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import express from "express";
 import authRoutes from "./routes/authRoutes.js";
+import sensorDataRoutes from "./routes/sensorDataRoutes.js";
 import { Data } from "./data.js";
 import { Socket } from "socket.io";
 import { sockets } from "./sockets.js";
@@ -59,6 +60,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use("/api/auth", authRoutes);
+app.use("/api/sensor-data", sensorDataRoutes);
 
 const data = new Data();
 
