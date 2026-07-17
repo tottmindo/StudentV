@@ -56,45 +56,43 @@ INSERT INTO room (roomID, dormID) VALUES
 
 -- =====================================================
 -- USERS
--- All accounts use the same existing dummy BCrypt hash.
--- Replace it if your authentication tests require a known
--- plaintext password.
+-- All test accounts use the BCrypt hash for plaintext password: test123
 -- =====================================================
 INSERT INTO users
 (userID, username, passwordHash, role, roomID, dormID, active)
 VALUES
 -- Dorm 1
-(1,  'admin1',  '$2a$10$YouE3ep18kTU5uWuUTV4AOpd5BFeQDr7NYqrAhb8RKSfC0ATGNjs6', 'ADMIN',   1, 1, TRUE),
-(2,  'alice',   '$2a$10$YouE3ep18kTU5uWuUTV4AOpd5BFeQDr7NYqrAhb8RKSfC0ATGNjs6', 'STUDENT', 1, 1, FALSE),
-(3,  'bob',     '$2a$10$YouE3ep18kTU5uWuUTV4AOpd5BFeQDr7NYqrAhb8RKSfC0ATGNjs6', 'STUDENT', 1, 1, FALSE),
-(4,  'clara',   '$2a$10$YouE3ep18kTU5uWuUTV4AOpd5BFeQDr7NYqrAhb8RKSfC0ATGNjs6', 'STUDENT', 2, 1, TRUE),
-(5,  'david',   '$2a$10$YouE3ep18kTU5uWuUTV4AOpd5BFeQDr7NYqrAhb8RKSfC0ATGNjs6', 'STUDENT', 2, 1, FALSE),
-(6,  'emma',    '$2a$10$YouE3ep18kTU5uWuUTV4AOpd5BFeQDr7NYqrAhb8RKSfC0ATGNjs6', 'STUDENT', 3, 1, TRUE),
-(7,  'felix',   '$2a$10$YouE3ep18kTU5uWuUTV4AOpd5BFeQDr7NYqrAhb8RKSfC0ATGNjs6', 'STUDENT', 3, 1, FALSE),
-(8,  'grace',   '$2a$10$YouE3ep18kTU5uWuUTV4AOpd5BFeQDr7NYqrAhb8RKSfC0ATGNjs6', 'STUDENT', 4, 1, TRUE),
-(9,  'henry',   '$2a$10$YouE3ep18kTU5uWuUTV4AOpd5BFeQDr7NYqrAhb8RKSfC0ATGNjs6', 'STUDENT', 4, 1, FALSE),
+(1,  'admin1',  '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'ADMIN',   1, 1, TRUE),
+(2,  'alice',   '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 1, 1, FALSE),
+(3,  'bob',     '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 1, 1, FALSE),
+(4,  'clara',   '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 2, 1, TRUE),
+(5,  'david',   '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 2, 1, FALSE),
+(6,  'emma',    '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 3, 1, TRUE),
+(7,  'felix',   '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 3, 1, FALSE),
+(8,  'grace',   '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 4, 1, TRUE),
+(9,  'henry',   '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 4, 1, FALSE),
 
 -- Dorm 2
-(10, 'admin2',  '$2a$10$YouE3ep18kTU5uWuUTV4AOpd5BFeQDr7NYqrAhb8RKSfC0ATGNjs6', 'ADMIN',   5, 2, TRUE),
-(11, 'irene',   '$2a$10$zGNeEsyfyloIAc0mM2S04uAa1v6w.8UQGvngA7O15GUKh0zoVpote', 'STUDENT', 5, 2, FALSE),
-(12, 'jamal',   '$2a$10$zGNeEsyfyloIAc0mM2S04uAa1v6w.8UQGvngA7O15GUKh0zoVpote', 'STUDENT', 5, 2, FALSE),
-(13, 'karin',   '$2a$10$zGNeEsyfyloIAc0mM2S04uAa1v6w.8UQGvngA7O15GUKh0zoVpote', 'STUDENT', 6, 2, TRUE),
-(14, 'leo',     '$2a$10$zGNeEsyfyloIAc0mM2S04uAa1v6w.8UQGvngA7O15GUKh0zoVpote', 'STUDENT', 6, 2, FALSE),
-(15, 'maya',    '$2a$10$zGNeEsyfyloIAc0mM2S04uAa1v6w.8UQGvngA7O15GUKh0zoVpote', 'STUDENT', 7, 2, TRUE),
-(16, 'noah',    '$2a$10$zGNeEsyfyloIAc0mM2S04uAa1v6w.8UQGvngA7O15GUKh0zoVpote', 'STUDENT', 7, 2, FALSE),
-(17, 'olivia',  '$2a$10$zGNeEsyfyloIAc0mM2S04uAa1v6w.8UQGvngA7O15GUKh0zoVpote', 'STUDENT', 8, 2, TRUE),
-(18, 'peter',   '$2a$10$zGNeEsyfyloIAc0mM2S04uAa1v6w.8UQGvngA7O15GUKh0zoVpote', 'STUDENT', 8, 2, FALSE),
+(10, 'admin2',  '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'ADMIN',   5, 2, TRUE),
+(11, 'irene',   '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 5, 2, FALSE),
+(12, 'jamal',   '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 5, 2, FALSE),
+(13, 'karin',   '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 6, 2, TRUE),
+(14, 'leo',     '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 6, 2, FALSE),
+(15, 'maya',    '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 7, 2, TRUE),
+(16, 'noah',    '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 7, 2, FALSE),
+(17, 'olivia',  '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 8, 2, TRUE),
+(18, 'peter',   '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 8, 2, FALSE),
 
 -- Dorm 3
-(19, 'admin3',  '$2a$10$YouE3ep18kTU5uWuUTV4AOpd5BFeQDr7NYqrAhb8RKSfC0ATGNjs6', 'ADMIN',   9, 3, TRUE),
-(20, 'quinn',   '$2a$10$zGNeEsyfyloIAc0mM2S04uAa1v6w.8UQGvngA7O15GUKh0zoVpote', 'STUDENT', 9, 3, FALSE),
-(21, 'rania',   '$2a$10$zGNeEsyfyloIAc0mM2S04uAa1v6w.8UQGvngA7O15GUKh0zoVpote', 'STUDENT', 9, 3, FALSE),
-(22, 'sam',     '$2a$10$zGNeEsyfyloIAc0mM2S04uAa1v6w.8UQGvngA7O15GUKh0zoVpote', 'STUDENT', 10, 3, TRUE),
-(23, 'tina',    '$2a$10$zGNeEsyfyloIAc0mM2S04uAa1v6w.8UQGvngA7O15GUKh0zoVpote', 'STUDENT', 10, 3, FALSE),
-(24, 'uma',     '$2a$10$zGNeEsyfyloIAc0mM2S04uAa1v6w.8UQGvngA7O15GUKh0zoVpote', 'STUDENT', 11, 3, TRUE),
-(25, 'victor',  '$2a$10$zGNeEsyfyloIAc0mM2S04uAa1v6w.8UQGvngA7O15GUKh0zoVpote', 'STUDENT', 11, 3, FALSE),
-(26, 'wendy',   '$2a$10$zGNeEsyfyloIAc0mM2S04uAa1v6w.8UQGvngA7O15GUKh0zoVpote', 'STUDENT', 12, 3, TRUE),
-(27, 'xavier',  '$2a$10$zGNeEsyfyloIAc0mM2S04uAa1v6w.8UQGvngA7O15GUKh0zoVpote', 'STUDENT', 12, 3, FALSE);
+(19, 'admin3',  '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'ADMIN',   9, 3, TRUE),
+(20, 'quinn',   '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 9, 3, FALSE),
+(21, 'rania',   '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 9, 3, FALSE),
+(22, 'sam',     '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 10, 3, TRUE),
+(23, 'tina',    '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 10, 3, FALSE),
+(24, 'uma',     '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 11, 3, TRUE),
+(25, 'victor',  '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 11, 3, FALSE),
+(26, 'wendy',   '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 12, 3, TRUE),
+(27, 'xavier',  '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 12, 3, FALSE);
 
 -- =====================================================
 -- SURVEYS
