@@ -138,10 +138,18 @@
             </div>
 
             <div class="space-y-3">
-              <div
+              <p
+                v-if="!alerts.length"
+                class="text-sm text-red-700 dark:text-red-300 opacity-80"
+              >
+                Nothing needs your attention right now.
+              </p>
+
+              <router-link
                 v-for="alert in alerts"
                 :key="alert.id"
-                class="bg-surface dark:bg-surface-dark rounded-md p-3"
+                :to="alert.route || '/home'"
+                class="block bg-surface dark:bg-surface-dark rounded-md p-3 transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-red-500"
               >
                 <h3 class="font-semibold">
                   {{ alert.title }}
@@ -150,7 +158,14 @@
                 <p class="text-sm">
                   {{ alert.description }}
                 </p>
-              </div>
+
+                <p
+                  v-if="alert.actionLabel"
+                  class="mt-2 text-sm font-semibold text-red-700 dark:text-red-300"
+                >
+                  {{ alert.actionLabel }}
+                </p>
+              </router-link>
             </div>
           </section>
 
@@ -358,9 +373,9 @@ onMounted(() => {
     activatedEvents.value = cached.activatedEvents;
     stats.value = cached.stats;
     userSurveys.value = cached.pendingSurveys
-  } else {
-    socket.emit("getDashboard");
   }
+
+  socket.emit("getDashboard");
 
   }
 );

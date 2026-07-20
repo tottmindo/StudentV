@@ -2,6 +2,8 @@ export type AlertItem = {
   id: number
   title: string
   description: string
+  route?: string
+  actionLabel?: string
 }
 
 export type SurveyAnswer = {

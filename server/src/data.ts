@@ -104,6 +104,14 @@ export interface CleaningWeekTask {
   isDeleted: boolean;
 }
 
+interface DashboardAlert {
+  id: number;
+  title: string;
+  description: string;
+  route: string;
+  actionLabel: string;
+}
+
 class Data {
 
   getMenuData(lang: string = "en"): any {
@@ -434,7 +442,8 @@ class Data {
         params.push(filters.active);
       }
       if (filters?.dormID) {
-        console.warn(`⚠️ Ignoring dormID filter for events because events table has no dormID column.`);
+        query += ` AND dormID = ?`;
+        params.push(filters.dormID);
       }
 
       const [rows] = await pool.query(query, params);
@@ -515,6 +524,103 @@ class Data {
     }
   }
 
+  private formatAlertDate(value: string | Date): string {
+    const date = value instanceof Date ? value : new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+      return String(value);
+    }
+
+    return new Intl.DateTimeFormat("en", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(date);
+  }
+
+  private formatTaskCount(count: number): string {
+    return `${count} cleaning ${count === 1 ? "task" : "tasks"}`;
+  }
+
+  async getDashboardAlerts(userID: number, dormID: number): Promise<DashboardAlert[]> {
+    try {
+      const alerts: DashboardAlert[] = [];
+
+      const [cleaningRows] = await pool.query(
+        `SELECT
+           cw.weekID,
+           cw.endDate,
+           CAST(COUNT(ca.assignmentID) AS UNSIGNED) AS totalTasks,
+           CAST(COALESCE(SUM(CASE WHEN ca.completed = TRUE THEN 1 ELSE 0 END), 0) AS UNSIGNED) AS completedTasks,
+           CAST(COALESCE(SUM(CASE WHEN ca.completed = FALSE THEN 1 ELSE 0 END), 0) AS UNSIGNED) AS pendingTasks
+         FROM cleaningWeeks cw
+         LEFT JOIN cleaningAssignments ca
+           ON ca.weekID = cw.weekID
+          AND ca.assignedUserID = cw.assignedUserID
+         WHERE cw.dormID = ?
+           AND cw.assignedUserID = ?
+           AND CURDATE() BETWEEN cw.startDate AND cw.endDate
+         GROUP BY cw.weekID, cw.endDate
+         HAVING pendingTasks > 0
+         ORDER BY cw.endDate ASC`,
+        [dormID, userID]
+      );
+
+      for (const week of cleaningRows as any[]) {
+        const pendingTasks = Number(week.pendingTasks);
+        alerts.push({
+          id: 100000 + Number(week.weekID),
+          title: "Cleaning checklist unfinished",
+          description: `It is your cleaning week. You still have ${this.formatTaskCount(pendingTasks)} to complete before ${this.formatAlertDate(week.endDate)}.`,
+          route: `/cleaning?weekID=${week.weekID}`,
+          actionLabel: "Open checklist",
+        });
+      }
+
+      const [eventRows] = await pool.query(
+        `SELECT
+           e.eventID,
+           e.title,
+           e.type,
+           e.startDate,
+           e.endDate,
+           ae.userID AS activatedUserID
+         FROM events e
+         LEFT JOIN activatedEvents ae
+           ON ae.eventID = e.eventID
+          AND ae.userID = ?
+         WHERE e.dormID = ?
+           AND e.active = TRUE
+           AND e.endDate >= NOW()
+           AND e.startDate <= DATE_ADD(NOW(), INTERVAL 2 DAY)
+           AND (
+             ae.userID IS NOT NULL
+             OR UPPER(e.type) IN ('SAFETY', 'MAINTENANCE', 'MEETING', 'CLEANING')
+           )
+         ORDER BY e.startDate ASC
+         LIMIT 5`,
+        [userID, dormID]
+      );
+
+      for (const event of eventRows as any[]) {
+        const type = String(event.type || "event").toLowerCase();
+        alerts.push({
+          id: 200000 + Number(event.eventID),
+          title: event.activatedUserID ? "Activated event coming up" : `${type.charAt(0).toUpperCase()}${type.slice(1)} event soon`,
+          description: `${event.title} starts ${this.formatAlertDate(event.startDate)}.`,
+          route: `/events?eventID=${event.eventID}`,
+          actionLabel: "View details",
+        });
+      }
+
+      return alerts;
+    } catch (err) {
+      console.error("❌ Error building dashboard alerts:", err);
+      throw new Error("Failed to build dashboard alerts.");
+    }
+  }
+
 
 
   async getUser(userID: number): Promise<any | null> {
@@ -536,11 +642,12 @@ class Data {
 
 async getDashboard(userID: number, dormID: number): Promise<any> {
   try {
-    const [user, events, activatedEvents, userSurveys] = await Promise.all([
+    const [user, events, activatedEvents, userSurveys, alerts] = await Promise.all([
       this.getUser(userID),
       this.getEvents({ dormID, active: true }),
       this.getActivatedEvents(userID),
-      this.getUserSurvey(userID)
+      this.getUserSurvey(userID),
+      this.getDashboardAlerts(userID, dormID)
     ]);
 
     if (!user) {
@@ -555,7 +662,7 @@ async getDashboard(userID: number, dormID: number): Promise<any> {
         corridor: user.dormID,
       },
 
-      alerts: [], // later: real mapping layer
+      alerts,
       news: [],   // later: real mapping layer
 
       events,

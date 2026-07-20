@@ -138,10 +138,12 @@ import CalendarComponent from '@/components/CalendarComponent.vue'
 import ModalComponent from '@/components/ModalComponent.vue'
 import NavComponent from '@/components/NavComponent.vue'
 import { getSocket } from '@/composables/socket'
+import { useRoute } from 'vue-router'
 import type { CalendarEvent } from '@/types'
 
 const navMenuType = ref('home')
 const socket = getSocket()
+const route = useRoute()
 const userID = Number(sessionStorage.getItem('userID') || 0)
 
 type CleaningWeek = {
@@ -281,6 +283,20 @@ const openEventDetail = (event: CalendarEvent) => {
   openEventDetails([event])
 }
 
+const getEventIdentifier = (event: CalendarEvent) => {
+  return Number(event.id ?? (event as any).eventID)
+}
+
+const openRequestedEvent = () => {
+  const requestedEventID = Number(route.query.eventID)
+  if (!requestedEventID) return
+
+  const requestedEvent = allEvents.value.find((event) => getEventIdentifier(event) === requestedEventID)
+  if (requestedEvent) {
+    openEventDetail(requestedEvent)
+  }
+}
+
 const bindSocket = () => {
   socket.off('eventsData')
   socket.off('cleaningWeeks')
@@ -288,6 +304,7 @@ const bindSocket = () => {
   socket.on('eventsData', (events: CalendarEvent[]) => {
     upcomingEvents.value = events
     sessionStorage.setItem('events', JSON.stringify(events))
+    openRequestedEvent()
   })
 
   socket.on('cleaningWeeks', (weeks: CleaningWeek[]) => {
@@ -420,6 +437,7 @@ const dateIsInRange = (dateKey: string, start: string, end: string) => {
 onMounted(() => {
   bindSocket()
   fetchCalendarData()
+  openRequestedEvent()
 })
 
 onUnmounted(() => {

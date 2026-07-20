@@ -211,8 +211,10 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import NavComponent from '@/components/NavComponent.vue'
 import { getSocket } from '@/composables/socket'
+import { useRoute } from 'vue-router'
 
 const socket = getSocket()
+const route = useRoute()
 const userID = Number(sessionStorage.getItem('userID') || 0)
 const dormID = Number(sessionStorage.getItem('dormID') || 0)
 
@@ -271,7 +273,11 @@ const bindSocket = () => {
   socket.on('cleaningWeeks', (data: CleaningWeek[]) => {
     weeks.value = sortWeeks(data)
     const selectableWeeks = visibleWeeks.value
-    if (!selectedWeek.value && selectableWeeks.length) {
+    const requestedWeek = getRequestedWeek(selectableWeeks)
+
+    if (requestedWeek) {
+      selectedWeek.value = requestedWeek
+    } else if (!selectedWeek.value && selectableWeeks.length) {
       selectedWeek.value = getCurrentWeek(selectableWeeks) ?? selectableWeeks[0]
     } else if (selectedWeek.value) {
       selectedWeek.value = selectableWeeks.find(week => week.weekID === selectedWeek.value?.weekID)
@@ -412,6 +418,13 @@ const getCurrentWeek = (items: CleaningWeek[]) => {
   })
 }
 
+const getRequestedWeek = (items: CleaningWeek[]) => {
+  const requestedWeekID = Number(route.query.weekID)
+  if (!requestedWeekID) return undefined
+
+  return items.find((week) => week.weekID === requestedWeekID)
+}
+
 const startOfLocalDay = (date: Date) => {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate())
 }
@@ -454,6 +467,12 @@ watch(selectedWeek, (w) => {
 })
 
 watch(visibleWeeks, (items) => {
+  const requestedWeek = getRequestedWeek(items)
+  if (requestedWeek) {
+    selectedWeek.value = requestedWeek
+    return
+  }
+
   if (!selectedWeek.value || !items.some(week => week.weekID === selectedWeek.value?.weekID)) {
     selectedWeek.value = items.length ? getCurrentWeek(items) ?? items[0] : null
   }
