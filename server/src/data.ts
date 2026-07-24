@@ -976,7 +976,7 @@ async createCleaningWeekTasks(tasks: any[]): Promise<void> {
 
   async getChatRooms(dormID: number){
     try {
-      const query = 'SELECT * FROM CHAT WHERE dormID = ? ORDER BY chatID';
+      const query = 'SELECT * FROM chat WHERE dormID = ? ORDER BY chatID';
       const [rows] = await pool.query(query, [dormID]);
       return rows as any;
     }catch (err){
@@ -1037,7 +1037,7 @@ async createCleaningWeekTasks(tasks: any[]): Promise<void> {
 async hasAccessToChat(chatID: number, userID: number) {
   try {
     const [rows]: any = await pool.query(
-      `SELECT COUNT(1) as count FROM chatmembers WHERE chatID = ? AND userID = ?`, 
+      `SELECT COUNT(1) as count FROM chatMembers WHERE chatID = ? AND userID = ?`, 
       [chatID, userID]
     );
     return rows[0].count > 0; 
