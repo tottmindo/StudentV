@@ -4,6 +4,19 @@
 CREATE DATABASE dorms_db;
 USE dorms_db;
 
+CREATE TABLE externalEvents (
+    eventID int AUTO_INCREMENT,
+    externalURL VARCHAR(500) UNIQUE NOT NULL,
+    title VARCHAR(255),
+    startDate DATETIME,
+    endDate DATETIME,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP 
+        ON UPDATE CURRENT_TIMESTAMP,
+    lastSeen DATETIME,
+    PRIMARY KEY(eventID)
+)
+
 CREATE TABLE dorms (
     dormID INT AUTO_INCREMENT,
     floor INT NOT NULL,
