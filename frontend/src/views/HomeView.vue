@@ -72,20 +72,23 @@
             </h2>
 
             <div class="space-y-3">
-              <div
+              <button
                 v-for="event in events"
-                :key="event.id"
-                class="flex justify-between items-center"
+                :key="event.eventID ?? event.id"
+                type="button"
+                @click="openEventDetails(event)"
+                class="w-full flex justify-between items-center gap-4 rounded-md p-3 text-left transition hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-accent"
+                :aria-label="`View details for ${event.title}`"
               >
                 <div>
-                  <span class="mr-2">{{ event.icon }}</span>
+                  <span v-if="event.icon" class="mr-2">{{ event.icon }}</span>
                   {{ event.title }}
                 </div>
 
-                <span class="text-sm opacity-70">
-                  {{ event.time }}
+                <span class="shrink-0 text-sm opacity-70">
+                  {{ event.time || formatEventDate(event.startDate) }}
                 </span>
-              </div>
+              </button>
             </div>
           </section>
 
@@ -280,6 +283,26 @@
       </div>
     </ModalComponent>
 
+    <!-- Event Details Modal -->
+    <ModalComponent v-model="showEventModal">
+      <div v-if="selectedEvent" class="space-y-4 p-4">
+        <div>
+          <h2 class="text-2xl font-bold">{{ selectedEvent.title }}</h2>
+          <p v-if="selectedEvent.type" class="mt-1 text-sm uppercase opacity-70">
+            {{ selectedEvent.type }}
+          </p>
+        </div>
+
+        <p class="font-medium">
+          {{ formatEventDateRange(selectedEvent.startDate, selectedEvent.endDate) || selectedEvent.time }}
+        </p>
+
+        <p class="whitespace-pre-line opacity-80">
+          {{ selectedEvent.description || 'No additional information is available for this event.' }}
+        </p>
+      </div>
+    </ModalComponent>
+
   </div>
 </template>
 
@@ -312,7 +335,27 @@ socket.on('connect', () => {
 });
 
 const showNewsModal = ref(false);
+const showEventModal = ref(false);
+const selectedEvent = ref<HomeEventItem | null>(null);
 const navKey = ref(0); // Reactive key for NavComponent
+
+const openEventDetails = (event: HomeEventItem) => {
+  selectedEvent.value = event;
+  showEventModal.value = true;
+};
+
+const formatEventDate = (dateString?: string) => {
+  if (!dateString) return '';
+
+  const date = new Date(dateString.replace(' ', 'T'));
+  return Number.isNaN(date.getTime()) ? dateString : date.toLocaleString();
+};
+
+const formatEventDateRange = (start?: string, end?: string) => {
+  if (!start) return '';
+  if (!end) return formatEventDate(start);
+  return `${formatEventDate(start)} — ${formatEventDate(end)}`;
+};
 
 const refreshNav = () => {
   navKey.value++; // Increment the key to force re-render

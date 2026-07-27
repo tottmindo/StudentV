@@ -27,6 +27,8 @@ import pool from "../db.js";
 import type { RowDataPacket, ResultSetHeader } from "mysql2";
 import type { StringValue } from "ms";
 import { getJwtSecret } from "../config/jwt.js";
+import { createHash, randomBytes } from "crypto";
+import { sendPasswordResetEmail, sendTemporaryPasswordEmail } from "./emailService.js";
 
 const SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS || "10", 10);
 const JWT_EXPIRATION = process.env.JWT_EXPIRATION || "1h";
@@ -35,17 +37,19 @@ export async function registerUser(
   roomID: number,
   dormID: number,
   role: string,
-  username: string,
+  email: string,
   password: string,
-  replaceExisting: boolean = false
+  replaceExisting: boolean = false,
+  mustChangePassword: boolean = false,
+  beforeCommit?: () => Promise<void>
 ) {
   const connection = await pool.getConnection();
   await connection.beginTransaction();
 
   try {
     const [rows]: [RowDataPacket[], any] = await connection.query(
-      "SELECT userID FROM users WHERE username = ?",
-      [username]
+      "SELECT userID FROM users WHERE email = ?",
+      [email]
     );
 
     if (rows.length > 0) {
@@ -62,7 +66,7 @@ export async function registerUser(
     }
 
     const [activeRows]: [RowDataPacket[], any] = await connection.query(
-      `SELECT userID, username, role, roomID, dormID
+      `SELECT userID, username, email, role, roomID, dormID
        FROM users
        WHERE roomID = ?
          AND dormID = ?
@@ -92,9 +96,9 @@ export async function registerUser(
     }
 
     const [result] = await connection.query<ResultSetHeader>(
-      `INSERT INTO users (username, passwordHash, role, roomID, dormID, active)
-       VALUES (?, ?, ?, ?, ?, TRUE)`,
-      [username, hashedPassword, role, roomID, dormID]
+      `INSERT INTO users (email, username, passwordHash, role, roomID, dormID, active, mustChangePassword)
+       VALUES (?, NULL, ?, ?, ?, ?, TRUE, ?)`,
+      [email, hashedPassword, role, roomID, dormID, mustChangePassword]
     );
 
     const newUserID = result.insertId;
@@ -118,6 +122,10 @@ export async function registerUser(
       );
     }
 
+    if (beforeCommit) {
+      await beforeCommit();
+    }
+
     await connection.commit();
 
     return {
@@ -138,26 +146,173 @@ export async function registerUser(
   }
 }
 
-export async function loginUser(username: string, password: string) {
+export function generateTemporaryPassword() {
+  // 16 URL-safe characters with upper/lowercase, digits and symbols.
+  return `${randomBytes(9).toString("base64url")}Aa1!`;
+}
+
+export async function completeTemporaryPassword(userID: number, username: string, newPassword: string) {
   const [rows]: [RowDataPacket[], any] = await pool.query(
-    "SELECT * FROM users WHERE username = ? AND active = TRUE",
-    [username]
+    "SELECT mustChangePassword FROM users WHERE userID = ? AND active = TRUE",
+    [userID]
+  );
+  if (!rows[0]?.mustChangePassword) {
+    throw new Error("This account does not have a temporary password.");
+  }
+  const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+  try {
+    await pool.query(
+      "UPDATE users SET username = ?, passwordHash = ?, mustChangePassword = FALSE WHERE userID = ?",
+      [username, passwordHash, userID]
+    );
+  } catch (error: any) {
+    if (error?.code === "ER_DUP_ENTRY") throw new Error("That username is already in use.");
+    throw error;
+  }
+}
+
+export async function getAccount(userID: number) {
+  const [rows]: [RowDataPacket[], any] = await pool.query(
+    "SELECT email, username, role, roomID, dormID FROM users WHERE userID = ? AND active = TRUE",
+    [userID]
+  );
+  if (!rows[0]) throw new Error("Account not found.");
+  return rows[0];
+}
+
+export async function updateUsername(userID: number, username: string) {
+  try {
+    const [result] = await pool.query<ResultSetHeader>(
+      "UPDATE users SET username = ? WHERE userID = ? AND active = TRUE",
+      [username, userID]
+    );
+    if (!result.affectedRows) throw new Error("Account not found.");
+    return getAccount(userID);
+  } catch (error: any) {
+    if (error?.code === "ER_DUP_ENTRY") throw new Error("That username is already in use.");
+    throw error;
+  }
+}
+
+export async function adminResetResidentPassword(adminDormID: number, email: string) {
+  const connection = await pool.getConnection();
+  await connection.beginTransaction();
+  try {
+    const [rows]: [RowDataPacket[], any] = await connection.query(
+      `SELECT userID, email FROM users
+       WHERE email = ? AND dormID = ? AND role = 'STUDENT' AND active = TRUE
+       FOR UPDATE`,
+      [email, adminDormID]
+    );
+    if (!rows[0]) throw new Error("Active resident account not found in your dorm.");
+
+    const temporaryPassword = generateTemporaryPassword();
+    const passwordHash = await bcrypt.hash(temporaryPassword, SALT_ROUNDS);
+    await sendTemporaryPasswordEmail(rows[0].email, temporaryPassword);
+    await connection.query(
+      "UPDATE users SET passwordHash = ?, mustChangePassword = TRUE, credentialVersion = credentialVersion + 1 WHERE userID = ?",
+      [passwordHash, rows[0].userID]
+    );
+    await connection.query(
+      "UPDATE passwordResetTokens SET usedAt = NOW() WHERE userID = ? AND usedAt IS NULL",
+      [rows[0].userID]
+    );
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+const hashResetToken = (token: string) => createHash("sha256").update(token).digest("hex");
+
+export async function requestPasswordReset(email: string) {
+  const [rows]: [RowDataPacket[], any] = await pool.query(
+    "SELECT userID, email FROM users WHERE email = ? AND active = TRUE LIMIT 1",
+    [email]
+  );
+  const user = rows[0];
+  if (!user) return;
+
+  const [recent]: [RowDataPacket[], any] = await pool.query(
+    `SELECT tokenID FROM passwordResetTokens
+     WHERE userID = ? AND createdAt > DATE_SUB(NOW(), INTERVAL 5 MINUTE) LIMIT 1`,
+    [user.userID]
+  );
+  if (recent.length > 0) return;
+
+  const token = randomBytes(32).toString("base64url");
+  await pool.query(
+    `INSERT INTO passwordResetTokens (userID, tokenHash, expiresAt)
+     VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 30 MINUTE))`,
+    [user.userID, hashResetToken(token)]
+  );
+  try {
+    await sendPasswordResetEmail(user.email, token);
+  } catch (error) {
+    await pool.query("DELETE FROM passwordResetTokens WHERE tokenHash = ?", [hashResetToken(token)]);
+    throw error;
+  }
+}
+
+export async function resetPasswordWithToken(token: string, newPassword: string) {
+  const connection = await pool.getConnection();
+  await connection.beginTransaction();
+  try {
+    const [rows]: [RowDataPacket[], any] = await connection.query(
+      `SELECT tokenID, userID FROM passwordResetTokens
+       WHERE tokenHash = ? AND usedAt IS NULL AND expiresAt > NOW() FOR UPDATE`,
+      [hashResetToken(token)]
+    );
+    if (!rows[0]) throw new Error("This reset link is invalid or has expired.");
+
+    const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+    await connection.query(
+      "UPDATE users SET passwordHash = ?, mustChangePassword = FALSE, credentialVersion = credentialVersion + 1 WHERE userID = ? AND active = TRUE",
+      [passwordHash, rows[0].userID]
+    );
+    await connection.query(
+      "UPDATE passwordResetTokens SET usedAt = NOW() WHERE userID = ? AND usedAt IS NULL",
+      [rows[0].userID]
+    );
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+export async function loginUser(email: string, password: string) {
+  const [rows]: [RowDataPacket[], any] = await pool.query(
+    "SELECT * FROM users WHERE email = ? AND active = TRUE",
+    [email]
   );
 
   const user = rows[0];
   
 
   if (!user) {
-    throw new Error("Invalid username or password.");
+    throw new Error("Invalid email or password.");
   }
 
   const isMatch = await bcrypt.compare(password, user.passwordHash);
 
   if (!isMatch) {
-    throw new Error("Invalid username or password.");
+    throw new Error("Invalid email or password.");
   }
 
-  const payload = { dormID: user.dormID, userID: user.userID, role: user.role };
+  const payload = {
+    dormID: user.dormID,
+    userID: user.userID,
+    role: user.role,
+    email: user.email,
+    username: user.username,
+    credentialVersion: user.credentialVersion,
+  };
 
   const options: SignOptions = {
     expiresIn: JWT_EXPIRATION as StringValue,
@@ -171,5 +326,8 @@ export async function loginUser(username: string, password: string) {
     dormID: user.dormID,
     userID: user.userID,
     role: user.role,
+    email: user.email,
+    username: user.username,
+    mustChangePassword: Boolean(user.mustChangePassword),
   };
 }

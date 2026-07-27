@@ -79,6 +79,15 @@ io.on("connection", async (socket: Socket) => {
       userID = decoded.userID;
       role = decoded.role;
 
+      const [authRows]: any = await pool.query(
+        "SELECT credentialVersion, active FROM users WHERE userID = ? LIMIT 1",
+        [userID]
+      );
+      if (!authRows[0]?.active || authRows[0].credentialVersion !== decoded.credentialVersion) {
+        socket.disconnect(true);
+        return;
+      }
+
       if (dormID && userID) {
         socket.join(`dorm-${dormID}`);
         console.log(`✅ Authenticated socket ${socket.id} joined dorm room: dorm-${dormID}`);

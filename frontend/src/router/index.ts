@@ -5,6 +5,22 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
+      path: '/forgot-password',
+      name: 'forgot-password',
+      component: () => import('../views/ForgotPasswordView.vue'),
+    },
+    {
+      path: '/reset-password',
+      name: 'reset-password',
+      component: () => import('../views/ResetPasswordView.vue'),
+    },
+    {
+      path: '/change-password',
+      name: 'change-password',
+      component: () => import('../views/ChangePasswordView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/',
       name: 'login',
       component: LoginView,
@@ -34,6 +50,12 @@ const router = createRouter({
       path: '/stats',
       name: 'stats',
       component: () => import('../views/StatsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/account',
+      name: 'account',
+      component: () => import('../views/AccountView.vue'),
       meta: { requiresAuth: true },
     },
     {
@@ -79,10 +101,13 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const token = sessionStorage.getItem('authToken'); // Retrieve the token from sessionStorage
   const userRole = sessionStorage.getItem('userRole'); // Retrieve the user's role
+  const mustChangePassword = sessionStorage.getItem('mustChangePassword') === 'true';
 
   if (to.meta.requiresAuth && !token) {
     // If the route requires authentication and no token is found, redirect to login
     next({ name: 'login' });
+  } else if (mustChangePassword && to.name !== 'change-password') {
+    next({ name: 'change-password' });
   } else if (to.name === 'admin' && userRole !== 'admin') {
     // If the user tries to access the AdminView but is not an admin, redirect to login
     next({ name: 'login' });

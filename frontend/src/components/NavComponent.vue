@@ -18,6 +18,11 @@
       :class="{ 'translate-x-0': isOpen, 'translate-x-full': !isOpen }"
     >
       <ul class="space-y-4">
+        <router-link to="/account" @click="closeMenu" class="block" active-class="menu-active">
+          <div class="inline-flex w-full items-center gap-2 rounded-xl px-4 py-2 font-semibold hover:bg-accent-dark dark:hover:bg-accent">
+            Account settings
+          </div>
+        </router-link>
         
         <!-- Logout Button -->
         

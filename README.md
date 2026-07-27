@@ -52,6 +52,29 @@ Use the root `.env` for local development. The most important values are:
 - `JWT_SECRET`
 - `PORT`, `HOST`
 - `VITE_API_BASE_URL`
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `EMAIL_FROM`
+- `SMTP_SECURE` (`true` for implicit TLS, normally port 465) and `APP_URL`
+
+## Database setup
+
+The complete MySQL 8+ schema, including account provisioning and password
+recovery, is contained in one file:
+
+```sh
+mysql -u <user> -p < server/src/data/database-and-simulation/generate-NEW.sql
+```
+
+Optional development data can then be loaded with:
+
+```sh
+mysql -u <user> -p dorms_db < server/src/data/database-and-simulation/add-test-data-expanded.sql
+```
+
+All seeded accounts use `test123`. For example, use
+`admin1@example.test` for an administrator or `clara@example.test` for a
+resident. `emma@example.test` is seeded with `mustChangePassword = TRUE` to
+exercise the first-login flow. Addresses under `example.test` cannot receive
+real email and are used to prevent accidental delivery.
 
 The frontend also has a local `frontend/.env` for Vite-specific values.
 
