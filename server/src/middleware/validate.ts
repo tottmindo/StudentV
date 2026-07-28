@@ -21,7 +21,9 @@ import { ZodSchema } from "zod";
 
 export const validate = (schema: ZodSchema) => (req: Request, res: Response, next: NextFunction) => {
   try {
-    schema.parse(req.body);
+    // Use the parsed value so coercions and normalizations (notably lower-case
+    // email addresses) actually reach route handlers.
+    req.body = schema.parse(req.body);
     next();
   } catch (err: any) {
     const errorMessage = err.errors ? err.errors : "Invalid request data";

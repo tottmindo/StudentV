@@ -100,6 +100,8 @@
       sessionStorage.setItem('role', String(role));
       sessionStorage.setItem('userID', String(userID));
       sessionStorage.setItem('email', String(data.email || username.value.trim().toLowerCase()));
+      // Never show dashboard data cached for a previous authenticated session.
+      sessionStorage.removeItem('dashboard');
       if (data.username) sessionStorage.setItem('username', String(data.username));
       else sessionStorage.removeItem('username');
 

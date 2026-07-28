@@ -8,6 +8,7 @@ export type AuthUser = {
   userID: number;
   role: string;
   credentialVersion: number;
+  mustChangePassword?: boolean;
 };
 
 export interface AuthenticatedRequest extends Request {
@@ -26,18 +27,30 @@ export async function authenticate(req: AuthenticatedRequest, res: Response, nex
   try {
     const decoded = jwt.verify(token, getJwtSecret()) as AuthUser;
     const [rows]: any = await pool.query(
-      "SELECT credentialVersion, active FROM users WHERE userID = ? LIMIT 1",
+      "SELECT credentialVersion, active, mustChangePassword FROM users WHERE userID = ? LIMIT 1",
       [decoded.userID]
     );
     if (!rows[0]?.active || rows[0].credentialVersion !== decoded.credentialVersion) {
       res.status(401).json({ error: "This session is no longer valid. Please sign in again." });
       return;
     }
+    decoded.mustChangePassword = Boolean(rows[0].mustChangePassword);
     req.authUser = decoded;
     next();
   } catch {
     res.status(401).json({ error: "Invalid or expired session." });
   }
+}
+
+export function requireCompletedAccount(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  if (req.authUser?.mustChangePassword) {
+    res.status(403).json({
+      code: "PASSWORD_CHANGE_REQUIRED",
+      error: "You must replace your temporary password before using the application.",
+    });
+    return;
+  }
+  next();
 }
 
 export function requireAdmin(req: AuthenticatedRequest, res: Response, next: NextFunction) {

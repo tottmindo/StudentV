@@ -54,6 +54,8 @@ Use the root `.env` for local development. The most important values are:
 - `VITE_API_BASE_URL`
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `EMAIL_FROM`
 - `SMTP_SECURE` (`true` for implicit TLS, normally port 465) and `APP_URL`
+- `CORS_ORIGINS` (comma-separated frontend origins; defaults to `http://localhost:5173`)
+- `TRUST_PROXY=true` when the API is behind one trusted reverse proxy, so rate limits use the real client IP
 
 ## Database setup
 

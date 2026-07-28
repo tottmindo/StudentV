@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="z-50">
     <!-- Hamburger Icon -->
     <button
       @click="toggleMenu()"

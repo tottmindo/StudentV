@@ -29,6 +29,7 @@ import type { StringValue } from "ms";
 import { getJwtSecret } from "../config/jwt.js";
 import { createHash, randomBytes } from "crypto";
 import { sendPasswordResetEmail, sendTemporaryPasswordEmail } from "./emailService.js";
+import { getIO } from "../routes/socketManager.js";
 
 const SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS || "10", 10);
 const JWT_EXPIRATION = process.env.JWT_EXPIRATION || "1h";
@@ -147,8 +148,18 @@ export async function registerUser(
 }
 
 export function generateTemporaryPassword() {
-  // 16 URL-safe characters with upper/lowercase, digits and symbols.
-  return `${randomBytes(9).toString("base64url")}Aa1!`;
+  // Ten easy-to-type characters. Ambiguous characters (0/O, 1/l/I) are
+  // excluded; the password remains random and is valid for one login only.
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+  return Array.from(randomBytes(10), byte => alphabet[byte % alphabet.length]).join("");
+}
+
+function disconnectUser(userID: number) {
+  try {
+    getIO().in(`user-${userID}`).disconnectSockets(true);
+  } catch {
+    // Socket.IO is not initialized in service-level tests or maintenance jobs.
+  }
 }
 
 export async function completeTemporaryPassword(userID: number, username: string, newPassword: string) {
@@ -194,6 +205,26 @@ export async function updateUsername(userID: number, username: string) {
   }
 }
 
+export async function updatePassword(userID: number, currentPassword: string, newPassword: string) {
+  const [rows]: [RowDataPacket[], any] = await pool.query(
+    "SELECT passwordHash FROM users WHERE userID = ? AND active = TRUE",
+    [userID]
+  );
+  if (!rows[0]) throw new Error("Account not found.");
+
+  const isCurrentPasswordValid = await bcrypt.compare(currentPassword, rows[0].passwordHash);
+  if (!isCurrentPasswordValid) throw new Error("The current password is incorrect.");
+
+  const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+  await pool.query(
+    `UPDATE users
+     SET passwordHash = ?, credentialVersion = credentialVersion + 1
+     WHERE userID = ? AND active = TRUE`,
+    [passwordHash, userID]
+  );
+  disconnectUser(userID);
+}
+
 export async function adminResetResidentPassword(adminDormID: number, email: string) {
   const connection = await pool.getConnection();
   await connection.beginTransaction();
@@ -218,6 +249,7 @@ export async function adminResetResidentPassword(adminDormID: number, email: str
       [rows[0].userID]
     );
     await connection.commit();
+    disconnectUser(rows[0].userID);
   } catch (error) {
     await connection.rollback();
     throw error;
@@ -278,6 +310,7 @@ export async function resetPasswordWithToken(token: string, newPassword: string)
       [rows[0].userID]
     );
     await connection.commit();
+    disconnectUser(rows[0].userID);
   } catch (error) {
     await connection.rollback();
     throw error;
@@ -330,4 +363,91 @@ export async function loginUser(email: string, password: string) {
     username: user.username,
     mustChangePassword: Boolean(user.mustChangePassword),
   };
+}
+
+export async function listDormsForAdmin() {
+  const [rows]: [RowDataPacket[], any] = await pool.query(
+    `SELECT d.dormID, d.floor, d.address, r.roomID
+     FROM dorms d
+     LEFT JOIN room r ON r.dormID = d.dormID
+     ORDER BY d.dormID, r.roomID`
+  );
+  const dorms = new Map<number, { dormID: number; dormName: string; rooms: number[] }>();
+  for (const row of rows) {
+    const dorm: { dormID: number; dormName: string; rooms: number[] } = dorms.get(row.dormID) ?? {
+      dormID: row.dormID,
+      dormName: `${row.address}, floor ${row.floor}`,
+      rooms: [],
+    };
+    if (row.roomID != null) dorm.rooms.push(row.roomID);
+    dorms.set(row.dormID, dorm);
+  }
+  return [...dorms.values()];
+}
+
+export async function listUsersForAdmin() {
+  const [rows]: [RowDataPacket[], any] = await pool.query(
+    `SELECT userID, email, username, role, roomID, dormID, active, mustChangePassword
+     FROM users ORDER BY dormID, roomID, active DESC, userID`
+  );
+  return rows.map(row => ({ ...row, active: Boolean(row.active), mustChangePassword: Boolean(row.mustChangePassword) }));
+}
+
+export async function updateUserForAdmin(
+  actingAdminID: number,
+  userID: number,
+  changes: { email: string; username: string | null; role: "ADMIN" | "STUDENT"; dormID: number; roomID: number; active: boolean; replaceExisting?: boolean }
+) {
+  if (actingAdminID === userID && (!changes.active || changes.role !== "ADMIN")) {
+    throw new Error("You cannot deactivate or remove your own administrator access.");
+  }
+  const connection = await pool.getConnection();
+  await connection.beginTransaction();
+  try {
+    const [targetRows]: [RowDataPacket[], any] = await connection.query(
+      "SELECT userID FROM users WHERE userID = ? FOR UPDATE", [userID]
+    );
+    if (!targetRows[0]) throw new Error("User not found.");
+    const [roomRows]: [RowDataPacket[], any] = await connection.query(
+      "SELECT roomID FROM room WHERE roomID = ? AND dormID = ?", [changes.roomID, changes.dormID]
+    );
+    if (!roomRows[0]) throw new Error("Room does not exist.");
+
+    const [occupied]: [RowDataPacket[], any] = await connection.query(
+      `SELECT userID, email, username FROM users
+       WHERE roomID = ? AND dormID = ? AND active = TRUE AND userID <> ? FOR UPDATE`,
+      [changes.roomID, changes.dormID, userID]
+    );
+    if (changes.active && occupied[0] && !changes.replaceExisting) {
+      const error: any = new Error("Room already has an active user.");
+      error.code = "ROOM_OCCUPIED";
+      error.existingUser = occupied[0];
+      throw error;
+    }
+    if (changes.active && occupied.length) {
+      await connection.query(
+        "UPDATE users SET active = FALSE, credentialVersion = credentialVersion + 1 WHERE userID IN (?)",
+        [occupied.map(row => row.userID)]
+      );
+    }
+    await connection.query(
+      `UPDATE users SET email = ?, username = ?, role = ?, dormID = ?, roomID = ?, active = ?,
+       credentialVersion = credentialVersion + 1 WHERE userID = ?`,
+      [changes.email, changes.username, changes.role, changes.dormID, changes.roomID, changes.active, userID]
+    );
+    await connection.query(
+      "UPDATE passwordResetTokens SET usedAt = NOW() WHERE userID = ? AND usedAt IS NULL",
+      [userID]
+    );
+    await connection.commit();
+    disconnectUser(userID);
+    occupied.forEach(row => disconnectUser(row.userID));
+    return { message: "User updated successfully." };
+  } catch (error: any) {
+    await connection.rollback();
+    if (error?.code === "ER_DUP_ENTRY") throw new Error("That email or username is already in use.");
+    throw error;
+  } finally {
+    connection.release();
+  }
 }

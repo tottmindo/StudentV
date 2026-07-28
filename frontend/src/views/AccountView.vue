@@ -1,10 +1,16 @@
 <template>
   <NavComponent :socket="socket" menu="home" class="fixed right-4 top-4" />
-  <main class="flex min-h-screen items-center justify-center px-4">
-    <section class="w-full max-w-md rounded-2xl bg-surface p-8 shadow-lg dark:bg-surface-dark">
-      <h1 class="text-2xl font-bold">Account settings</h1>
-      <p class="mt-2 text-sm opacity-75">Your email is used privately for login and account recovery.</p>
-      <form class="mt-6 space-y-4" @submit.prevent="save">
+  <main class="flex min-h-screen items-center justify-center px-4 py-16 lg:py-8">
+    <div class="grid w-full max-w-5xl grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
+      <header class="lg:col-span-2">
+        <h1 class="text-3xl font-bold">Account settings</h1>
+        <p class="mt-2 text-sm opacity-75">Manage your public profile and login security.</p>
+      </header>
+
+      <section class="rounded-2xl bg-surface p-6 shadow-lg dark:bg-surface-dark lg:p-8">
+        <h2 class="text-xl font-bold">Profile</h2>
+        <p class="mt-2 text-sm opacity-75">Your email is used privately for login and account recovery.</p>
+        <form class="mt-6 space-y-4" @submit.prevent="save">
         <label class="block">
           <span class="text-sm font-semibold">Login email</span>
           <input :value="email" type="email" disabled class="mt-1 w-full rounded border border-border p-3 opacity-70" />
@@ -17,9 +23,37 @@
         <button :disabled="saving" class="w-full rounded-lg bg-accent p-3 font-semibold text-white disabled:opacity-50">
           {{ saving ? 'Saving…' : 'Save username' }}
         </button>
-      </form>
-      <p v-if="message" class="mt-4 text-center" :class="failed ? 'text-red-500' : 'text-green-600'" role="status">{{ message }}</p>
-    </section>
+        </form>
+        <p v-if="message" class="mt-4 text-center" :class="failed ? 'text-red-500' : 'text-green-600'" role="status">{{ message }}</p>
+      </section>
+
+      <section class="rounded-2xl bg-surface p-6 shadow-lg dark:bg-surface-dark lg:p-8">
+        <h2 class="text-xl font-bold">Change password</h2>
+        <p class="mt-2 text-sm opacity-75">You will be asked to sign in again after changing your password.</p>
+        <form class="mt-6 space-y-4" @submit.prevent="changePassword">
+        <input :value="email" type="email" autocomplete="username" readonly tabindex="-1" class="sr-only" aria-hidden="true" />
+        <label class="block">
+          <span class="text-sm font-semibold">Current password</span>
+          <input v-model="currentPassword" type="password" required minlength="6" maxlength="128" autocomplete="current-password"
+            class="mt-1 w-full rounded border border-border p-3 focus:ring-2 focus:ring-accent" />
+        </label>
+        <label class="block">
+          <span class="text-sm font-semibold">New password</span>
+          <input v-model="newPassword" type="password" required minlength="12" maxlength="128" autocomplete="new-password"
+            class="mt-1 w-full rounded border border-border p-3 focus:ring-2 focus:ring-accent" />
+        </label>
+        <label class="block">
+          <span class="text-sm font-semibold">Confirm new password</span>
+          <input v-model="passwordConfirmation" type="password" required minlength="12" maxlength="128" autocomplete="new-password"
+            class="mt-1 w-full rounded border border-border p-3 focus:ring-2 focus:ring-accent" />
+        </label>
+        <button :disabled="changingPassword" class="w-full rounded-lg bg-accent p-3 font-semibold text-white disabled:opacity-50">
+          {{ changingPassword ? 'Changing…' : 'Change password' }}
+        </button>
+        </form>
+        <p v-if="passwordMessage" class="mt-4 text-center text-red-500" role="alert">{{ passwordMessage }}</p>
+      </section>
+    </div>
   </main>
 </template>
 
@@ -28,6 +62,7 @@ import { onMounted, ref } from 'vue'
 import NavComponent from '@/components/NavComponent.vue'
 import { apiUrl } from '@/composables/api'
 import { getSocket } from '@/composables/socket'
+import { useRouter } from 'vue-router'
 
 const socket = getSocket()
 const email = ref('')
@@ -35,6 +70,12 @@ const username = ref('')
 const message = ref('')
 const failed = ref(false)
 const saving = ref(false)
+const currentPassword = ref('')
+const newPassword = ref('')
+const passwordConfirmation = ref('')
+const passwordMessage = ref('')
+const changingPassword = ref(false)
+const router = useRouter()
 const headers = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${sessionStorage.getItem('authToken') || ''}` })
 
 onMounted(async () => {
@@ -65,5 +106,28 @@ async function save() {
     failed.value = true
     message.value = error instanceof Error ? error.message : 'Could not update your username.'
   } finally { saving.value = false }
+}
+
+async function changePassword() {
+  if (newPassword.value !== passwordConfirmation.value) {
+    passwordMessage.value = 'The new passwords do not match.'
+    return
+  }
+  changingPassword.value = true
+  passwordMessage.value = ''
+  try {
+    const response = await fetch(apiUrl('/api/auth/account/password'), {
+      method: 'PATCH',
+      headers: headers(),
+      body: JSON.stringify({ currentPassword: currentPassword.value, newPassword: newPassword.value }),
+    })
+    const data = await response.json()
+    if (!response.ok) throw new Error(data.error || 'Could not change your password.')
+    sessionStorage.clear()
+    socket.disconnect()
+    await router.push({ name: 'login' })
+  } catch (error) {
+    passwordMessage.value = error instanceof Error ? error.message : 'Could not change your password.'
+  } finally { changingPassword.value = false }
 }
 </script>

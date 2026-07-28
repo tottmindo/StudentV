@@ -1,6 +1,28 @@
 ```vue
 <template>
-  <div class="min-h-screen p-4 bg-background-light dark:bg-background-dark">
+  <div
+    v-if="isLoading"
+    class="flex min-h-screen items-center justify-center bg-background-light px-4 dark:bg-background-dark"
+    role="status"
+    aria-live="polite"
+  >
+    <div class="flex flex-col items-center gap-4 text-center">
+      <div
+        class="h-12 w-12 animate-spin rounded-full border-4 border-accent/25 border-t-accent"
+        aria-hidden="true"
+      ></div>
+      <div>
+        <h1 class="text-xl font-semibold text-headline dark:text-text-dark">
+          Loading your home
+        </h1>
+        <p class="mt-1 text-sm text-text opacity-70 dark:text-text-dark">
+          Getting the latest information…
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div v-else class="min-h-screen p-4 bg-background-light dark:bg-background-dark">
     <NavComponent :key="navKey" :socket="socket" :menu="menuType" class="fixed top-4 right-4 z-50" />
 
     <div class="flex flex-col gap-4">
@@ -317,9 +339,10 @@ const socket = getSocket(); // Import the socket instance from socket.ts
 import ModalComponent from '@/components/ModalComponent.vue';
 import { type AlertItem, type NewsItem, type HomeEventItem, type ActivatedEventItem, type StatItem, type QuickActionItem, type ChallengeItem, type DashboardPayload, type MenuItem, type SurveyItem } from '@/types';
 
-const username = ref("John Doe")
-const room = ref(314)
-const corridor = ref(5)
+const isLoading = ref(true);
+const username = ref("")
+const room = ref<number | string>("")
+const corridor = ref<number | string>("")
 const alerts = ref<AlertItem[]>([]);
 const news = ref<NewsItem[]>([]);
 const events = ref<HomeEventItem[]>([]);
@@ -399,6 +422,7 @@ onMounted(() => {
     userSurveys.value = dashboard.pendingSurveys;
 
     saveDashboardCache(dashboard);
+    isLoading.value = false;
   });
 
   const cached = loadDashboardCache();
@@ -416,6 +440,7 @@ onMounted(() => {
     activatedEvents.value = cached.activatedEvents;
     stats.value = cached.stats;
     userSurveys.value = cached.pendingSurveys
+    isLoading.value = false;
   }
 
   socket.emit("getDashboard");

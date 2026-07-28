@@ -27,7 +27,7 @@ export async function sendResidentWelcomeEmail(
   await smtpTransport().sendMail({
     from: process.env.EMAIL_FROM,
     to: email,
-    subject: "Your DORMS resident account",
+    subject: "Your DORMS account",
     text: [
       "Welcome to DORMS!",
       "",
