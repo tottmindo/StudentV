@@ -432,6 +432,18 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
         }
       }
   });
+
+
+//-----------EXTERNAL EVENTS----------------
+  socket.on("getExternalEvents", async () => {
+    try {
+      const weeks = await data.getExternalEvents();
+      socket.emit("externalEvents", weeks);
+    } catch (error) {
+      console.error("Error fetching external events:", error);
+      socket.emit("error", { message: "Failed to fetch external events." });
+    }
+  });
 }
 
 export { sockets };

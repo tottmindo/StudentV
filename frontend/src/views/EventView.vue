@@ -158,6 +158,16 @@ type CleaningWeek = {
   pendingTasks: number
 }
 
+type ExternalEvents = {
+  eventID: number,
+  externalURL: string,
+  title: string,
+  startDate: string,
+  endDate: string
+}
+
+const externalEvents = ref<ExternalEvents[]>([]);
+
 const defaultEvents: CalendarEvent[] = [
   {
     id: 1,
@@ -300,6 +310,7 @@ const openRequestedEvent = () => {
 const bindSocket = () => {
   socket.off('eventsData')
   socket.off('cleaningWeeks')
+  socket.off('externalEvents')
 
   socket.on('eventsData', (events: CalendarEvent[]) => {
     upcomingEvents.value = events
@@ -310,11 +321,17 @@ const bindSocket = () => {
   socket.on('cleaningWeeks', (weeks: CleaningWeek[]) => {
     cleaningWeeks.value = weeks
   })
+
+  socket.on('externalEvents', (eEvents: ExternalEvents[]) => {
+    console.log("Got external event data")
+    externalEvents.value = eEvents
+  })
 }
 
 const fetchCalendarData = () => {
   socket.emit('getEvents', { active: true })
   socket.emit('getCleaningWeeks')
+  socket.emit('getExternalEvents')
 }
 
 const newEvent = ref<Partial<CalendarEvent> & { startDateLocal?: string; endDateLocal?: string }>({

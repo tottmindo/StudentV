@@ -1,5 +1,5 @@
 import os
-import mysql.connector
+import psycopg
 from dotenv import load_dotenv
 from datetime import datetime
 
@@ -48,24 +48,23 @@ def toDB(events: list):
     if not events:
         return
 
+    # Psycopg 3 uses %s for placeholders
     query = """
-    INSERT INTO externalEvents
+    INSERT INTO externalevents
         (externalURL, title, startDate, endDate, lastSeen, updatedAt) 
-    VALUES
-        (%s, %s, %s, %s, NOW(), NOW())
-    
-    ON DUPLICATE KEY UPDATE
-        title = VALUES(title),
-        startDate = VALUES(startDate),
-        endDate = VALUES(endDate),
-        lastSeen = NOW(),
-        updatedAt = IF(
-            title <> VALUES(title)
-            OR startDate <> VALUES(startDate)
-            OR endDate <> VALUES(endDate),
-            NOW(),
-            updatedAt
-        )
+    VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ON CONFLICT (externalURL) DO UPDATE SET
+        title = EXCLUDED.title,
+        startDate = EXCLUDED.startDate,
+        endDate = EXCLUDED.endDate,
+        lastSeen = CURRENT_TIMESTAMP,
+        updatedAt = CASE 
+            WHEN externalevents.title IS DISTINCT FROM EXCLUDED.title
+              OR externalevents.startDate IS DISTINCT FROM EXCLUDED.startDate
+              OR externalevents.endDate IS DISTINCT FROM EXCLUDED.endDate
+            THEN CURRENT_TIMESTAMP
+            ELSE externalevents.updatedAt
+        END;
     """
 
     params = []
@@ -77,32 +76,27 @@ def toDB(events: list):
             event["url"],
             event["title"],
             start_dt,
-            dateComparison(start_dt, end_dt),
+            dateComparison(start_dt, end_dt)
         ))
 
-    conn = None
     try:
-        conn = mysql.connector.connect(
-            user=os.getenv('DB_USER'),
-            host=os.getenv('DB_HOST'),
-            password=os.getenv('DB_PASSWORD'),
-            database=os.getenv('DB_DATABASE')
-        )
-        cursor = conn.cursor()
-
-        cursor.executemany(query, params)
-        conn.commit()
+        # Connect using psycopg (v3)
+        with psycopg.connect(
+            user=os.getenv('PG_DB_USER'),
+            host=os.getenv('PG_DB_HOST_PYTHON'),
+            password=os.getenv('PG_DB_PASSWORD'),
+            dbname=os.getenv('PG_DB_DATABASE'),
+            port=os.getenv('PG_DB_PORT', '5432'),
+            sslmode='require'
+        ) as conn:
+            with conn.cursor() as cursor:
+                # executemany in Psycopg 3 is optimized and fast by default
+                cursor.executemany(query, params)
+            conn.commit()
 
     except Exception as e:
-        if conn:
-            conn.rollback()
         print(f"Database error: {e}")
         raise
-
-    finally:
-        if conn and conn.is_connected():
-            cursor.close()
-            conn.close()
 
 """ # --- Quick Manual Tests ---
 
