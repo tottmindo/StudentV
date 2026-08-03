@@ -28,6 +28,7 @@ TRUNCATE TABLE survey;
 TRUNCATE TABLE cleaningAssignments;
 TRUNCATE TABLE cleaningWeeks;
 TRUNCATE TABLE cleaningTaskTemplate;
+TRUNCATE TABLE passwordResetTokens;
 TRUNCATE TABLE users;
 TRUNCATE TABLE room;
 TRUNCATE TABLE dorms;
@@ -56,43 +57,60 @@ INSERT INTO room (roomID, dormID) VALUES
 
 -- =====================================================
 -- USERS
--- All test accounts use the BCrypt hash for plaintext password: test123
+-- All test accounts use the BCrypt hash for plaintext password: test123.
+-- Reserved example.test addresses prevent accidental delivery to real people.
+-- emma@example.test represents a newly provisioned temporary-password account.
 -- =====================================================
 INSERT INTO users
-(userID, username, passwordHash, role, roomID, dormID, active)
+(userID, email, username, passwordHash, role, roomID, dormID, active, mustChangePassword, credentialVersion)
 VALUES
 -- Dorm 1
-(1,  'admin1',  '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'ADMIN',   1, 1, TRUE),
-(2,  'alice',   '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 1, 1, FALSE),
-(3,  'bob',     '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 1, 1, FALSE),
-(4,  'clara',   '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 2, 1, TRUE),
-(5,  'david',   '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 2, 1, FALSE),
-(6,  'emma',    '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 3, 1, TRUE),
-(7,  'felix',   '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 3, 1, FALSE),
-(8,  'grace',   '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 4, 1, TRUE),
-(9,  'henry',   '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 4, 1, FALSE),
+(1,  'admin1@example.test', 'admin1', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'ADMIN',   1, 1, TRUE,  FALSE, 0),
+(2,  'alice@example.test', 'alice',  '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 1, 1, FALSE, FALSE, 0),
+(3,  'bob@example.test', 'bob',    '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 1, 1, FALSE, FALSE, 1),
+(4,  'clara@example.test', 'clara',  '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 2, 1, TRUE,  FALSE, 0),
+(5,  'david@example.test', 'david',  '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 2, 1, FALSE, FALSE, 0),
+(6,  'emma@example.test', NULL,     '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 3, 1, TRUE,  TRUE,  2),
+(7,  'felix@example.test', 'felix',  '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 3, 1, FALSE, FALSE, 0),
+(8,  'grace@example.test', 'grace',  '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 4, 1, TRUE,  FALSE, 1),
+(9,  'henry@example.test', 'henry',  '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 4, 1, FALSE, FALSE, 0),
 
 -- Dorm 2
-(10, 'admin2',  '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'ADMIN',   5, 2, TRUE),
-(11, 'irene',   '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 5, 2, FALSE),
-(12, 'jamal',   '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 5, 2, FALSE),
-(13, 'karin',   '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 6, 2, TRUE),
-(14, 'leo',     '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 6, 2, FALSE),
-(15, 'maya',    '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 7, 2, TRUE),
-(16, 'noah',    '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 7, 2, FALSE),
-(17, 'olivia',  '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 8, 2, TRUE),
-(18, 'peter',   '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 8, 2, FALSE),
+(10, 'admin2@example.test', 'admin2', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'ADMIN',   5, 2, TRUE,  FALSE, 0),
+(11, 'irene@example.test', 'irene',  '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 5, 2, FALSE, FALSE, 0),
+(12, 'jamal@example.test', 'jamal',  '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 5, 2, FALSE, FALSE, 0),
+(13, 'karin@example.test', 'karin',  '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 6, 2, TRUE,  FALSE, 0),
+(14, 'leo@example.test', 'leo',    '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 6, 2, FALSE, FALSE, 0),
+(15, 'maya@example.test', 'maya',   '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 7, 2, TRUE,  FALSE, 3),
+(16, 'noah@example.test', 'noah',   '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 7, 2, FALSE, FALSE, 0),
+(17, 'olivia@example.test', 'olivia', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 8, 2, TRUE,  FALSE, 0),
+(18, 'peter@example.test', 'peter',  '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 8, 2, FALSE, FALSE, 0),
 
 -- Dorm 3
-(19, 'admin3',  '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'ADMIN',   9, 3, TRUE),
-(20, 'quinn',   '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 9, 3, FALSE),
-(21, 'rania',   '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 9, 3, FALSE),
-(22, 'sam',     '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 10, 3, TRUE),
-(23, 'tina',    '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 10, 3, FALSE),
-(24, 'uma',     '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 11, 3, TRUE),
-(25, 'victor',  '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 11, 3, FALSE),
-(26, 'wendy',   '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 12, 3, TRUE),
-(27, 'xavier',  '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 12, 3, FALSE);
+(19, 'admin3@example.test', 'admin3', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'ADMIN',   9, 3, TRUE,  FALSE, 0),
+(20, 'quinn@example.test', 'quinn',  '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 9, 3, FALSE, FALSE, 0),
+(21, 'rania@example.test', 'rania',  '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 9, 3, FALSE, FALSE, 0),
+(22, 'sam@example.test', 'sam',    '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 10, 3, TRUE,  FALSE, 0),
+(23, 'tina@example.test', 'tina',   '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 10, 3, FALSE, FALSE, 0),
+(24, 'uma@example.test', 'uma',    '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 11, 3, TRUE,  FALSE, 0),
+(25, 'victor@example.test', 'victor', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 11, 3, FALSE, FALSE, 0),
+(26, 'wendy@example.test', 'wendy',  '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 12, 3, TRUE,  FALSE, 0),
+(27, 'xavier@example.test', 'xavier', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 12, 3, FALSE, FALSE, 0);
+
+-- Password reset fixtures. Only SHA-256 token hashes are stored, mirroring production.
+-- Raw test-only tokens:
+-- valid:   dorms-test-reset-token-000000000000000000000001
+-- expired: dorms-expired-reset-token-000000000000000000002
+-- used:    dorms-used-reset-token-00000000000000000000003
+INSERT INTO passwordResetTokens
+(tokenID, userID, tokenHash, expiresAt, usedAt, createdAt)
+VALUES
+(1, 4, '13b81bef956629979ccf94b7fd8bcd28bb5606d336ccf8a1cdb14f1c945f7ec4',
+ DATE_ADD(@seed_now, INTERVAL 30 MINUTE), NULL, DATE_SUB(@seed_now, INTERVAL 1 MINUTE)),
+(2, 6, '53207d070bf8b1f50d4cb66521a97acd61ee78803c14923dc5b3b319e8f208fa',
+ DATE_SUB(@seed_now, INTERVAL 5 MINUTE), NULL, DATE_SUB(@seed_now, INTERVAL 35 MINUTE)),
+(3, 8, '6f877c24930e127aa1188821e2597c639f80b20a2e1c9fd44ba4097279169cbd',
+ DATE_ADD(@seed_now, INTERVAL 20 MINUTE), DATE_SUB(@seed_now, INTERVAL 2 MINUTE), DATE_SUB(@seed_now, INTERVAL 10 MINUTE));
 
 -- =====================================================
 -- SURVEYS
@@ -528,6 +546,7 @@ COMMIT;
 SELECT 'dorms' AS tableName, COUNT(*) AS rowCount FROM dorms
 UNION ALL SELECT 'rooms', COUNT(*) FROM room
 UNION ALL SELECT 'users', COUNT(*) FROM users
+UNION ALL SELECT 'password_reset_tokens', COUNT(*) FROM passwordResetTokens
 UNION ALL SELECT 'surveys', COUNT(*) FROM survey
 UNION ALL SELECT 'events', COUNT(*) FROM events
 UNION ALL SELECT 'sensors', COUNT(*) FROM sensor

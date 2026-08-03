@@ -48,10 +48,54 @@ npm run build
 
 Use the root `.env` for local development. The most important values are:
 
-- `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_DATABASE`, `DB_PORT`
+- `PG_DB_HOST`, `PG_DB_USER`, `PG_DB_PASSWORD`, `PG_DB_DATABASE`, `PG_DB_PORT`
 - `JWT_SECRET`
 - `PORT`, `HOST`
 - `VITE_API_BASE_URL`
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `EMAIL_FROM`
+- `SMTP_SECURE` (`true` for implicit TLS, normally port 465) and `APP_URL`
+- `CORS_ORIGINS` (comma-separated frontend origins; defaults to `http://localhost:5173`)
+- `TRUST_PROXY=true` when the API is behind one trusted reverse proxy, so rate limits use the real client IP
+
+## Database setup
+
+Create the PostgreSQL database, then apply the PostgreSQL schema (which includes
+account provisioning and password recovery):
+
+```sh
+createdb dorms_db
+psql -d dorms_db -f server/src/data/database-and-simulation/generate-postgres.sql
+```
+
+For a local connection, configure the root `.env` like this:
+
+```sh
+PG_DB_HOST=localhost
+PG_DB_PORT=5432
+PG_DB_DATABASE=dorms_db
+PG_DB_USER=postgres
+PG_DB_PASSWORD=your-password
+```
+
+The application accepts the former `DB_*` names as a temporary fallback, but
+new deployments should use the `PG_DB_*` variables. The old MySQL schema and
+expanded MySQL test-data script remain in the repository only as migration
+references; do not run them against PostgreSQL.
+
+To load the PostgreSQL development fixtures, which erase the current
+application data, run:
+
+```sh
+CONFIRM_TEST_DATA=true npm run db:seed -w server
+```
+
+See `RENDER.md` for deploying and initializing a Render Postgres database.
+
+All seeded accounts use `test123`. For example, use
+`admin1@example.test` for an administrator or `clara@example.test` for a
+resident. `emma@example.test` is seeded with `mustChangePassword = TRUE` to
+exercise the first-login flow. Addresses under `example.test` cannot receive
+real email and are used to prevent accidental delivery.
 
 The frontend also has a local `frontend/.env` for Vite-specific values.
 

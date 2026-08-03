@@ -1,7 +1,9 @@
 -- =====================================================
 -- Dormitory Management Database (MySQL 8+)
+-- Complete schema, including temporary passwords, credential-version session
+-- revocation, and single-use password recovery tokens.
 -- =====================================================
-CREATE DATABASE dorms_db;
+CREATE DATABASE IF NOT EXISTS dorms_db;
 USE dorms_db;
 
 CREATE TABLE externalEvents (
@@ -36,16 +38,31 @@ CREATE TABLE room (
 
 CREATE TABLE users (
     userID INT AUTO_INCREMENT,
-    username VARCHAR(100) NOT NULL UNIQUE,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    username VARCHAR(50) NULL UNIQUE,
     passwordHash VARCHAR(255) NOT NULL, -- Store hashed passwords only
     role VARCHAR(50) NOT NULL,
     roomID INT NOT NULL,
     dormID INT NOT NULL,
     active BOOLEAN NOT NULL DEFAULT TRUE,
+    mustChangePassword BOOLEAN NOT NULL DEFAULT FALSE,
+    credentialVersion INT NOT NULL DEFAULT 0,
     PRIMARY KEY (userID),
     CONSTRAINT fk_user_room
         FOREIGN KEY (roomID, dormID)
         REFERENCES room(roomID, dormID)
+);
+
+CREATE TABLE passwordResetTokens (
+    tokenID BIGINT AUTO_INCREMENT PRIMARY KEY,
+    userID INT NOT NULL,
+    tokenHash CHAR(64) NOT NULL UNIQUE,
+    expiresAt DATETIME NOT NULL,
+    usedAt DATETIME NULL,
+    createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_password_reset_user_created (userID, createdAt),
+    CONSTRAINT fk_password_reset_user FOREIGN KEY (userID)
+        REFERENCES users(userID) ON DELETE CASCADE
 );
 
 CREATE TABLE survey (

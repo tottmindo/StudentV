@@ -7,7 +7,9 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev:backend": "nodemon --watch src --ext ts,json --exec \"node --loader ts-node/esm src/index.ts\"",
-    "start:scheduler": "node dist/jobs/scheduler.js"
+    "start:scheduler": "node dist/jobs/scheduler.js",
+    "db:schema": "node scripts/run-sql.mjs src/data/database-and-simulation/generate-postgres.sql",
+    "db:seed": "node scripts/run-sql.mjs src/data/database-and-simulation/add-test-data-postgres.sql --seed"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
@@ -15,8 +17,8 @@
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
-    "mysql2": "^3.14.0",
     "node-cron": "^3.0.3",
+    "nodemailer": "^9.0.3",
     "nodemon": "^3.1.9",
     "pg": "^8.15.6",
     "socket.io": "^4.8.1",
@@ -32,6 +34,7 @@
     "@types/ms": "^2.1.0",
     "@types/node": "^22.15.3",
     "@types/node-cron": "^3.0.11",
+    "@types/nodemailer": "^8.0.1",
     "@types/pg": "^8.11.14",
     "@types/socket.io": "^3.0.1",
     "@vue/tsconfig": "^0.7.0",

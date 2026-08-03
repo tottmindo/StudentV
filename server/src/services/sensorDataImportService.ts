@@ -1,4 +1,3 @@
-import { ResultSetHeader } from "mysql2";
 import pool from "../db.js";
 
 const DEFAULT_VALUE_TYPES = [
@@ -90,7 +89,7 @@ function normalizeUnixTimestamp(value: number | string | Date): number {
   return Math.floor(dateValue.getTime() / 1000);
 }
 
-function toMysqlDatetime(unixSeconds: number): string {
+function toPostgresTimestamp(unixSeconds: number): string {
   return new Date(unixSeconds * 1000).toISOString().slice(0, 19).replace("T", " ");
 }
 
@@ -143,20 +142,16 @@ async function ensureSensors(sensorCodes: string[], defaultDormID: number): Prom
     return 0;
   }
 
-  const values = sensorCodes.map((sensorCode) => [
-    sensorCode,
-    "Water Meter",
-    "Imported IoT Open sensor",
-    defaultDormID,
-  ]);
-
-  const [result] = await pool.query<ResultSetHeader>(
-    `INSERT IGNORE INTO sensor (sensorCode, type, location, dormID)
-     VALUES ?`,
-    [values]
-  );
-
-  return result.affectedRows;
+  let inserted = 0;
+  for (const sensorCode of sensorCodes) {
+    const [result]: any = await pool.query(
+      `INSERT INTO sensor (sensorCode, type, location, dormID)
+       VALUES (?, ?, ?, ?) ON CONFLICT (sensorCode) DO NOTHING`,
+      [sensorCode, "Water Meter", "Imported IoT Open sensor", defaultDormID]
+    );
+    inserted += result.affectedRows;
+  }
+  return inserted;
 }
 
 function snapshotsFromRecords(records: IoTOpenLogRecord[]): {
@@ -181,7 +176,7 @@ function snapshotsFromRecords(records: IoTOpenLogRecord[]): {
       continue;
     }
 
-    const recordedAt = toMysqlDatetime(timestamp);
+    const recordedAt = toPostgresTimestamp(timestamp);
     const key = `${parsedTopic.sensorCode}|${recordedAt}`;
     const snapshot = snapshotsByKey.get(key) ?? {
       sensorCode: parsedTopic.sensorCode,
@@ -242,37 +237,29 @@ async function upsertSnapshots(snapshots: SensorSnapshot[]): Promise<number> {
     return 0;
   }
 
-  const values = snapshots.map((snapshot) => [
-    snapshot.sensorCode,
-    snapshot.recordedAt,
-    snapshot.totalVolume,
-    snapshot.tempMin,
-    snapshot.tempMax,
-    snapshot.errorCode,
-    snapshot.battery,
-    snapshot.ambientTemp,
-    snapshot.humidity,
-    snapshot.leakStatus,
-  ]);
-
-  const [result] = await pool.query<ResultSetHeader>(
-    `INSERT INTO sensor_data
+  let insertedOrUpdated = 0;
+  for (const snapshot of snapshots) {
+    const [result]: any = await pool.query(
+      `INSERT INTO sensor_data
        (sensorCode, recordedAt, totalVolume, tempMin, tempMax, errorCode,
         battery, ambientTemp, humidity, leakStatus)
-     VALUES ?
-     ON DUPLICATE KEY UPDATE
-       totalVolume = VALUES(totalVolume),
-       tempMin = VALUES(tempMin),
-       tempMax = VALUES(tempMax),
-       errorCode = VALUES(errorCode),
-       battery = VALUES(battery),
-       ambientTemp = VALUES(ambientTemp),
-       humidity = VALUES(humidity),
-       leakStatus = VALUES(leakStatus)`,
-    [values]
-  );
-
-  return result.affectedRows;
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT (sensorCode, recordedAt) DO UPDATE SET
+         totalVolume = EXCLUDED.totalVolume,
+         tempMin = EXCLUDED.tempMin,
+         tempMax = EXCLUDED.tempMax,
+         errorCode = EXCLUDED.errorCode,
+         battery = EXCLUDED.battery,
+         ambientTemp = EXCLUDED.ambientTemp,
+         humidity = EXCLUDED.humidity,
+         leakStatus = EXCLUDED.leakStatus`,
+      [snapshot.sensorCode, snapshot.recordedAt, snapshot.totalVolume, snapshot.tempMin,
+       snapshot.tempMax, snapshot.errorCode, snapshot.battery, snapshot.ambientTemp,
+       snapshot.humidity, snapshot.leakStatus]
+    );
+    insertedOrUpdated += result.affectedRows;
+  }
+  return insertedOrUpdated;
 }
 
 export async function importHistoricalSensorData(

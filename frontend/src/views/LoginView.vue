@@ -4,12 +4,12 @@
       <div>
         <h1 class="text-3xl font-extrabold">Welcome to DORMS</h1>
         <p class="mt-2  text-text dark:text-text-dark">
-          Please enter your username and password below
+          Please enter your email and password below
         </p>
       </div>
       <LoginComponent
         usernameID="username"
-        usernamePlaceholder="Enter your username"
+        usernamePlaceholder="Enter your email"
         passwordID="password"
         passwordPlaceholder="Enter your password"
       />

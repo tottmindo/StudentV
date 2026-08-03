@@ -164,9 +164,9 @@ class Data {
            assignedUser.username AS assignedUsername,
            cw.startDate,
            cw.endDate,
-           CAST(COUNT(ca.assignmentID) AS UNSIGNED) AS totalTasks,
-           CAST(COALESCE(SUM(CASE WHEN ca.completed = TRUE THEN 1 ELSE 0 END), 0) AS UNSIGNED) AS completedTasks,
-           CAST(COALESCE(SUM(CASE WHEN ca.completed = FALSE THEN 1 ELSE 0 END), 0) AS UNSIGNED) AS pendingTasks
+           COUNT(ca.assignmentID) AS totalTasks,
+           COALESCE(SUM(CASE WHEN ca.completed = TRUE THEN 1 ELSE 0 END), 0) AS completedTasks,
+           COALESCE(SUM(CASE WHEN ca.completed = FALSE THEN 1 ELSE 0 END), 0) AS pendingTasks
          FROM cleaningWeeks cw
          INNER JOIN users u
            ON u.userID = ?
@@ -267,14 +267,14 @@ class Data {
   ): Promise<void> {
     try {
       const [result]: any = await pool.query(
-        `UPDATE cleaningAssignments
-         INNER JOIN cleaningWeeks
-           ON cleaningWeeks.weekID = cleaningAssignments.weekID
+        `UPDATE cleaningAssignments ca
          SET completed = ?,
              completedAt = CASE WHEN ? = TRUE THEN NOW() ELSE NULL END
-         WHERE cleaningAssignments.assignmentID = ?
-           AND cleaningAssignments.assignedUserID = ?
-           AND CURDATE() BETWEEN cleaningWeeks.startDate AND cleaningWeeks.endDate`,
+         FROM cleaningWeeks cw
+         WHERE cw.weekID = ca.weekID
+           AND ca.assignmentID = ?
+           AND ca.assignedUserID = ?
+           AND CURRENT_DATE BETWEEN cw.startDate AND cw.endDate`,
         [completed, completed, weekTaskID, userID]
       );
 
@@ -344,7 +344,7 @@ class Data {
 
         const [templateResult]: any = await connection.query(
           `INSERT INTO cleaningTaskTemplate (taskName, description, active)
-           VALUES (?, ?, FALSE)`,
+           VALUES (?, ?, FALSE) RETURNING templateID`,
           [title, description]
         );
 
@@ -400,13 +400,12 @@ class Data {
 
         if (assignment?.templateID) {
           await connection.query(
-            `DELETE ctt
-             FROM cleaningTaskTemplate ctt
-             LEFT JOIN cleaningAssignments ca
-               ON ca.templateID = ctt.templateID
+          `DELETE FROM cleaningTaskTemplate ctt
              WHERE ctt.templateID = ?
                AND ctt.active = FALSE
-               AND ca.assignmentID IS NULL`,
+               AND NOT EXISTS (
+                 SELECT 1 FROM cleaningAssignments ca WHERE ca.templateID = ctt.templateID
+               )`,
             [assignment.templateID]
           );
         }
@@ -478,9 +477,9 @@ class Data {
       } = event;
 
       const [result]: any = await pool.query(
-        `INSERT INTO events (title, description, startDate, endDate, active, type)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [title, description, startDate, endDate, active, type]
+        `INSERT INTO events (title, description, startDate, endDate, active, type, dormID)
+         VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING eventID`,
+        [title, description, startDate, endDate, active, type, event.dormID]
       );
 
       const savedEvent = {
@@ -551,18 +550,18 @@ class Data {
         `SELECT
            cw.weekID,
            cw.endDate,
-           CAST(COUNT(ca.assignmentID) AS UNSIGNED) AS totalTasks,
-           CAST(COALESCE(SUM(CASE WHEN ca.completed = TRUE THEN 1 ELSE 0 END), 0) AS UNSIGNED) AS completedTasks,
-           CAST(COALESCE(SUM(CASE WHEN ca.completed = FALSE THEN 1 ELSE 0 END), 0) AS UNSIGNED) AS pendingTasks
+           COUNT(ca.assignmentID) AS totalTasks,
+           COALESCE(SUM(CASE WHEN ca.completed = TRUE THEN 1 ELSE 0 END), 0) AS completedTasks,
+           COALESCE(SUM(CASE WHEN ca.completed = FALSE THEN 1 ELSE 0 END), 0) AS pendingTasks
          FROM cleaningWeeks cw
          LEFT JOIN cleaningAssignments ca
            ON ca.weekID = cw.weekID
           AND ca.assignedUserID = cw.assignedUserID
          WHERE cw.dormID = ?
            AND cw.assignedUserID = ?
-           AND CURDATE() BETWEEN cw.startDate AND cw.endDate
+           AND CURRENT_DATE BETWEEN cw.startDate AND cw.endDate
          GROUP BY cw.weekID, cw.endDate
-         HAVING pendingTasks > 0
+         HAVING COALESCE(SUM(CASE WHEN ca.completed = FALSE THEN 1 ELSE 0 END), 0) > 0
          ORDER BY cw.endDate ASC`,
         [dormID, userID]
       );
@@ -593,7 +592,7 @@ class Data {
          WHERE e.dormID = ?
            AND e.active = TRUE
            AND e.endDate >= NOW()
-           AND e.startDate <= DATE_ADD(NOW(), INTERVAL 2 DAY)
+           AND e.startDate <= NOW() + INTERVAL '2 days'
            AND (
              ae.userID IS NOT NULL
              OR UPPER(e.type) IN ('SAFETY', 'MAINTENANCE', 'MEETING', 'CLEANING')
@@ -745,7 +744,8 @@ async createCleaningWeek(
     const [result]: any = await pool.query(
       `INSERT INTO cleaningWeeks (dormID, assignedUserID, startDate, endDate)
        VALUES (?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE weekID = LAST_INSERT_ID(weekID)`,
+       ON CONFLICT (dormID, startDate) DO UPDATE SET weekID = cleaningWeeks.weekID
+       RETURNING weekID`,
       [dormID, assignedUserID, startDate, endDate]
     );
 
@@ -787,7 +787,7 @@ async createCleaningWeekTasks(tasks: any[]): Promise<void> {
         INSERT INTO cleaningAssignments
         (weekID, templateID, completed, assignedUserID)
         VALUES (?, ?, FALSE, ?)
-        ON DUPLICATE KEY UPDATE assignedUserID = VALUES(assignedUserID)
+        ON CONFLICT (weekID, templateID) DO UPDATE SET assignedUserID = EXCLUDED.assignedUserID
       `;
 
       for (const t of tasks) {
@@ -819,7 +819,7 @@ async createCleaningWeekTasks(tasks: any[]): Promise<void> {
     // 1. Capture the result array from the query
     const [result] = await connection.query(
       `INSERT INTO survey (question, active, expiresAt, multipleChoice)
-      VALUES (?, ?, ?, ?)`,
+      VALUES (?, ?, ?, ?) RETURNING eID`,
       [survey.question, survey.active, new Date(survey.expiresAt), survey.multipleChoice]
     );
 
@@ -913,7 +913,7 @@ async createCleaningWeekTasks(tasks: any[]): Promise<void> {
 
   async getAnswers(eID: number){
     try{
-      const query = 'SELECT * FROM surveyanswers WHERE eID = ?';
+      const query = 'SELECT * FROM surveyAnswers WHERE eID = ?';
       const [rows] = await pool.query(query, [eID]);
       return rows as any[];
 
@@ -928,7 +928,7 @@ async createCleaningWeekTasks(tasks: any[]): Promise<void> {
       const query = `
       SELECT *
       FROM survey s
-      WHERE s.active = 1
+      WHERE s.active = TRUE
       AND s.expiresAt > NOW()
       AND NOT EXISTS (
         SELECT 1
@@ -963,7 +963,7 @@ async createCleaningWeekTasks(tasks: any[]): Promise<void> {
 
       return { msg: `Answered logged for survey ${eID}`};
     } catch (err:any) {
-      if(err.code === "ER_DUP_ENTRY"){
+      if(err.code === "23505"){
         throw new Error("Survey already answered")
       }
         await connection.rollback();
@@ -1015,7 +1015,7 @@ async createCleaningWeekTasks(tasks: any[]): Promise<void> {
     try {
       const [result]: any = await pool.query(
         `INSERT INTO chatHistory (msg, chatID, userID)
-        VALUES (?, ?, ?)`,
+        VALUES (?, ?, ?) RETURNING messageID`,
         [message, chatID, userID]
       );
 

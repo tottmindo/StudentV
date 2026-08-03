@@ -1,6 +1,28 @@
 ```vue
 <template>
-  <div class="min-h-screen p-4 bg-background-light dark:bg-background-dark">
+  <div
+    v-if="isLoading"
+    class="flex min-h-screen items-center justify-center bg-background-light px-4 dark:bg-background-dark"
+    role="status"
+    aria-live="polite"
+  >
+    <div class="flex flex-col items-center gap-4 text-center">
+      <div
+        class="h-12 w-12 animate-spin rounded-full border-4 border-accent/25 border-t-accent"
+        aria-hidden="true"
+      ></div>
+      <div>
+        <h1 class="text-xl font-semibold text-headline dark:text-text-dark">
+          Loading your home
+        </h1>
+        <p class="mt-1 text-sm text-text opacity-70 dark:text-text-dark">
+          Getting the latest information…
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div v-else class="min-h-screen p-4 bg-background-light dark:bg-background-dark">
     <NavComponent :key="navKey" :socket="socket" :menu="menuType" class="fixed top-4 right-4 z-50" />
 
     <div class="flex flex-col gap-4">
@@ -72,20 +94,23 @@
             </h2>
 
             <div class="space-y-3">
-              <div
+              <button
                 v-for="event in events"
-                :key="event.id"
-                class="flex justify-between items-center"
+                :key="event.eventID ?? event.id"
+                type="button"
+                @click="openEventDetails(event)"
+                class="w-full flex justify-between items-center gap-4 rounded-md p-3 text-left transition hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-accent"
+                :aria-label="`View details for ${event.title}`"
               >
                 <div>
-                  <span class="mr-2">{{ event.icon }}</span>
+                  <span v-if="event.icon" class="mr-2">{{ event.icon }}</span>
                   {{ event.title }}
                 </div>
 
-                <span class="text-sm opacity-70">
-                  {{ event.time }}
+                <span class="shrink-0 text-sm opacity-70">
+                  {{ event.time || formatEventDate(event.startDate) }}
                 </span>
-              </div>
+              </button>
             </div>
           </section>
 
@@ -280,6 +305,26 @@
       </div>
     </ModalComponent>
 
+    <!-- Event Details Modal -->
+    <ModalComponent v-model="showEventModal">
+      <div v-if="selectedEvent" class="space-y-4 p-4">
+        <div>
+          <h2 class="text-2xl font-bold">{{ selectedEvent.title }}</h2>
+          <p v-if="selectedEvent.type" class="mt-1 text-sm uppercase opacity-70">
+            {{ selectedEvent.type }}
+          </p>
+        </div>
+
+        <p class="font-medium">
+          {{ formatEventDateRange(selectedEvent.startDate, selectedEvent.endDate) || selectedEvent.time }}
+        </p>
+
+        <p class="whitespace-pre-line opacity-80">
+          {{ selectedEvent.description || 'No additional information is available for this event.' }}
+        </p>
+      </div>
+    </ModalComponent>
+
   </div>
 </template>
 
@@ -294,9 +339,10 @@ const socket = getSocket(); // Import the socket instance from socket.ts
 import ModalComponent from '@/components/ModalComponent.vue';
 import { type AlertItem, type NewsItem, type HomeEventItem, type ActivatedEventItem, type StatItem, type QuickActionItem, type ChallengeItem, type DashboardPayload, type MenuItem, type SurveyItem } from '@/types';
 
-const username = ref("John Doe")
-const room = ref(314)
-const corridor = ref(5)
+const isLoading = ref(true);
+const username = ref("")
+const room = ref<number | string>("")
+const corridor = ref<number | string>("")
 const alerts = ref<AlertItem[]>([]);
 const news = ref<NewsItem[]>([]);
 const events = ref<HomeEventItem[]>([]);
@@ -312,7 +358,27 @@ socket.on('connect', () => {
 });
 
 const showNewsModal = ref(false);
+const showEventModal = ref(false);
+const selectedEvent = ref<HomeEventItem | null>(null);
 const navKey = ref(0); // Reactive key for NavComponent
+
+const openEventDetails = (event: HomeEventItem) => {
+  selectedEvent.value = event;
+  showEventModal.value = true;
+};
+
+const formatEventDate = (dateString?: string) => {
+  if (!dateString) return '';
+
+  const date = new Date(dateString.replace(' ', 'T'));
+  return Number.isNaN(date.getTime()) ? dateString : date.toLocaleString();
+};
+
+const formatEventDateRange = (start?: string, end?: string) => {
+  if (!start) return '';
+  if (!end) return formatEventDate(start);
+  return `${formatEventDate(start)} — ${formatEventDate(end)}`;
+};
 
 const refreshNav = () => {
   navKey.value++; // Increment the key to force re-render
@@ -356,6 +422,7 @@ onMounted(() => {
     userSurveys.value = dashboard.pendingSurveys;
 
     saveDashboardCache(dashboard);
+    isLoading.value = false;
   });
 
   const cached = loadDashboardCache();
@@ -373,6 +440,7 @@ onMounted(() => {
     activatedEvents.value = cached.activatedEvents;
     stats.value = cached.stats;
     userSurveys.value = cached.pendingSurveys
+    isLoading.value = false;
   }
 
   socket.emit("getDashboard");

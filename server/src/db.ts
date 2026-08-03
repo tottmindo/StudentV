@@ -1,36 +1,90 @@
-
-/**
- * MySQL connection pool configuration and setup.
- * Creates a connection pool using environment variables for database credentials.
- * 
- * Environment variables required:
- * - DB_HOST: Database host address
- * - DB_USER: Database user name
- * - DB_PASSWORD: Database password
- * - DB_DATABASE: Database name
- * - DB_PORT: Database port (optional, defaults to 3306)
- * 
- * Pool configuration:
- * - waitForConnections: True - queues connection requests when none are available
- * - connectionLimit: 10 - maximum number of connections in pool
- * - queueLimit: 0 - unlimited queue size
- * 
- * @module db
- * @exports pool - MySQL connection pool instance
- */
-import mysql from "mysql2/promise";
+/** PostgreSQL connection pool and a small compatibility layer for the app's data access code. */
+import { Pool, PoolClient, QueryResultRow } from "pg";
 import "./config/env.js";
 
-const pool = mysql.createPool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_DATABASE,
-  port: process.env.DB_PORT ? +process.env.DB_PORT : 3306,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
-  
+type ResultHeader = { affectedRows: number; insertId?: number };
+type QueryResponse<T extends QueryResultRow = QueryResultRow> = [T[], ResultHeader];
+
+const camelCaseColumns: Record<string, string> = {
+  dormid: "dormID", roomid: "roomID", userid: "userID", eid: "eID",
+  eventid: "eventID", chatid: "chatID", messageid: "messageID", tokenid: "tokenID",
+  templateid: "templateID", weekid: "weekID", assignmentid: "assignmentID",
+  sensorcode: "sensorCode", recordedat: "recordedAt", totalvolume: "totalVolume",
+  tempmin: "tempMin", tempmax: "tempMax", errorcode: "errorCode", ambienttemp: "ambientTemp",
+  leakstatus: "leakStatus", passwordhash: "passwordHash", mustchangepassword: "mustChangePassword",
+  credentialversion: "credentialVersion", expiresat: "expiresAt", usedat: "usedAt",
+  createdat: "createdAt", answeredat: "answeredAt", startdate: "startDate", enddate: "endDate",
+  multiplechoice: "multipleChoice", assigneduserid: "assignedUserID", completedat: "completedAt",
+  basetaskid: "baseTaskID", createdbyuserid: "createdByUserID", assignedusername: "assignedUsername",
+  isimportant: "isImportant", isbasetask: "isBaseTask", iscompleted: "isCompleted",
+  isdeleted: "isDeleted", activateduserid: "activatedUserID", taskname: "taskName",
+  weektaskid: "weekTaskID", totaltasks: "totalTasks", completedtasks: "completedTasks",
+  pendingtasks: "pendingTasks",
+};
+
+function camelCaseRow<T extends QueryResultRow>(row: T): T {
+  return Object.fromEntries(Object.entries(row).map(([key, value]) => [camelCaseColumns[key] ?? key, value])) as T;
+}
+
+function convertPlaceholders(sql: string, values: unknown[] = []): { text: string; values: unknown[] } {
+  let index = 0;
+  const parameters: unknown[] = [];
+  const text = sql.replace(/\?/g, () => {
+    const value = values[index++];
+    if (Array.isArray(value)) {
+      if (!value.length) return "NULL";
+      return value.map(item => {
+        parameters.push(item);
+        return `$${parameters.length}`;
+      }).join(", ");
+    }
+    parameters.push(value);
+    return `$${parameters.length}`;
+  });
+  if (index !== values.length) throw new Error("Query parameter count does not match placeholders.");
+  return { text, values: parameters };
+}
+
+class PostgreSqlConnection {
+  constructor(private readonly client: Pool | PoolClient, private readonly releaseClient?: () => void) {}
+
+  async query<T extends QueryResultRow = QueryResultRow>(sql: string, values: unknown[] = []): Promise<QueryResponse<T>> {
+    const query = convertPlaceholders(sql, values);
+    const result = await this.client.query<T>(query);
+    const rows = result.rows.map(camelCaseRow);
+    const inserted = rows[0] && Object.values(rows[0]).find(value => typeof value === "number");
+    return [rows, { affectedRows: result.rowCount ?? 0, insertId: typeof inserted === "number" ? inserted : undefined }];
+  }
+
+  async beginTransaction() { await this.client.query("BEGIN"); }
+  async commit() { await this.client.query("COMMIT"); }
+  async rollback() { await this.client.query("ROLLBACK"); }
+  release() { this.releaseClient?.(); }
+}
+
+const connectionString = process.env.DATABASE_URL
+  ?? (process.env.PG_DB_HOST?.startsWith("postgresql://") || process.env.PG_DB_HOST?.startsWith("postgres://")
+    ? process.env.PG_DB_HOST
+    : undefined);
+
+const pgPool = new Pool({
+  connectionString,
+  host: process.env.PG_DB_HOST ?? process.env.DB_HOST,
+  user: process.env.PG_DB_USER ?? process.env.DB_USER,
+  password: process.env.PG_DB_PASSWORD ?? process.env.DB_PASSWORD,
+  database: process.env.PG_DB_DATABASE ?? process.env.DB_DATABASE,
+  port: Number(process.env.PG_DB_PORT ?? process.env.DB_PORT ?? 5432),
+  max: 10,
+  ssl: process.env.PG_SSL === "true" || Boolean(connectionString)
+    ? { rejectUnauthorized: false }
+    : undefined,
 });
 
-export default pool;
+const pool = new PostgreSqlConnection(pgPool);
+export default Object.assign(pool, {
+  getConnection: async () => {
+    const client = await pgPool.connect();
+    return new PostgreSqlConnection(client, () => client.release());
+  },
+  end: () => pgPool.end(),
+});

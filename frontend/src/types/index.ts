@@ -26,10 +26,16 @@ export type NewsItem = {
 }
 
 export type HomeEventItem = {
-  id: number
-  icon: string
+  id?: number
+  eventID?: number
+  icon?: string
   title: string
-  time: string
+  time?: string
+  description?: string
+  startDate?: string
+  endDate?: string
+  active?: boolean
+  type?: string
 }
 
 export type CalendarEvent = {

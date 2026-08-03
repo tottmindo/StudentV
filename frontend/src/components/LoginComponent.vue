@@ -37,6 +37,9 @@
       >
         Login
       </button>
+      <router-link to="/forgot-password" class="block text-center text-sm text-accent hover:underline">
+        Forgot your password?
+      </router-link>
     </form>
   </div>
 </template>
@@ -67,7 +70,7 @@
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          username: username.value,
+          email: username.value,
           password: password.value,
         }),
       });
@@ -96,6 +99,17 @@
       sessionStorage.setItem('dormID', String(dormID));
       sessionStorage.setItem('role', String(role));
       sessionStorage.setItem('userID', String(userID));
+      sessionStorage.setItem('email', String(data.email || username.value.trim().toLowerCase()));
+      // Never show dashboard data cached for a previous authenticated session.
+      sessionStorage.removeItem('dashboard');
+      if (data.username) sessionStorage.setItem('username', String(data.username));
+      else sessionStorage.removeItem('username');
+
+      if (data.mustChangePassword) {
+        sessionStorage.setItem('mustChangePassword', 'true');
+      } else {
+        sessionStorage.removeItem('mustChangePassword');
+      }
 
       if (role === 'ADMIN') {
         sessionStorage.setItem('userRole', 'admin');
@@ -103,19 +117,18 @@
         sessionStorage.setItem('userRole', 'user');
       }
 
-      // After successful login
-      const socket = connectSocket(String(token));
-
-      if (socket) {
-        socket.on('connect', () => {
-          console.log('Socket connected with dorm ID:', data.dormID);
-        });
-      } else {
-        console.error('Failed to connect socket: socket is undefined.');
+      // Temporary accounts must choose a permanent password before opening app data.
+      if (!data.mustChangePassword) {
+        const socket = connectSocket(String(token));
+        if (socket) {
+          socket.on('connect', () => {
+            console.log('Socket connected with dorm ID:', data.dormID);
+          });
+        }
       }
 
       // Redirect to the home view
-      router.push('/home');
+      router.push(data.mustChangePassword ? '/change-password' : '/home');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Login failed. Please try again.';
       alert(errorMessage);

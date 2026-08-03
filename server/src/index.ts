@@ -8,7 +8,7 @@
  * - Express for HTTP server and API routing
  * - Socket.IO for real-time bidirectional communication
  * - JWT for authentication
- * - MySQL database connection pool
+ * - PostgreSQL database connection pool
  * 
  * Features:
  * - CORS enabled server configuration
@@ -45,10 +45,13 @@ import { getJwtSecret } from "./config/jwt.js";
 console.log('Scoring scheduler started...');
 
 const app = express();
+if (process.env.TRUST_PROXY === "true") app.set("trust proxy", 1);
+const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173")
+  .split(",").map(origin => origin.trim()).filter(Boolean);
 const httpServer = createServer(app); // Pass express app to HTTP server
 const io = new Server(httpServer, {
   cors: {
-    origin: "*", // Allow frontend dev server, or replace with your domain
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -56,7 +59,12 @@ const io = new Server(httpServer, {
 
 setIO(io);
 
-app.use(cors());
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) callback(null, true);
+    else callback(new Error("Origin is not allowed by CORS."));
+  },
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use("/api/auth", authRoutes);
@@ -79,8 +87,18 @@ io.on("connection", async (socket: Socket) => {
       userID = decoded.userID;
       role = decoded.role;
 
+      const [authRows]: any = await pool.query(
+        "SELECT credentialVersion, active, mustChangePassword FROM users WHERE userID = ? LIMIT 1",
+        [userID]
+      );
+      if (!authRows[0]?.active || authRows[0].mustChangePassword || authRows[0].credentialVersion !== decoded.credentialVersion) {
+        socket.disconnect(true);
+        return;
+      }
+
       if (dormID && userID) {
         socket.join(`dorm-${dormID}`);
+        socket.join(`user-${userID}`);
         console.log(`✅ Authenticated socket ${socket.id} joined dorm room: dorm-${dormID}`);
         sockets(socket, data, dormID, userID, role);
 
