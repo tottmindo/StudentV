@@ -56,7 +56,8 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
   socket.on("createEvent", async (item: any, callback: any) => {
     console.log(`Request to create event:`, item);
     try {
-      const saved = await data.createEvent(item);
+      if (!dormID) throw new Error("Authentication is required to create an event.");
+      const saved = await data.createEvent({ ...item, dormID });
       const response = saved.event || { id: saved.id, ...item };
       socket.emit("eventCreated", response);
 

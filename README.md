@@ -48,7 +48,7 @@ npm run build
 
 Use the root `.env` for local development. The most important values are:
 
-- `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_DATABASE`, `DB_PORT`
+- `PG_DB_HOST`, `PG_DB_USER`, `PG_DB_PASSWORD`, `PG_DB_DATABASE`, `PG_DB_PORT`
 - `JWT_SECRET`
 - `PORT`, `HOST`
 - `VITE_API_BASE_URL`
@@ -59,18 +59,37 @@ Use the root `.env` for local development. The most important values are:
 
 ## Database setup
 
-The complete MySQL 8+ schema, including account provisioning and password
-recovery, is contained in one file:
+Create the PostgreSQL database, then apply the PostgreSQL schema (which includes
+account provisioning and password recovery):
 
 ```sh
-mysql -u <user> -p < server/src/data/database-and-simulation/generate-NEW.sql
+createdb dorms_db
+psql -d dorms_db -f server/src/data/database-and-simulation/generate-postgres.sql
 ```
 
-Optional development data can then be loaded with:
+For a local connection, configure the root `.env` like this:
 
 ```sh
-mysql -u <user> -p dorms_db < server/src/data/database-and-simulation/add-test-data-expanded.sql
+PG_DB_HOST=localhost
+PG_DB_PORT=5432
+PG_DB_DATABASE=dorms_db
+PG_DB_USER=postgres
+PG_DB_PASSWORD=your-password
 ```
+
+The application accepts the former `DB_*` names as a temporary fallback, but
+new deployments should use the `PG_DB_*` variables. The old MySQL schema and
+expanded MySQL test-data script remain in the repository only as migration
+references; do not run them against PostgreSQL.
+
+To load the PostgreSQL development fixtures, which erase the current
+application data, run:
+
+```sh
+CONFIRM_TEST_DATA=true npm run db:seed -w server
+```
+
+See `RENDER.md` for deploying and initializing a Render Postgres database.
 
 All seeded accounts use `test123`. For example, use
 `admin1@example.test` for an administrator or `clara@example.test` for a

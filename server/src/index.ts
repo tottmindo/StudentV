@@ -8,7 +8,7 @@
  * - Express for HTTP server and API routing
  * - Socket.IO for real-time bidirectional communication
  * - JWT for authentication
- * - MySQL database connection pool
+ * - PostgreSQL database connection pool
  * 
  * Features:
  * - CORS enabled server configuration

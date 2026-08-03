@@ -24,7 +24,6 @@ import bcrypt from "bcrypt";
 import jwt, { SignOptions } from "jsonwebtoken";
 import "../config/env.js";
 import pool from "../db.js";
-import type { RowDataPacket, ResultSetHeader } from "mysql2";
 import type { StringValue } from "ms";
 import { getJwtSecret } from "../config/jwt.js";
 import { createHash, randomBytes } from "crypto";
@@ -33,6 +32,8 @@ import { getIO } from "../routes/socketManager.js";
 
 const SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS || "10", 10);
 const JWT_EXPIRATION = process.env.JWT_EXPIRATION || "1h";
+type RowDataPacket = Record<string, any>;
+type ResultSetHeader = { affectedRows: number; insertId?: number };
 
 export async function registerUser(
   roomID: number,
@@ -96,9 +97,9 @@ export async function registerUser(
       );
     }
 
-    const [result] = await connection.query<ResultSetHeader>(
+    const [result]: any = await connection.query(
       `INSERT INTO users (email, username, passwordHash, role, roomID, dormID, active, mustChangePassword)
-       VALUES (?, NULL, ?, ?, ?, ?, TRUE, ?)`,
+       VALUES (?, NULL, ?, ?, ?, ?, TRUE, ?) RETURNING userID`,
       [email, hashedPassword, role, roomID, dormID, mustChangePassword]
     );
 
@@ -110,15 +111,16 @@ export async function registerUser(
         `UPDATE cleaningWeeks
          SET assignedUserID = ?
          WHERE assignedUserID IN (?)
-           AND endDate >= CURDATE()`,
+           AND endDate >= CURRENT_DATE`,
         [newUserID, previousUserIDs]
       );
       await connection.query(
         `UPDATE cleaningAssignments ca
-         INNER JOIN cleaningWeeks cw ON cw.weekID = ca.weekID
-         SET ca.assignedUserID = ?
-         WHERE ca.assignedUserID IN (?)
-           AND cw.endDate >= CURDATE()`,
+         SET assignedUserID = ?
+         FROM cleaningWeeks cw
+         WHERE cw.weekID = ca.weekID
+           AND ca.assignedUserID IN (?)
+           AND cw.endDate >= CURRENT_DATE`,
         [newUserID, previousUserIDs]
       );
     }
@@ -177,7 +179,7 @@ export async function completeTemporaryPassword(userID: number, username: string
       [username, passwordHash, userID]
     );
   } catch (error: any) {
-    if (error?.code === "ER_DUP_ENTRY") throw new Error("That username is already in use.");
+    if (error?.code === "23505") throw new Error("That username is already in use.");
     throw error;
   }
 }
@@ -193,14 +195,14 @@ export async function getAccount(userID: number) {
 
 export async function updateUsername(userID: number, username: string) {
   try {
-    const [result] = await pool.query<ResultSetHeader>(
+    const [result]: any = await pool.query(
       "UPDATE users SET username = ? WHERE userID = ? AND active = TRUE",
       [username, userID]
     );
     if (!result.affectedRows) throw new Error("Account not found.");
     return getAccount(userID);
   } catch (error: any) {
-    if (error?.code === "ER_DUP_ENTRY") throw new Error("That username is already in use.");
+    if (error?.code === "23505") throw new Error("That username is already in use.");
     throw error;
   }
 }
@@ -270,7 +272,7 @@ export async function requestPasswordReset(email: string) {
 
   const [recent]: [RowDataPacket[], any] = await pool.query(
     `SELECT tokenID FROM passwordResetTokens
-     WHERE userID = ? AND createdAt > DATE_SUB(NOW(), INTERVAL 5 MINUTE) LIMIT 1`,
+     WHERE userID = ? AND createdAt > NOW() - INTERVAL '5 minutes' LIMIT 1`,
     [user.userID]
   );
   if (recent.length > 0) return;
@@ -278,7 +280,7 @@ export async function requestPasswordReset(email: string) {
   const token = randomBytes(32).toString("base64url");
   await pool.query(
     `INSERT INTO passwordResetTokens (userID, tokenHash, expiresAt)
-     VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 30 MINUTE))`,
+     VALUES (?, ?, NOW() + INTERVAL '30 minutes')`,
     [user.userID, hashResetToken(token)]
   );
   try {
@@ -445,7 +447,7 @@ export async function updateUserForAdmin(
     return { message: "User updated successfully." };
   } catch (error: any) {
     await connection.rollback();
-    if (error?.code === "ER_DUP_ENTRY") throw new Error("That email or username is already in use.");
+    if (error?.code === "23505") throw new Error("That email or username is already in use.");
     throw error;
   } finally {
     connection.release();
