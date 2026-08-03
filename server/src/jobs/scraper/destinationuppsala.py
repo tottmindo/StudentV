@@ -49,7 +49,7 @@ def destUppScraper():
                     "startDate": start_date,
                     "endDate": end_date
                 })
-
+                        #TODO - Spara plats och tema på eventet också
         page += 1
 
         if not foundEvents:
