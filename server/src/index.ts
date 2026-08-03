@@ -126,7 +126,9 @@ io.on("connection", async (socket: Socket) => {
 
 // Start server
 const PORT = process.env.PORT || 3000;
-const HOST = process.env.HOST || "127.0.0.1";
+// Container hosts such as Render must be reachable on every interface.
+// A local developer can still override this with HOST=127.0.0.1.
+const HOST = process.env.HOST || "0.0.0.0";
 httpServer.listen(Number(PORT), HOST, () => {
   console.log(`🚀 Server with Socket.io running on ${HOST}:${PORT}`);
 });

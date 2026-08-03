@@ -84,6 +84,10 @@ Build command: npm ci && npm run build -w server
 Start command: npm run start -w server
 ```
 
+Do not use `npm run dev` on Render: it starts Vite and nodemon instead of the
+compiled API service. Also remove any local `HOST=127.0.0.1` or
+`PG_DB_HOST=localhost` value from the Render service environment.
+
 After adding the environment variables, deploy the service. For future schema
 changes, run `npm run db:schema -w server` as a Render pre-deploy command on a
 paid web service, or run it from your computer against the external URL before
