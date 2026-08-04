@@ -125,3 +125,13 @@ CREATE TABLE cleaningassignments (
   assigneduserid integer REFERENCES users(userid) ON DELETE SET NULL,
   UNIQUE (weekid, templateid)
 );
+CREATE TABLE externalevents (
+    eventID INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    externalURL VARCHAR(500) UNIQUE NOT NULL,
+    title VARCHAR(255),
+    startDate TIMESTAMP,
+    endDate TIMESTAMP,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    lastSeen TIMESTAMP
+);

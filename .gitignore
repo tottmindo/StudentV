@@ -30,3 +30,9 @@ coverage
 
 *.tsbuildinfo
 curls.txt
+
+# Python virtual environments
+venv/
+.venv/
+__pycache__/
+*.pyc

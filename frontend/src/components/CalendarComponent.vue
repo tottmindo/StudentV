@@ -40,9 +40,10 @@
         :class="cellClasses(cell)"
       >
         <span v-if="cell.day">{{ cell.day }}</span>
-        <span v-if="cell.day && (cell.hasEvent || cell.hasCleaning)" class="flex gap-1">
+        <span v-if="cell.day && (cell.hasEvent || cell.hasCleaning || cell.hasExternal)" class="flex gap-1">
           <span v-if="cell.hasEvent" class="h-1.5 w-1.5 rounded-full bg-accent"></span>
           <span v-if="cell.hasCleaning" class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+          <span v-if="cell.hasExternal" class="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
         </span>
       </div>
     </div>
@@ -61,6 +62,10 @@
         <span class="h-2 w-2 rounded-full bg-emerald-500 inline-block"></span>
         Cleaning week
       </span>
+      <span class="inline-flex items-center gap-2">
+      <span class="h-2 w-2 rounded-full bg-blue-500 inline-block"></span>
+        External event
+      </span>
     </div>
   </div>
 </template>
@@ -75,6 +80,10 @@ const props = defineProps({
     default: () => []
   },
   cleaningDates: {
+    type: Array,
+    default: () => []
+  },
+  externalDates: {
     type: Array,
     default: () => []
   }
@@ -96,6 +105,8 @@ const monthLabel = computed(() => monthNames[viewDate.value.getMonth()])
 
 const markedSet = computed(() => new Set(props.markedDates))
 const cleaningSet = computed(() => new Set(props.cleaningDates))
+const externalSet = computed(() => new Set(props.externalDates))
+
 
 function toDateKey(year, month, day) {
   const mm = String(month + 1).padStart(2, '0')
@@ -131,7 +142,8 @@ const calendarCells = computed(() => {
       dateKey,
       isToday,
       hasEvent: markedSet.value.has(dateKey),
-      hasCleaning: cleaningSet.value.has(dateKey)
+      hasCleaning: cleaningSet.value.has(dateKey),
+      hasExternal: externalSet.value.has(dateKey)
     })
   }
 
@@ -143,8 +155,14 @@ function cellClasses(cell) {
   const classes = []
   if (cell.isToday) {
     classes.push('bg-accent text-background-light font-semibold ')
-  } else if (cell.hasEvent || cell.hasCleaning) {
-    classes.push(cell.hasCleaning ? 'border border-emerald-500 text-text dark:text-text-dark' : 'border border-accent text-text dark:text-text-dark')
+  } else if (cell.hasEvent || cell.hasCleaning || cell.hasExternal) {
+    if (cell.hasCleaning) {
+      classes.push('border border-emerald-500 text-text dark:text-text-dark')
+    } else if (cell.hasEvent) {
+      classes.push('border border-accent text-text dark:text-text-dark')
+    } else {
+      classes.push('border border-blue-500 text-text dark:text-text-dark')
+    }
   }
   return classes.join(' ')
 }
