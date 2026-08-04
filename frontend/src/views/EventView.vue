@@ -339,11 +339,11 @@ const eventModalTitle = computed(() => {
 })
 
 const openEventDetails = (events: CalendarEvent[], dayKey = '') => {
-  selectedEvents.value = events
-  selectedCleaningWeeks.value = dayKey
+  selectedEvents.value = filters.value.events ? events : []
+  selectedCleaningWeeks.value = (dayKey && filters.value.cleaning)
     ? ownCleaningWeeks.value.filter((week) => dateIsInRange(dayKey, week.startDate, week.endDate))
     : []
-  selectedExternalEvents.value = dayKey
+  selectedExternalEvents.value = (dayKey && filters.value.external)
     ? externalEvents.value.filter((event) => {
         const d = parseEventDate(event.startDate)
         return d && toDateKey(d) === dayKey
@@ -354,7 +354,10 @@ const openEventDetails = (events: CalendarEvent[], dayKey = '') => {
 }
 
 const onCalendarDayClick = (dateKey: string) => {
-  const matchingEvents = allEvents.value.filter((event) => event.startDate.startsWith(dateKey))
+  const matchingEvents = allEvents.value.filter((event) => {
+    const d = parseEventDate(event.startDate)
+    return d && toDateKey(d) === dateKey
+  })
   openEventDetails(matchingEvents, dateKey)
 }
 
