@@ -68,7 +68,13 @@
               </div>
               <div class="text-sm opacity-70 text-right">
                 <div>{{ formatDateRange(event.startDate, event.endDate) }}</div>
-                <div class="uppercase text-xs mt-1">{{ event.type }} <span v-if="!event.active" class="text-red-500">(inactive)</span></div>
+                <div class="uppercase text-xs mt-1">
+                  <!-- Highlight external events in blue -->
+                  <span :class="event.isExternal ? 'text-blue-600 dark:text-blue-400 font-semibold' : ''">
+                    {{ event.type }}
+                  </span>
+                  <span v-if="!event.isExternal && !event.active" class="text-red-500"> (inactive)</span>
+                </div>
               </div>
             </div>
           </li>
@@ -195,6 +201,7 @@ const socket = getSocket()
 const route = useRoute()
 const userID = Number(sessionStorage.getItem('userID') || 0)
 
+const numberOfUpcomingEvents = 10;
 type CleaningWeek = {
   weekID: number
   dormID: number
@@ -214,6 +221,25 @@ type ExternalEvents = {
   startDate: string,
   endDate: string
 }
+
+type DisplayEvent = {
+  id: string | number
+  title: string
+  description?: string
+  startDate: string
+  endDate?: string
+  type: string
+  active?: boolean
+  externalUrl?: string
+  isExternal: boolean
+}
+
+
+const filters = ref({
+  events : true,
+  cleaning : true,
+  external : true
+})
 
 const externalEvents = ref<ExternalEvents[]>([]);
 
@@ -245,6 +271,7 @@ const upcomingEvents = ref<CalendarEvent[]>(
       if (raw) {
         const parsed = JSON.parse(raw) as CalendarEvent[]
         if (Array.isArray(parsed)) return parsed
+        console.log(parsed)
       }
     } catch (e) {
       console.warn('Failed to parse cached events:', e)
@@ -309,18 +336,65 @@ const cleaningCalendarDates = computed(() => {
   return Array.from(dates)
 })
 
-const filteredEvents = computed(() => {
-  if (!filters.value.events) return []
-  
-  return upcomingEvents.value
-    .filter(eventHasNotEnded)
-    .slice()
-    .sort((a, b) => {
-      const aStart = parseEventDate(a.startDate)
-      const bStart = parseEventDate(b.startDate)
-      if (!aStart || !bStart) return 0
-      return aStart.getTime() - bStart.getTime()
+const filteredEvents = computed<DisplayEvent[]>(() => {
+  const list: DisplayEvent[] = []
+  const now = Date.now()
+  const seenEventKeys = new Set<string>()
+
+  // 1. Process Internal Events (if filter is active)
+  if (filters.value.events) {
+    upcomingEvents.value.forEach((event, index) => {
+      if (eventHasNotEnded(event)) {
+        const uniqueKey = `${event.title}-${event.startDate}`
+        if (!seenEventKeys.has(uniqueKey)) {
+          seenEventKeys.add(uniqueKey)
+          list.push({
+            id: `internal-${event.id !== undefined ? event.id : index}`,
+            title: event.title,
+            description: event.description,
+            startDate: event.startDate,
+            endDate: event.endDate,
+            type: event.type,
+            active: event.active,
+            isExternal: false
+          })
+        }
+      }
     })
+  }
+
+  // 2. Process External Events (if filter is active)
+  if (filters.value.external) {
+    externalEvents.value.forEach((event, index) => {
+      const end = parseEventDate(event.endDate || event.startDate)
+      if (end && end.getTime() >= now) {
+        const uniqueKey = `${event.title}-${event.startDate}`
+        if (!seenEventKeys.has(uniqueKey)) {
+          seenEventKeys.add(uniqueKey)
+          list.push({
+            id: `external-${event.eventID !== undefined ? event.eventID : index}`,
+            title: event.title,
+            description: 'External Event',
+            startDate: event.startDate,
+            endDate: event.endDate,
+            type: 'EXTERNAL',
+            active: true,
+            externalUrl: event.externalurl,
+            isExternal: true
+          })
+        }
+      }
+    })
+  }
+
+  // 3. Sort chronologically by start date first, THEN slice to 10
+  return list
+    .sort((a, b) => {
+      const aStart = parseEventDate(a.startDate)?.getTime() || 0
+      const bStart = parseEventDate(b.startDate)?.getTime() || 0
+      return aStart - bStart
+    })
+    .slice(0, numberOfUpcomingEvents)
 })
 
 const showEventDetailsModal = ref(false)
@@ -361,9 +435,23 @@ const onCalendarDayClick = (dateKey: string) => {
   openEventDetails(matchingEvents, dateKey)
 }
 
-const openEventDetail = (event: CalendarEvent) => {
+const openEventDetail = (event: CalendarEvent | DisplayEvent) => {
+  // If it's a merged DisplayEvent and it's external, open the link
+  if ('isExternal' in event && event.isExternal && event.externalUrl) {
+    window.open(event.externalUrl, '_blank', 'noopener,noreferrer')
+    return
+  }
+
+  // If it's a merged internal event from the list, find the original CalendarEvent
+  let targetEvent = event as CalendarEvent
+  if ('isExternal' in event && !event.isExternal) {
+    const found = upcomingEvents.value.find((e) => `internal-${e.id}` === event.id)
+    if (!found) return
+    targetEvent = found
+  }
+
   selectedCleaningWeeks.value = []
-  openEventDetails([event])
+  openEventDetails([targetEvent])
 }
 
 const getEventIdentifier = (event: CalendarEvent) => {
@@ -532,13 +620,9 @@ onMounted(() => {
 onUnmounted(() => {
   socket.off('eventsData')
   socket.off('cleaningWeeks')
+  socket.off('externalEvents')
 })
 
-const filters = ref({
-  events : true,
-  cleaning : true,
-  external : true
-})
 
 const filteredEventDates = computed(() => {
   if (!filters.value.events) return []
@@ -554,5 +638,7 @@ const filteredExternalDates = computed (() => {
   if (!filters.value.external) return []
   return externalEventDates.value
 })
+
+
 
 </script>
