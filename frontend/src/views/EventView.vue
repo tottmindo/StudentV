@@ -1,5 +1,35 @@
 <template>
   <NavComponent :socket="socket" :menu="navMenuType" class="fixed top-4 right-4 z-50" />
+  <div class="flex items-center gap-3 mb-6 p-3 bg-surface dark:bg-surface-dark rounded-lg border border-gray-200 dark:border-gray-700">
+  <span class="text-sm font-semibold opacity-80">Filter View:</span>
+
+  <button
+    type="button"
+    @click="filters.events = !filters.events"
+    class="px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
+    :class="filters.events ? 'bg-accent text-white' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 opacity-50'"
+  >
+    Internal Events
+  </button>
+
+  <button
+    type="button"
+    @click="filters.cleaning = !filters.cleaning"
+    class="px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
+    :class="filters.cleaning ? 'bg-emerald-600 text-white' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 opacity-50'"
+  >
+    Cleaning Weeks
+  </button>
+
+  <button
+    type="button"
+    @click="filters.external = !filters.external"
+    class="px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
+    :class="filters.external ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 opacity-50'"
+  >
+    External Events
+  </button>
+</div>
   <div class="min-h-screen p-6 bg-background dark:bg-background-dark">
     <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
       <div>
@@ -13,9 +43,9 @@
         <h2 class="text-2xl font-bold mb-4">Calendar</h2>
         <div class="w-full max-w-full">
                 <CalendarComponent
-                  :marked-dates="allEventDates"
-                  :cleaning-dates="cleaningCalendarDates"
-                  :external-dates="externalEventDates"
+                  :marked-dates="filteredEventDates"
+                  :cleaning-dates="filteredCleaningWeeks"
+                  :external-dates="filteredExternalDates"
                   @day-click="onCalendarDayClick"
                   class="w-full h-full"
                 />
@@ -280,6 +310,8 @@ const cleaningCalendarDates = computed(() => {
 })
 
 const filteredEvents = computed(() => {
+  if (!filters.value.events) return []
+  
   return upcomingEvents.value
     .filter(eventHasNotEnded)
     .slice()
@@ -498,4 +530,26 @@ onUnmounted(() => {
   socket.off('eventsData')
   socket.off('cleaningWeeks')
 })
+
+const filters = ref({
+  events : true,
+  cleaning : true,
+  external : true
+})
+
+const filteredEventDates = computed(() => {
+  if (!filters.value.events) return []
+  return allEventDates.value
+});
+
+const filteredCleaningWeeks = computed(() => {
+  if (!filters.value.cleaning) return []
+  return cleaningCalendarDates.value
+});
+
+const filteredExternalDates = computed (() => {
+  if (!filters.value.external) return []
+  return externalEventDates.value
+})
+
 </script>
