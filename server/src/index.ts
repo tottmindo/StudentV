@@ -126,7 +126,9 @@ io.on("connection", async (socket: Socket) => {
 
 // Start server
 const PORT = process.env.PORT || 3000;
-const HOST = process.env.HOST || "127.0.0.1";
+// Render requires a public bind address even if a local HOST value was
+// accidentally imported with the service environment variables.
+const HOST = process.env.RENDER === "true" ? "0.0.0.0" : (process.env.HOST || "0.0.0.0");
 httpServer.listen(Number(PORT), HOST, () => {
   console.log(`🚀 Server with Socket.io running on ${HOST}:${PORT}`);
 });
