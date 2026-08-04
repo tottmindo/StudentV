@@ -15,6 +15,7 @@
                 <CalendarComponent
                   :marked-dates="allEventDates"
                   :cleaning-dates="cleaningCalendarDates"
+                  :external-dates="externalEventDates"
                   @day-click="onCalendarDayClick"
                   class="w-full h-full"
                 />
@@ -49,7 +50,7 @@
     <ModalComponent v-model="showEventDetailsModal">
       <div class="space-y-4">
         <h3 class="text-xl font-semibold">{{ eventModalTitle }}</h3>
-        <template v-if="selectedEvents.length || selectedCleaningWeeks.length">
+        <template v-if="selectedEvents.length || selectedCleaningWeeks.length || selectedExternalEvents.length">
           <div v-for="event in selectedEvents" :key="event.id" class="space-y-2 rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-surface dark:bg-surface-dark">
             <div class="flex items-start justify-between gap-4">
               <div>
@@ -80,6 +81,24 @@
               {{ week.completedTasks }} of {{ week.totalTasks }} tasks completed.
             </p>
           </div>
+          <div
+            v-for="event in selectedExternalEvents"
+            :key="event.eventID"
+            class="space-y-2 rounded-lg border border-blue-400 p-4 bg-blue-50 text-blue-950 dark:bg-blue-900/30 dark:text-blue-100 dark:border-blue-700"
+          >
+            <div class="flex items-start justify-between gap-4">
+            <div>
+              <p class="text-lg font-semibold">{{ event.title }}</p>
+              <p class="text-sm opacity-80 uppercase">External Event</p>
+            </div>
+            <div class="text-sm opacity-80 text-right">
+              <div>{{ formatDateRange(event.startDate, event.endDate) }}</div>
+            </div>
+          </div>
+          <a :href="event.externalurl" target="_blank" rel="noopener noreferrer" class="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline">
+            View Event Page &rarr;
+          </a>
+        </div>
         </template>
         <p v-else class="text-sm opacity-70">No events or cleaning weeks found for this day.</p>
       </div>
@@ -160,7 +179,7 @@ type CleaningWeek = {
 
 type ExternalEvents = {
   eventID: number,
-  externalURL: string,
+  externalurl: string,
   title: string,
   startDate: string,
   endDate: string
@@ -204,6 +223,19 @@ const upcomingEvents = ref<CalendarEvent[]>(
   })()
 )
 const cleaningWeeks = ref<CleaningWeek[]>([])
+
+const selectedExternalEvents = ref<ExternalEvents[]>([]);
+
+const externalEventDates = computed(() =>{
+  const dates = new Set<string>()
+  externalEvents.value.forEach((event) => {
+    const d = parseEventDate(event.startDate)
+    if(d) {
+      dates.add(toDateKey(d))
+    }
+  })
+  return Array.from(dates)
+})
 
 const parseEventDate = (dateString?: string) => {
   if (!dateString) return undefined
@@ -279,6 +311,12 @@ const openEventDetails = (events: CalendarEvent[], dayKey = '') => {
   selectedCleaningWeeks.value = dayKey
     ? ownCleaningWeeks.value.filter((week) => dateIsInRange(dayKey, week.startDate, week.endDate))
     : []
+  selectedExternalEvents.value = dayKey
+    ? externalEvents.value.filter((event) => {
+        const d = parseEventDate(event.startDate)
+        return d && toDateKey(d) === dayKey
+      })
+    : []
   selectedEventDay.value = dayKey
   showEventDetailsModal.value = true
 }
@@ -323,7 +361,6 @@ const bindSocket = () => {
   })
 
   socket.on('externalEvents', (eEvents: ExternalEvents[]) => {
-    console.log("Got external event data")
     externalEvents.value = eEvents
   })
 }
