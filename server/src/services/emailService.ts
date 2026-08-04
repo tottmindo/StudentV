@@ -1,6 +1,8 @@
 import nodemailer from "nodemailer";
+import { isIP } from "node:net";
+import { resolve4 } from "node:dns/promises";
 
-function smtpTransport() {
+async function smtpTransport() {
   const host = process.env.SMTP_HOST;
   const port = Number(process.env.SMTP_PORT || 587);
   const user = process.env.SMTP_USER;
@@ -10,11 +12,22 @@ function smtpTransport() {
     throw new Error("Email delivery is not configured.");
   }
 
+  // Some hosting environments have IPv4 egress only. Resolving the SMTP host
+  // ourselves prevents Node from selecting an unreachable AAAA record. Keep
+  // the original hostname as the TLS server name so certificate validation and
+  // SNI continue to work when connecting to the resolved address.
+  const preferIpv4 = process.env.SMTP_PREFER_IPV4 !== "false";
+  const resolvedHost = preferIpv4 && !isIP(host) ? (await resolve4(host))[0] : host;
+  if (!resolvedHost) {
+    throw new Error(`No IPv4 address was found for SMTP host ${host}.`);
+  }
+
   return nodemailer.createTransport({
-    host,
+    host: resolvedHost,
     port,
     secure: process.env.SMTP_SECURE === "true" || port === 465,
     auth: { user, pass },
+    tls: isIP(host) ? undefined : { servername: host },
   });
 }
 
@@ -24,7 +37,7 @@ export async function sendResidentWelcomeEmail(
   temporaryPassword: string
 ) {
   const appUrl = process.env.APP_URL || "http://localhost:5173";
-  await smtpTransport().sendMail({
+  await (await smtpTransport()).sendMail({
     from: process.env.EMAIL_FROM,
     to: email,
     subject: "Your DORMS account",
@@ -43,7 +56,7 @@ export async function sendResidentWelcomeEmail(
 
 export async function sendTemporaryPasswordEmail(email: string, temporaryPassword: string) {
   const appUrl = process.env.APP_URL || "http://localhost:5173";
-  await smtpTransport().sendMail({
+  await (await smtpTransport()).sendMail({
     from: process.env.EMAIL_FROM,
     to: email,
     subject: "Your DORMS password was reset",
@@ -62,7 +75,7 @@ export async function sendTemporaryPasswordEmail(email: string, temporaryPasswor
 export async function sendPasswordResetEmail(email: string, token: string) {
   const appUrl = (process.env.APP_URL || "http://localhost:5173").replace(/\/$/, "");
   const resetUrl = `${appUrl}/reset-password?token=${encodeURIComponent(token)}`;
-  await smtpTransport().sendMail({
+  await (await smtpTransport()).sendMail({
     from: process.env.EMAIL_FROM,
     to: email,
     subject: "Reset your DORMS password",
