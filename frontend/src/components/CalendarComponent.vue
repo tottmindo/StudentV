@@ -158,10 +158,10 @@ function cellClasses(cell) {
   } else if (cell.hasEvent || cell.hasCleaning || cell.hasExternal) {
     if (cell.hasCleaning) {
       classes.push('border border-emerald-500 text-text dark:text-text-dark')
-    } else if (cell.hasExternal) {
-      classes.push('border border-blue-500 text-text dark:text-text-dark')
-    } else {
+    } else if (cell.hasEvent) {
       classes.push('border border-accent text-text dark:text-text-dark')
+    } else {
+      classes.push('border border-blue-500 text-text dark:text-text-dark')
     }
   }
   return classes.join(' ')

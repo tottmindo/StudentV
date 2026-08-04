@@ -25,7 +25,7 @@
     type="button"
     @click="filters.external = !filters.external"
     class="px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
-    :class="filters.external ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 opacity-50'"
+    :class="filters.external ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 opacity-50'"
   >
     External Events
   </button>
@@ -201,7 +201,9 @@ const socket = getSocket()
 const route = useRoute()
 const userID = Number(sessionStorage.getItem('userID') || 0)
 
+//Variable deiding how many upcoming events to show
 const numberOfUpcomingEvents = 10;
+
 type CleaningWeek = {
   weekID: number
   dormID: number
