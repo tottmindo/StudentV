@@ -142,3 +142,13 @@ CREATE TABLE cleaningweekswaprequests (
   updatedat timestamptz NOT NULL DEFAULT current_timestamp,
   CHECK (status IN ('pending', 'accepted', 'rejected'))
 );
+CREATE TABLE externalevents (
+    eventID INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    externalURL VARCHAR(500) UNIQUE NOT NULL,
+    title VARCHAR(255),
+    startDate TIMESTAMP,
+    endDate TIMESTAMP,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    lastSeen TIMESTAMP
+);

@@ -1,5 +1,35 @@
 <template>
   <NavComponent :socket="socket" :menu="navMenuType" class="fixed top-4 right-4 z-50" />
+  <div class="flex items-center gap-3 mb-6 p-3 bg-surface dark:bg-surface-dark rounded-lg border border-gray-200 dark:border-gray-700">
+  <span class="text-sm font-semibold opacity-80">Filter View:</span>
+
+  <button
+    type="button"
+    @click="filters.events = !filters.events"
+    class="px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
+    :class="filters.events ? 'bg-accent text-white' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 opacity-50'"
+  >
+    Internal Events
+  </button>
+
+  <button
+    type="button"
+    @click="filters.cleaning = !filters.cleaning"
+    class="px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
+    :class="filters.cleaning ? 'bg-emerald-600 text-white' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 opacity-50'"
+  >
+    Cleaning Weeks
+  </button>
+
+  <button
+    type="button"
+    @click="filters.external = !filters.external"
+    class="px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
+    :class="filters.external ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 opacity-50'"
+  >
+    External Events
+  </button>
+</div>
   <div class="min-h-screen p-6 bg-background dark:bg-background-dark">
     <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
       <div>
@@ -13,8 +43,9 @@
         <h2 class="text-2xl font-bold mb-4">Calendar</h2>
         <div class="w-full max-w-full">
                 <CalendarComponent
-                  :marked-dates="allEventDates"
-                  :cleaning-dates="cleaningCalendarDates"
+                  :marked-dates="filteredEventDates"
+                  :cleaning-dates="filteredCleaningWeeks"
+                  :external-dates="filteredExternalDates"
                   @day-click="onCalendarDayClick"
                   class="w-full h-full"
                 />
@@ -37,7 +68,13 @@
               </div>
               <div class="text-sm opacity-70 text-right">
                 <div>{{ formatDateRange(event.startDate, event.endDate) }}</div>
-                <div class="uppercase text-xs mt-1">{{ event.type }} <span v-if="!event.active" class="text-red-500">(inactive)</span></div>
+                <div class="uppercase text-xs mt-1">
+                  <!-- Highlight external events in blue -->
+                  <span :class="event.isExternal ? 'text-blue-600 dark:text-blue-400 font-semibold' : ''">
+                    {{ event.type }}
+                  </span>
+                  <span v-if="!event.isExternal && !event.active" class="text-red-500"> (inactive)</span>
+                </div>
               </div>
             </div>
           </li>
@@ -49,7 +86,7 @@
     <ModalComponent v-model="showEventDetailsModal">
       <div class="space-y-4">
         <h3 class="text-xl font-semibold">{{ eventModalTitle }}</h3>
-        <template v-if="selectedEvents.length || selectedCleaningWeeks.length">
+        <template v-if="selectedEvents.length || selectedCleaningWeeks.length || selectedExternalEvents.length">
           <div v-for="event in selectedEvents" :key="event.id" class="space-y-2 rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-surface dark:bg-surface-dark">
             <div class="flex items-start justify-between gap-4">
               <div>
@@ -80,6 +117,24 @@
               {{ week.completedTasks }} of {{ week.totalTasks }} tasks completed.
             </p>
           </div>
+          <div
+            v-for="event in selectedExternalEvents"
+            :key="event.eventID"
+            class="space-y-2 rounded-lg border border-blue-400 p-4 bg-blue-50 text-blue-950 dark:bg-blue-900/30 dark:text-blue-100 dark:border-blue-700"
+          >
+            <div class="flex items-start justify-between gap-4">
+            <div>
+              <p class="text-lg font-semibold">{{ event.title }}</p>
+              <p class="text-sm opacity-80 uppercase">External Event</p>
+            </div>
+            <div class="text-sm opacity-80 text-right">
+              <div>{{ formatDateRange(event.startDate, event.endDate) }}</div>
+            </div>
+          </div>
+          <a :href="event.externalurl" target="_blank" rel="noopener noreferrer" class="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline">
+            View Event Page &rarr;
+          </a>
+        </div>
         </template>
         <p v-else class="text-sm opacity-70">No events or cleaning weeks found for this day.</p>
       </div>
@@ -146,6 +201,9 @@ const socket = getSocket()
 const route = useRoute()
 const userID = Number(sessionStorage.getItem('userID') || 0)
 
+//Variable deiding how many upcoming events to show
+const numberOfUpcomingEvents = 10;
+
 type CleaningWeek = {
   weekID: number
   dormID: number
@@ -157,6 +215,35 @@ type CleaningWeek = {
   completedTasks: number
   pendingTasks: number
 }
+
+type ExternalEvents = {
+  eventID: number,
+  externalurl: string,
+  title: string,
+  startDate: string,
+  endDate: string
+}
+
+type DisplayEvent = {
+  id: string | number
+  title: string
+  description?: string
+  startDate: string
+  endDate?: string
+  type: string
+  active?: boolean
+  externalUrl?: string
+  isExternal: boolean
+}
+
+
+const filters = ref({
+  events : true,
+  cleaning : true,
+  external : true
+})
+
+const externalEvents = ref<ExternalEvents[]>([]);
 
 const defaultEvents: CalendarEvent[] = [
   {
@@ -186,6 +273,7 @@ const upcomingEvents = ref<CalendarEvent[]>(
       if (raw) {
         const parsed = JSON.parse(raw) as CalendarEvent[]
         if (Array.isArray(parsed)) return parsed
+        console.log(parsed)
       }
     } catch (e) {
       console.warn('Failed to parse cached events:', e)
@@ -194,6 +282,19 @@ const upcomingEvents = ref<CalendarEvent[]>(
   })()
 )
 const cleaningWeeks = ref<CleaningWeek[]>([])
+
+const selectedExternalEvents = ref<ExternalEvents[]>([]);
+
+const externalEventDates = computed(() =>{
+  const dates = new Set<string>()
+  externalEvents.value.forEach((event) => {
+    const d = parseEventDate(event.startDate)
+    if(d) {
+      dates.add(toDateKey(d))
+    }
+  })
+  return Array.from(dates)
+})
 
 const parseEventDate = (dateString?: string) => {
   if (!dateString) return undefined
@@ -237,16 +338,65 @@ const cleaningCalendarDates = computed(() => {
   return Array.from(dates)
 })
 
-const filteredEvents = computed(() => {
-  return upcomingEvents.value
-    .filter(eventHasNotEnded)
-    .slice()
-    .sort((a, b) => {
-      const aStart = parseEventDate(a.startDate)
-      const bStart = parseEventDate(b.startDate)
-      if (!aStart || !bStart) return 0
-      return aStart.getTime() - bStart.getTime()
+const filteredEvents = computed<DisplayEvent[]>(() => {
+  const list: DisplayEvent[] = []
+  const now = Date.now()
+  const seenEventKeys = new Set<string>()
+
+  // 1. Process Internal Events (if filter is active)
+  if (filters.value.events) {
+    upcomingEvents.value.forEach((event, index) => {
+      if (eventHasNotEnded(event)) {
+        const uniqueKey = `${event.title}-${event.startDate}`
+        if (!seenEventKeys.has(uniqueKey)) {
+          seenEventKeys.add(uniqueKey)
+          list.push({
+            id: `internal-${event.id !== undefined ? event.id : index}`,
+            title: event.title,
+            description: event.description,
+            startDate: event.startDate,
+            endDate: event.endDate,
+            type: event.type,
+            active: event.active,
+            isExternal: false
+          })
+        }
+      }
     })
+  }
+
+  // 2. Process External Events (if filter is active)
+  if (filters.value.external) {
+    externalEvents.value.forEach((event, index) => {
+      const end = parseEventDate(event.endDate || event.startDate)
+      if (end && end.getTime() >= now) {
+        const uniqueKey = `${event.title}-${event.startDate}`
+        if (!seenEventKeys.has(uniqueKey)) {
+          seenEventKeys.add(uniqueKey)
+          list.push({
+            id: `external-${event.eventID !== undefined ? event.eventID : index}`,
+            title: event.title,
+            description: 'External Event',
+            startDate: event.startDate,
+            endDate: event.endDate,
+            type: 'EXTERNAL',
+            active: true,
+            externalUrl: event.externalurl,
+            isExternal: true
+          })
+        }
+      }
+    })
+  }
+
+  // 3. Sort chronologically by start date first, THEN slice to 10
+  return list
+    .sort((a, b) => {
+      const aStart = parseEventDate(a.startDate)?.getTime() || 0
+      const bStart = parseEventDate(b.startDate)?.getTime() || 0
+      return aStart - bStart
+    })
+    .slice(0, numberOfUpcomingEvents)
 })
 
 const showEventDetailsModal = ref(false)
@@ -265,22 +415,45 @@ const eventModalTitle = computed(() => {
 })
 
 const openEventDetails = (events: CalendarEvent[], dayKey = '') => {
-  selectedEvents.value = events
-  selectedCleaningWeeks.value = dayKey
+  selectedEvents.value = filters.value.events ? events : []
+  selectedCleaningWeeks.value = (dayKey && filters.value.cleaning)
     ? ownCleaningWeeks.value.filter((week) => dateIsInRange(dayKey, week.startDate, week.endDate))
+    : []
+  selectedExternalEvents.value = (dayKey && filters.value.external)
+    ? externalEvents.value.filter((event) => {
+        const d = parseEventDate(event.startDate)
+        return d && toDateKey(d) === dayKey
+      })
     : []
   selectedEventDay.value = dayKey
   showEventDetailsModal.value = true
 }
 
 const onCalendarDayClick = (dateKey: string) => {
-  const matchingEvents = allEvents.value.filter((event) => event.startDate.startsWith(dateKey))
+  const matchingEvents = allEvents.value.filter((event) => {
+    const d = parseEventDate(event.startDate)
+    return d && toDateKey(d) === dateKey
+  })
   openEventDetails(matchingEvents, dateKey)
 }
 
-const openEventDetail = (event: CalendarEvent) => {
+const openEventDetail = (event: CalendarEvent | DisplayEvent) => {
+  // If it's a merged DisplayEvent and it's external, open the link
+  if ('isExternal' in event && event.isExternal && event.externalUrl) {
+    window.open(event.externalUrl, '_blank', 'noopener,noreferrer')
+    return
+  }
+
+  // If it's a merged internal event from the list, find the original CalendarEvent
+  let targetEvent = event as CalendarEvent
+  if ('isExternal' in event && !event.isExternal) {
+    const found = upcomingEvents.value.find((e) => `internal-${e.id}` === event.id)
+    if (!found) return
+    targetEvent = found
+  }
+
   selectedCleaningWeeks.value = []
-  openEventDetails([event])
+  openEventDetails([targetEvent])
 }
 
 const getEventIdentifier = (event: CalendarEvent) => {
@@ -300,6 +473,7 @@ const openRequestedEvent = () => {
 const bindSocket = () => {
   socket.off('eventsData')
   socket.off('cleaningWeeks')
+  socket.off('externalEvents')
 
   socket.on('eventsData', (events: CalendarEvent[]) => {
     upcomingEvents.value = events
@@ -310,11 +484,16 @@ const bindSocket = () => {
   socket.on('cleaningWeeks', (weeks: CleaningWeek[]) => {
     cleaningWeeks.value = weeks
   })
+
+  socket.on('externalEvents', (eEvents: ExternalEvents[]) => {
+    externalEvents.value = eEvents
+  })
 }
 
 const fetchCalendarData = () => {
   socket.emit('getEvents', { active: true })
   socket.emit('getCleaningWeeks')
+  socket.emit('getExternalEvents')
 }
 
 const newEvent = ref<Partial<CalendarEvent> & { startDateLocal?: string; endDateLocal?: string }>({
@@ -443,5 +622,25 @@ onMounted(() => {
 onUnmounted(() => {
   socket.off('eventsData')
   socket.off('cleaningWeeks')
+  socket.off('externalEvents')
 })
+
+
+const filteredEventDates = computed(() => {
+  if (!filters.value.events) return []
+  return allEventDates.value
+});
+
+const filteredCleaningWeeks = computed(() => {
+  if (!filters.value.cleaning) return []
+  return cleaningCalendarDates.value
+});
+
+const filteredExternalDates = computed (() => {
+  if (!filters.value.external) return []
+  return externalEventDates.value
+})
+
+
+
 </script>

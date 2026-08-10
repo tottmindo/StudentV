@@ -126,6 +126,14 @@ interface DashboardAlert {
   actionLabel: string;
 }
 
+interface ExternalEvents {
+  eventID: number,
+  externalURL: string,
+  title: string,
+  startDate: string,
+  endDate: string
+}
+
 class Data {
 
   getMenuData(lang: string = "en"): any {
@@ -1295,6 +1303,17 @@ async hasAccessToChat(chatID: number, userID: number) {
     console.error("Error checking access to chat", err);
     throw new Error("Error checking access to chat");
   }
+}
+
+async getExternalEvents(): Promise<ExternalEvents[]>{
+  try {
+    const query = "SELECT * FROM externalevents WHERE endDate >= NOW()"
+    const [rows] = await pool.query(query);
+      return rows as ExternalEvents[];
+    }catch (err){
+      console.error(`Error fetching external events`);
+      throw new Error("Error fetiching chat rooms");
+    }
 }
 }
 
