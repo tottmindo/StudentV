@@ -101,6 +101,13 @@ real email and are used to prevent accidental delivery.
 
 The frontend also has a local `frontend/.env` for Vite-specific values.
 
+The PostgreSQL development seed includes houses 12 and 14, floors 1–5, and
+eight rooms per floor. Room numbers use `house-floor-room` notation: `1251`
+is house 12, floor 5, room 1. It seeds an occupied resident in rooms 1–7 of
+each floor (leaving room 8 vacant), plus events, sensors, and chats on every
+floor. Generated residents use `resident-<room-number>@example.test`, username
+`resident<room-number>`, and password `test123`.
+
 ## Notes
 
 - The repository uses one root `package-lock.json` for the workspace.

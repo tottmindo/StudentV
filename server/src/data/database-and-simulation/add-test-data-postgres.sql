@@ -3,21 +3,46 @@
 BEGIN;
 TRUNCATE TABLE dorms RESTART IDENTITY CASCADE;
 
+-- A room number is house + floor + room, for example 1251 means
+-- house 12, floor 5, room 1. Each house/floor has eight rooms.
 INSERT INTO dorms (floor, address) VALUES
-  (5, '123 University Road'), (4, '456 Campus Avenue'), (6, '789 Student Street');
-INSERT INTO room (dormid) VALUES (1), (1), (1), (2), (2), (2), (3), (3), (3);
+  (1, 'House 12'), (2, 'House 12'), (3, 'House 12'), (4, 'House 12'), (5, 'House 12'),
+  (1, 'House 14'), (2, 'House 14'), (3, 'House 14'), (4, 'House 14'), (5, 'House 14');
+
+INSERT INTO room (roomid, dormid)
+SELECT
+  (CASE WHEN dormid <= 5 THEN 12 ELSE 14 END) * 100 + floor * 10 + room_number,
+  dormid
+FROM dorms
+CROSS JOIN generate_series(1, 8) AS rooms(room_number);
+
+-- Explicit room numbers do not advance PostgreSQL identity sequences.
+SELECT setval(pg_get_serial_sequence('room', 'roomid'), (SELECT MAX(roomid) FROM room));
 
 -- All accounts use password: test123
 INSERT INTO users (email, username, passwordhash, role, roomid, dormid, active, mustchangepassword, credentialversion) VALUES
-  ('admin1@example.test', 'admin1', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'ADMIN', 1, 1, true, false, 0),
-  ('clara@example.test', 'clara', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 2, 1, true, false, 0),
-  ('john@example.test', 'john', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 3, 1, true, false, 0),
-  ('admin2@example.test', 'admin2', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'ADMIN', 4, 2, true, false, 0),
-  ('alice@example.test', 'alice', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 5, 2, true, false, 0),
-  ('bob@example.test', 'bob', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 6, 2, true, false, 0),
-  ('admin3@example.test', 'admin3', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'ADMIN', 7, 3, true, false, 0),
-  ('emma@example.test', 'emma', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 8, 3, true, false, 0),
-  ('sarah@example.test', 'sarah', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 9, 3, true, true, 0);
+  ('admin1@example.test', 'admin1', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'ADMIN', 1211, 1, true, false, 0),
+  ('clara@example.test', 'clara', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 1212, 1, true, false, 0),
+  ('john@example.test', 'john', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 1213, 1, true, false, 0),
+  ('admin2@example.test', 'admin2', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'ADMIN', 1221, 2, true, false, 0),
+  ('alice@example.test', 'alice', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 1222, 2, true, false, 0),
+  ('bob@example.test', 'bob', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 1223, 2, true, false, 0),
+  ('admin3@example.test', 'admin3', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'ADMIN', 1231, 3, true, false, 0),
+  ('emma@example.test', 'emma', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 1232, 3, true, false, 0),
+  ('sarah@example.test', 'sarah', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 1233, 3, true, true, 0);
+
+-- Populate rooms 1–7 on every floor. Room 8 stays empty on each floor so
+-- resident provisioning and vacant-room scenarios can still be tested.
+INSERT INTO users
+  (email, username, passwordhash, role, roomid, dormid, active, mustchangepassword, credentialversion)
+SELECT
+  'resident-' || roomid || '@example.test',
+  'resident' || roomid,
+  '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy',
+  'STUDENT', roomid, dormid, true, false, 0
+FROM room
+WHERE roomid % 10 <> 8
+  AND NOT EXISTS (SELECT 1 FROM users WHERE users.roomid = room.roomid AND users.dormid = room.dormid);
 
 INSERT INTO survey (question, active, expiresat, multiplechoice) VALUES
   ('How satisfied are you with the dorm facilities?', true, now() + interval '30 days', false),
@@ -30,6 +55,18 @@ INSERT INTO events (title, description, startdate, enddate, active, type, dormid
   ('Dorm Council Meeting', 'Monthly resident council meeting.', now() + interval '3 days', now() + interval '3 days 2 hours', true, 'MEETING', 2);
 INSERT INTO activatedevents (eventid, userid) VALUES (1, 2), (2, 2), (3, 4);
 
+-- Add an event for each remaining floor so calendars can be tested across
+-- both houses and all five floors.
+INSERT INTO events (title, description, startdate, enddate, active, type, dormid)
+SELECT
+  address || ' floor ' || floor || ' social night',
+  'Seeded social event for ' || address || ', floor ' || floor || '.',
+  now() + dormid * interval '1 day',
+  now() + (dormid + 1) * interval '1 day',
+  true, 'SOCIAL', dormid
+FROM dorms
+WHERE dormid > 3;
+
 INSERT INTO sensor (sensorcode, type, location, dormid) VALUES
   ('wtr-d1-basement', 'Water Meter', 'Basement main inlet', 1),
   ('wtr-d2-basement', 'Water Meter', 'Basement main inlet', 2),
@@ -39,8 +76,27 @@ INSERT INTO sensor_data (sensorcode, recordedat, totalvolume, tempmin, tempmax, 
   ('wtr-d2-basement', now(), 980, 20.8, 24.1, 0, 90, 19.8, 48, false),
   ('wtr-d3-basement', now(), 1100, 21.0, 25.0, 0, 88, 20.5, 42, false);
 
+INSERT INTO sensor (sensorcode, type, location, dormid)
+SELECT 'wtr-d' || dormid || '-basement', 'Water Meter', 'Basement main inlet', dormid
+FROM dorms
+WHERE dormid > 3;
+INSERT INTO sensor_data (sensorcode, recordedat, totalvolume, tempmin, tempmax, errorcode, battery, ambienttemp, humidity, leakstatus)
+SELECT 'wtr-d' || dormid || '-basement', now(), 1000 + dormid * 25, 20.5, 24.0, 0, 90, 20.0, 45, false
+FROM dorms
+WHERE dormid > 3;
+
 INSERT INTO chat (name, dormid) VALUES ('Dorm 1 General', 1), ('Dorm 2 General', 2), ('Dorm 3 General', 3);
+INSERT INTO chat (name, dormid)
+SELECT address || ' floor ' || floor || ' General', dormid
+FROM dorms
+WHERE dormid > 3;
 INSERT INTO chatmembers (chatid, userid) VALUES (1, 1), (1, 2), (1, 3), (2, 4), (2, 5), (2, 6), (3, 7), (3, 8), (3, 9);
+INSERT INTO chatmembers (chatid, userid)
+SELECT chat.chatid, MIN(users.userid)
+FROM chat
+JOIN users ON users.dormid = chat.dormid
+WHERE chat.dormid > 3
+GROUP BY chat.chatid;
 INSERT INTO chathistory (msg, chatid, userid) VALUES
   ('Welcome everyone!', 1, 1), ('Thanks for adding me.', 1, 2), ('Hello from Dorm 2.', 2, 4),
   ('Anyone want to get coffee?', 1, 3), ('Sure, lets meet at the cafe', 1, 2), ('Count me in!', 3, 8);
@@ -150,4 +206,3 @@ WHERE cw1.dormid = 3
 LIMIT 1;
 
 COMMIT;
-

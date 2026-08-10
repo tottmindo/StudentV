@@ -622,8 +622,8 @@ class Data {
         await connection.query(
           `UPDATE cleaningWeeks
            SET assignedUserID = CASE
-             WHEN weekID = ? THEN ?
-             WHEN weekID = ? THEN ?
+             WHEN weekID = ? THEN ?::integer
+             WHEN weekID = ? THEN ?::integer
            END
            WHERE weekID IN (?, ?)`,
           [Number(request.sourceWeekID), Number(request.targetUserID), Number(request.targetWeekID), Number(request.requesterUserID), Number(request.sourceWeekID), Number(request.targetWeekID)]
