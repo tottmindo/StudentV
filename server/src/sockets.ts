@@ -242,6 +242,44 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
     }
   );
 
+  socket.on("getCleaningWeekSwapRequests", async (payload: { dormID: number }, callback?: Function) => {
+    try {
+      const requests = await data.getCleaningWeekSwapRequests(userID, dormID);
+      socket.emit("cleaningWeekSwapRequests", requests);
+      if (typeof callback === "function") callback({ success: true, requests });
+    } catch (error: any) {
+      console.error("Error fetching swap requests:", error);
+      if (typeof callback === "function") callback({ error: error.message });
+      socket.emit("error", { message: "Failed to fetch cleaning swap requests." });
+    }
+  });
+
+  socket.on("requestCleaningWeekSwap", async (payload: { sourceWeekID: number; targetWeekID: number }, callback?: Function) => {
+    try {
+      await data.createCleaningWeekSwapRequest(userID, payload.sourceWeekID, payload.targetWeekID);
+      if (typeof callback === "function") callback({ success: true });
+      getIO().to(`dorm-${dormID}`).emit('swapRequestUpdated');
+    } catch (error: any) {
+      console.error("Error creating swap request:", error);
+      if (typeof callback === "function") callback({ error: error.message });
+      socket.emit("error", { message: "Failed to create cleaning week swap request." });
+    }
+  });
+
+  socket.on("respondCleaningWeekSwapRequest", async (payload: { requestID: number; accepted: boolean }, callback?: Function) => {
+    try {
+      await data.respondCleaningWeekSwapRequest(userID, dormID, payload.requestID, payload.accepted);
+      if (typeof callback === "function") callback({ success: true });
+
+      // Broadcast update to all users in the dorm so they can refresh swap requests
+      getIO().to(`dorm-${dormID}`).emit('swapRequestUpdated', { requestID: payload.requestID, accepted: payload.accepted });
+    } catch (error: any) {
+      console.error("Error responding to swap request:", error);
+      if (typeof callback === "function") callback({ error: error.message });
+      socket.emit("error", { message: "Failed to process cleaning week swap response." });
+    }
+  });
+
   socket.on("getDashboard", async () => {
     try {
       const dashboard = await data.getDashboard(userID, dormID);

@@ -1,6 +1,17 @@
 <template>
   <NavComponent :socket="socket" :menu="navMenuType" class="fixed top-4 right-4 z-50" />
 
+  <!-- Notification -->
+  <div
+    v-if="notification"
+    :class="[
+      'fixed top-4 left-4 z-50 px-4 py-3 rounded-lg text-white shadow-lg transition-all',
+      notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+    ]"
+  >
+    {{ notification.message }}
+  </div>
+
   <div class="min-h-screen p-6 bg-background dark:bg-background-dark">
     <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
       <div>
@@ -44,8 +55,8 @@
                 : 'border-gray-200 dark:border-gray-700'
             ]"
           >
-            <div class="flex items-center justify-between">
-              <div>
+            <div class="flex items-center justify-between gap-4">
+              <div class="flex-1">
                 <p class="font-semibold">
                   Week {{ getWeekLabel(week.startDate) }}
                 </p>
@@ -56,10 +67,26 @@
                 </p>
               </div>
 
-              <div class="text-sm opacity-80 text-right">
-                <p>{{ week.assignedUsername }}</p>
-                <p>{{ week.completedTasks }} / {{ week.totalTasks }} done</p>
-              </div>
+              <div class="text-right">
+                <div class="text-sm opacity-80">
+                  <p>{{ week.assignedUsername }}</p>
+                  <p>{{ week.completedTasks }} / {{ week.totalTasks }} done</p>
+                </div>
+                
+                <!-- Swap button for future weeks assigned to OTHER users -->
+                <button
+                  v-if="canRequestSwapWith(week)"
+                  @click.stop="selectedSwapTargetWeek = week; showSwapModal = true"
+                  class="mt-2 text-xs px-2 py-1 rounded bg-blue-500 text-white hover:bg-blue-600 transition"
+                >
+                  Swap
+                </button>
+                <div
+                  v-else-if="hasPendingSwapForWeek(week.weekID)"
+                  class="mt-2 text-xs px-2 py-1 rounded bg-gray-400 text-white opacity-60 cursor-not-allowed"
+                >
+                  Pending
+                </div>              </div>
             </div>
           </button>
         </div>
@@ -70,6 +97,65 @@
         <p v-if="scheduleError" class="mt-4 text-sm text-red-500">
           {{ scheduleError }}
         </p>
+
+        <!-- Pending Incoming Swap Requests -->
+        <div v-if="getPendingIncomingSwapRequests().length" class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <h3 class="text-lg font-semibold mb-3">Pending swap requests</h3>
+          <div class="space-y-3">
+            <div
+              v-for="request in getPendingIncomingSwapRequests()"
+              :key="request.requestID"
+              class="rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-background-light dark:bg-background-dark"
+            >
+              <p class="text-sm mb-2">
+                <strong>{{ request.requesterUsername }}</strong> wants to swap their
+                <strong>Week {{ getWeekLabel(weeks.find(w => w.weekID === request.sourceWeekID)?.startDate || '') }}</strong>
+                for your
+                <strong>Week {{ getWeekLabel(weeks.find(w => w.weekID === request.targetWeekID)?.startDate || '') }}</strong>
+              </p>
+              <div class="flex gap-2">
+                <button
+                  @click="respondToSwap(request, true)"
+                  class="flex-1 px-3 py-2 rounded-lg bg-green-500 text-white text-sm hover:bg-green-600 transition"
+                >
+                  Accept
+                </button>
+                <button
+                  @click="respondToSwap(request, false)"
+                  class="flex-1 px-3 py-2 rounded-lg bg-red-500 text-white text-sm hover:bg-red-600 transition"
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pending Outgoing Swap Requests -->
+        <div v-if="getPendingOutgoingSwapRequests().length" class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <h3 class="text-lg font-semibold mb-3">Your pending swap requests</h3>
+          <div class="space-y-3">
+            <div
+              v-for="request in getPendingOutgoingSwapRequests()"
+              :key="request.requestID"
+              class="rounded-lg border border-yellow-300 dark:border-yellow-700 p-4 bg-yellow-50 dark:bg-yellow-900/20"
+            >
+              <p class="text-sm mb-2">
+                Waiting for <strong>{{ request.targetUsername }}</strong> to respond to your swap request
+              </p>
+              <p class="text-xs opacity-70 mb-2">
+                You offered: Week {{ getWeekLabel(weeks.find(w => w.weekID === request.sourceWeekID)?.startDate || '') }}
+                <br />
+                Requesting: Week {{ getWeekLabel(weeks.find(w => w.weekID === request.targetWeekID)?.startDate || '') }}
+              </p>
+              <div class="flex items-center gap-2 text-xs">
+                <span class="inline-block h-2 w-2 rounded-full bg-yellow-500 animate-pulse"></span>
+                <span class="opacity-70">Pending response</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </section>
 
       <!-- =====================================================
@@ -135,7 +221,7 @@
                 </label>
 
                 <button
-                  v-if="isAssignedToCurrentUser(task)"
+                  v-if="isUserCreatedTask(task) && isAssignedToCurrentUser(task)"
                   @click="deleteTask(task)"
                   class="text-sm text-red-500 hover:underline"
                 >
@@ -148,9 +234,14 @@
                 {{ task.description }}
               </p>
 
-              <p v-if="task.isImportant" class="text-xs text-red-500 mt-1">
-                Important
-              </p>
+              <div class="flex gap-2 mt-1">
+                <p v-if="task.isImportant" class="text-xs text-red-500">
+                  Important
+                </p>
+                <p v-if="isUserCreatedTask(task)" class="text-xs text-blue-500">
+                  Custom task
+                </p>
+              </div>
 
             </li>
 
@@ -205,8 +296,78 @@
       </section>
 
     </div>
+
+    <!-- =====================================================
+         SWAP MODAL
+    ====================================================== -->
+    <div
+      v-if="showSwapModal && selectedSwapTargetWeek"
+      class="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50"
+      @click.self="showSwapModal = false"
+    >
+      <div class="bg-surface dark:bg-surface-dark rounded-lg p-6 max-w-md w-full mx-4 border border-gray-200 dark:border-gray-700">
+        <h3 class="text-xl font-bold mb-4">Request cleaning week swap</h3>
+
+        <p class="text-sm mb-4">
+          You're about to request a swap between:
+        </p>
+
+        <div class="space-y-3 mb-4">
+          <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-3 bg-background-light dark:bg-background-dark">
+            <p class="text-xs opacity-70">Your week (offering)</p>
+            <p class="font-semibold">
+              Week {{ selectedWeek ? getWeekLabel(selectedWeek.startDate) : '' }}
+            </p>
+            <p class="text-xs opacity-70">
+              {{ selectedWeek ? new Date(selectedWeek.startDate).toLocaleDateString() : '' }}
+              —
+              {{ selectedWeek ? new Date(selectedWeek.endDate).toLocaleDateString() : '' }}
+            </p>
+          </div>
+
+          <div class="text-center">
+            <p class="text-2xl">↔</p>
+          </div>
+
+          <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-3 bg-background-light dark:bg-background-dark">
+            <p class="text-xs opacity-70">Their week (requesting)</p>
+            <p class="font-semibold">
+              Week {{ selectedSwapTargetWeek ? getWeekLabel(selectedSwapTargetWeek.startDate) : '' }}
+            </p>
+            <p class="text-xs opacity-70">
+              {{ selectedSwapTargetWeek ? new Date(selectedSwapTargetWeek.startDate).toLocaleDateString() : '' }}
+              —
+              {{ selectedSwapTargetWeek ? new Date(selectedSwapTargetWeek.endDate).toLocaleDateString() : '' }}
+            </p>
+            <p class="text-sm font-semibold mt-2">
+              {{ selectedSwapTargetWeek?.assignedUsername }}
+            </p>
+          </div>
+        </div>
+
+        <p v-if="swapError" class="text-sm text-red-500 mb-4">
+          {{ swapError }}
+        </p>
+
+        <div class="flex gap-2">
+          <button
+            @click="showSwapModal = false"
+            class="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+          >
+            Cancel
+          </button>
+          <button
+            @click="requestSwap(selectedSwapTargetWeek)"
+            class="flex-1 px-4 py-2 rounded-lg bg-accent text-white text-sm hover:opacity-90 transition"
+          >
+            Request swap
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
+
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import NavComponent from '@/components/NavComponent.vue'
@@ -230,6 +391,20 @@ type CleaningWeek = {
   pendingTasks: number
 }
 
+type CleaningWeekSwapRequest = {
+  requestID: number
+  dormID: number
+  requesterUserID: number
+  requesterUsername?: string
+  targetUserID: number
+  targetUsername?: string
+  sourceWeekID: number
+  targetWeekID: number
+  status: 'pending' | 'accepted' | 'rejected'
+  createdAt: string
+  updatedAt: string
+}
+
 type CleaningWeekTask = {
   weekTaskID: number
   weekID: number
@@ -239,6 +414,7 @@ type CleaningWeekTask = {
   assignedUsername?: string | null
   isCompleted: boolean
   isImportant: boolean
+  createdByUserID?: number | null
 }
 
 const navMenuType = ref('home')
@@ -246,6 +422,7 @@ const navMenuType = ref('home')
 const weeks = ref<CleaningWeek[]>([])
 const selectedWeek = ref<CleaningWeek | null>(null)
 const tasks = ref<CleaningWeekTask[]>([])
+const swapRequests = ref<CleaningWeekSwapRequest[]>([])
 
 const scheduleError = ref('')
 const tasksError = ref('')
@@ -253,6 +430,10 @@ const newTaskTitle = ref('')
 const newTaskDescription = ref('')
 const isSavingTask = ref(false)
 const showHistoricalWeeks = ref(false)
+const showSwapModal = ref(false)
+const selectedSwapTargetWeek = ref<CleaningWeek | null>(null)
+const swapError = ref('')
+const notification = ref<{ message: string; type: 'success' | 'error' } | null>(null)
 
 const visibleWeeks = computed(() => {
   const sorted = sortWeeks(weeks.value)
@@ -268,6 +449,9 @@ const bindSocket = () => {
   socket.off('cleaningWeekTasks')
   socket.off('cleaningTaskUpdated')
   socket.off('cleaningTaskDeleted')
+  socket.off('cleaningWeekSwapRequests')
+  socket.off('cleaningWeekSwapRequestCreated')
+  socket.off('cleaningWeekSwapRequestResponded')
   socket.off('error')
 
   socket.on('cleaningWeeks', (data: CleaningWeek[]) => {
@@ -301,6 +485,38 @@ const bindSocket = () => {
     fetchWeeks()
   })
 
+  socket.on('cleaningWeekSwapRequests', (data: CleaningWeekSwapRequest[]) => {
+    swapRequests.value = data
+  })
+
+  socket.on('cleaningWeekSwapRequestCreated', () => {
+    swapError.value = ''
+    showSwapModal.value = false
+    selectedSwapTargetWeek.value = null
+    fetchSwapRequests()
+  })
+
+  socket.on('cleaningWeekSwapRequestResponded', () => {
+    swapError.value = ''
+    fetchSwapRequests()
+    fetchWeeks()
+  })
+
+  socket.on('cleaningWeekSwapAccepted', (data: { requesterUsername: string; sourceWeekLabel: string; targetWeekLabel: string }) => {
+    notification.value = {
+      message: `Your swap request was accepted! ${data.requesterUsername} swapped with you.`,
+      type: 'success'
+    }
+    setTimeout(() => {
+      notification.value = null
+    }, 5000)
+  })
+
+  socket.on('swapRequestUpdated', () => {
+    fetchSwapRequests()
+    fetchWeeks()
+  })
+
   socket.on('error', (error: { message?: string }) => {
     const message = error?.message || 'Something went wrong.'
     scheduleError.value = message
@@ -327,6 +543,11 @@ const fetchTasks = (weekID: number) => {
   if (!userID) return
   tasksError.value = ''
   socket.emit('getCleaningWeekTasks', { weekID })
+}
+
+const fetchSwapRequests = () => {
+  if (!dormID) return
+  socket.emit('getCleaningWeekSwapRequests', { dormID })
 }
 
 /* -------------------------
@@ -380,13 +601,55 @@ const addTask = () => {
 }
 
 const deleteTask = (task: CleaningWeekTask) => {
-  if (!isAssignedToCurrentUser(task)) return
+  // Only allow deletion of user-created tasks (createdByUserID is set and matches current user)
+  if (!isUserCreatedTask(task) || !isAssignedToCurrentUser(task)) {
+    tasksError.value = 'You can only delete custom tasks you created.'
+    return
+  }
 
   socket.emit('deleteCleaningTask', {
     weekTaskID: task.weekTaskID
   }, (response: { success?: boolean; error?: string }) => {
     if (response?.error) {
       tasksError.value = response.error
+    }
+  })
+}
+
+const requestSwap = (targetWeek: CleaningWeek) => {
+  if (!selectedWeek.value || !canRequestSwapWith(targetWeek)) return
+  
+  if (hasOutgoingPendingSwapForWeek(selectedWeek.value.weekID)) {
+    swapError.value = 'You already have a pending swap request for this week.'
+    return
+  }
+  
+  swapError.value = ''
+  socket.emit('requestCleaningWeekSwap', {
+    sourceWeekID: selectedWeek.value.weekID,
+    targetWeekID: targetWeek.weekID
+  }, (response: { success?: boolean; error?: string }) => {
+    if (response?.error) {
+      swapError.value = response.error
+    } else {
+      showSwapModal.value = false
+      selectedSwapTargetWeek.value = null
+      fetchSwapRequests()
+    }
+  })
+}
+
+const respondToSwap = (request: CleaningWeekSwapRequest, accepted: boolean) => {
+  swapError.value = ''
+  socket.emit('respondCleaningWeekSwapRequest', {
+    requestID: request.requestID,
+    accepted
+  }, (response: { success?: boolean; error?: string }) => {
+    if (response?.error) {
+      swapError.value = response.error
+    } else {
+      fetchSwapRequests()
+      fetchWeeks()
     }
   })
 }
@@ -443,6 +706,10 @@ const isAssignedToCurrentUser = (task: CleaningWeekTask) => {
   return task.assignedUserID === userID
 }
 
+const isUserCreatedTask = (task: CleaningWeekTask) => {
+  return task.createdByUserID !== null && task.createdByUserID !== undefined
+}
+
 const isCurrentWeek = (week: CleaningWeek) => {
   const start = startOfLocalDay(new Date(week.startDate)).getTime()
   const end = startOfLocalDay(new Date(week.endDate)).getTime()
@@ -456,6 +723,47 @@ const canUpdateTask = (task: CleaningWeekTask) => {
 
 const isSelectedWeekAssignedToCurrentUser = () => {
   return selectedWeek.value?.assignedUserID === userID
+}
+
+const getPendingIncomingSwapRequests = () => {
+  return swapRequests.value.filter(req => 
+    req.targetUserID === userID && req.status === 'pending'
+  )
+}
+
+const getPendingOutgoingSwapRequests = () => {
+  return swapRequests.value.filter(req => 
+    req.requesterUserID === userID && req.status === 'pending'
+  )
+}
+
+const hasPendingSwapForWeek = (weekID: number) => {
+  return swapRequests.value.some(req =>
+    (req.sourceWeekID === weekID || req.targetWeekID === weekID) &&
+    req.status === 'pending'
+  )
+}
+
+const hasOutgoingPendingSwapForWeek = (weekID: number) => {
+  return swapRequests.value.some(req =>
+    req.sourceWeekID === weekID &&
+    req.requesterUserID === userID &&
+    req.status === 'pending'
+  )
+}
+
+const canRequestSwapWith = (targetWeek: CleaningWeek) => {
+  const sourceWeek = selectedWeek.value
+  return Boolean(
+    sourceWeek &&
+    sourceWeek.assignedUserID === userID &&
+    sourceWeek.weekID !== targetWeek.weekID &&
+    targetWeek.assignedUserID !== userID &&
+    new Date(sourceWeek.startDate) > new Date() &&
+    new Date(targetWeek.startDate) > new Date() &&
+    !hasPendingSwapForWeek(sourceWeek.weekID) &&
+    !hasPendingSwapForWeek(targetWeek.weekID)
+  )
 }
 
 /* -------------------------
@@ -485,6 +793,7 @@ watch(visibleWeeks, (items) => {
 onMounted(() => {
   bindSocket()
   fetchWeeks()
+  fetchSwapRequests()
 })
 
 onUnmounted(() => {
@@ -492,6 +801,11 @@ onUnmounted(() => {
   socket.off('cleaningWeekTasks')
   socket.off('cleaningTaskUpdated')
   socket.off('cleaningTaskDeleted')
+  socket.off('cleaningWeekSwapRequests')
+  socket.off('cleaningWeekSwapRequestCreated')
+  socket.off('cleaningWeekSwapRequestResponded')
+  socket.off('cleaningWeekSwapAccepted')
+  socket.off('swapRequestUpdated')
   socket.off('error')
 })
 </script>

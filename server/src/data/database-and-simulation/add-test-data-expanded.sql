@@ -313,32 +313,50 @@ INSERT INTO chatHistory (messageID, msg, sentAt, chatID, userID) VALUES
 
 -- =====================================================
 -- CLEANING TASK TEMPLATES
--- Includes one inactive template to test historical records
--- and active/inactive filtering.
+-- Includes base tasks (active, createdByUserID NULL),
+-- custom user-created tasks (inactive, createdByUserID set),
+-- and one inactive historical template.
 -- =====================================================
 INSERT INTO cleaningTaskTemplate
-(templateID, taskName, description, active)
+(templateID, taskName, description, active, createdByUserID, isImportant)
 VALUES
+-- Base/mandatory tasks (active, no creator)
 (1,  'Kitchen surfaces',
- 'Wipe counters, clean the sink and stove, and disinfect shared handles.', TRUE),
+ 'Wipe counters, clean the sink and stove, and disinfect shared handles.', TRUE, NULL, TRUE),
 (2,  'Bathroom',
- 'Clean the toilet, shower, sink, mirrors and bathroom floor.', TRUE),
+ 'Clean the toilet, shower, sink, mirrors and bathroom floor.', TRUE, NULL, TRUE),
 (3,  'Vacuum and mop floors',
- 'Vacuum shared areas and mop hard floors.', TRUE),
+ 'Vacuum shared areas and mop hard floors.', TRUE, NULL, FALSE),
 (4,  'Trash and recycling',
- 'Empty bins, replace liners and sort recycling.', TRUE),
+ 'Empty bins, replace liners and sort recycling.', TRUE, NULL, FALSE),
 (5,  'Common room',
- 'Dust furniture, wipe tables and arrange the common room.', TRUE),
+ 'Dust furniture, wipe tables and arrange the common room.', TRUE, NULL, FALSE),
 (6,  'Laundry room',
- 'Wipe machines, clear lint filters and mop the floor.', TRUE),
+ 'Wipe machines, clear lint filters and mop the floor.', TRUE, NULL, FALSE),
 (7,  'Fridge inspection',
- 'Remove expired food and wipe shelves without discarding labelled food.', TRUE),
+ 'Remove expired food and wipe shelves without discarding labelled food.', TRUE, NULL, FALSE),
 (8,  'Windows and glass',
- 'Clean interior windows, glass doors and mirrors.', TRUE),
+ 'Clean interior windows, glass doors and mirrors.', TRUE, NULL, FALSE),
 (9,  'Restock supplies',
- 'Check soap, bin liners, paper towels and cleaning products.', TRUE),
-(10, 'Legacy deep-clean checklist',
- 'Inactive historical template retained to test old assignments.', FALSE);
+ 'Check soap, bin liners, paper towels and cleaning products.', TRUE, NULL, FALSE),
+-- Custom user-created tasks for Dorm 1
+(10, 'Deep clean kitchen cabinets',
+ 'Wipe down all cabinet fronts and inside shelves.', FALSE, 2, TRUE),
+(11, 'Reststock toilet paper and soap dispensers',
+ 'Replenish supplies in bathrooms and common areas.', FALSE, 2, FALSE),
+-- Custom user-created tasks for Dorm 2
+(12, 'Polish door handles',
+ 'Polish all commonly used door handles and knobs.', FALSE, 11, TRUE),
+(13, 'Scrub shower grout',
+ 'Deep clean grout between tiles in shared shower.', FALSE, 13, TRUE),
+-- Custom user-created tasks for Dorm 3
+(14, 'Carpet shampooing',
+ 'Deep clean carpets in living area using equipment.', FALSE, 20, TRUE),
+(15, 'Check and clean light fixtures',
+ 'Dust and clean all light fixtures and ceiling fans.', FALSE, 22, FALSE),
+-- Legacy historical template
+(16, 'Legacy deep-clean checklist',
+ 'Inactive historical template retained to test old assignments.', FALSE, NULL, FALSE);
 
 -- =====================================================
 -- CLEANING WEEKS
@@ -534,6 +552,127 @@ SET ca.completed = TRUE,
 WHERE cw.dormID = 3
   AND cw.startDate = DATE_SUB(@current_week_start, INTERVAL 1 WEEK)
   AND ca.templateID = 2;
+
+-- =====================================================
+-- CUSTOM TASK ASSIGNMENTS
+-- Add custom tasks created by users to multiple weeks in the same dorm.
+-- =====================================================
+
+-- Dorm 1 custom tasks (created by users 2)
+INSERT INTO cleaningAssignments
+(weekID, templateID, completed, completedAt, createdAt, assignedUserID)
+SELECT
+    cw.weekID,
+    ctt.templateID,
+    FALSE AS completed,
+    NULL AS completedAt,
+    DATE_SUB(@seed_now, INTERVAL 1 DAY) AS createdAt,
+    cw.assignedUserID
+FROM cleaningWeeks cw
+JOIN cleaningTaskTemplate ctt ON ctt.templateID IN (10, 11)
+WHERE cw.dormID = 1
+  AND cw.startDate >= DATE_SUB(@current_week_start, INTERVAL 1 WEEK);
+
+-- Dorm 2 custom tasks (created by users 11, 13)
+INSERT INTO cleaningAssignments
+(weekID, templateID, completed, completedAt, createdAt, assignedUserID)
+SELECT
+    cw.weekID,
+    ctt.templateID,
+    FALSE AS completed,
+    NULL AS completedAt,
+    DATE_SUB(@seed_now, INTERVAL 2 DAY) AS createdAt,
+    cw.assignedUserID
+FROM cleaningWeeks cw
+JOIN cleaningTaskTemplate ctt ON ctt.templateID IN (12, 13)
+WHERE cw.dormID = 2
+  AND cw.startDate >= DATE_SUB(@current_week_start, INTERVAL 1 WEEK);
+
+-- Dorm 3 custom tasks (created by users 20, 22)
+INSERT INTO cleaningAssignments
+(weekID, templateID, completed, completedAt, createdAt, assignedUserID)
+SELECT
+    cw.weekID,
+    ctt.templateID,
+    FALSE AS completed,
+    NULL AS completedAt,
+    DATE_SUB(@seed_now, INTERVAL 3 DAY) AS createdAt,
+    cw.assignedUserID
+FROM cleaningWeeks cw
+JOIN cleaningTaskTemplate ctt ON ctt.templateID IN (14, 15)
+WHERE cw.dormID = 3
+  AND cw.startDate >= DATE_SUB(@current_week_start, INTERVAL 1 WEEK);
+
+-- =====================================================
+-- CLEANING WEEK SWAP REQUESTS
+-- Test data for swap request feature with various statuses
+-- =====================================================
+
+-- Dorm 1: Alice (user 2) requests to swap with John (user 3) - current week/next week
+INSERT INTO cleaningWeekSwapRequests
+(dormID, requesterUserID, targetUserID, sourceWeekID, targetWeekID, status, createdAt, updatedAt)
+SELECT
+    1 AS dormID,
+    2 AS requesterUserID,
+    3 AS targetUserID,
+    cw1.weekID AS sourceWeekID,
+    cw2.weekID AS targetWeekID,
+    'pending' AS status,
+    DATE_SUB(@seed_now, INTERVAL 1 DAY) AS createdAt,
+    DATE_SUB(@seed_now, INTERVAL 1 DAY) AS updatedAt
+FROM cleaningWeeks cw1
+JOIN cleaningWeeks cw2
+  ON cw2.dormID = cw1.dormID
+ AND cw2.startDate = DATE_ADD(cw1.startDate, INTERVAL 7 DAY)
+WHERE cw1.dormID = 1
+  AND cw1.assignedUserID = 2
+  AND cw2.assignedUserID = 3
+  AND cw1.startDate = @current_week_start
+LIMIT 1;
+
+-- Dorm 2: Karin (user 13) requests to swap with Irene (user 11) - future weeks (ACCEPTED)
+INSERT INTO cleaningWeekSwapRequests
+(dormID, requesterUserID, targetUserID, sourceWeekID, targetWeekID, status, createdAt, updatedAt)
+SELECT
+    2 AS dormID,
+    13 AS requesterUserID,
+    11 AS targetUserID,
+    cw1.weekID AS sourceWeekID,
+    cw2.weekID AS targetWeekID,
+    'accepted' AS status,
+    DATE_SUB(@seed_now, INTERVAL 3 DAY) AS createdAt,
+    DATE_SUB(@seed_now, INTERVAL 2 DAY) AS updatedAt
+FROM cleaningWeeks cw1
+JOIN cleaningWeeks cw2
+  ON cw2.dormID = cw1.dormID
+ AND cw2.startDate = DATE_ADD(cw1.startDate, INTERVAL 7 DAY)
+WHERE cw1.dormID = 2
+  AND cw1.assignedUserID = 13
+  AND cw2.assignedUserID = 11
+  AND cw1.startDate = DATE_ADD(@current_week_start, INTERVAL 7 DAY)
+LIMIT 1;
+
+-- Dorm 3: Uma (user 24) requests to swap with Quinn (user 20) - next week (REJECTED)
+INSERT INTO cleaningWeekSwapRequests
+(dormID, requesterUserID, targetUserID, sourceWeekID, targetWeekID, status, createdAt, updatedAt)
+SELECT
+    3 AS dormID,
+    24 AS requesterUserID,
+    20 AS targetUserID,
+    cw1.weekID AS sourceWeekID,
+    cw2.weekID AS targetWeekID,
+    'rejected' AS status,
+    DATE_SUB(@seed_now, INTERVAL 2 DAY) AS createdAt,
+    DATE_SUB(@seed_now, INTERVAL 1 DAY) AS updatedAt
+FROM cleaningWeeks cw1
+JOIN cleaningWeeks cw2
+  ON cw2.dormID = cw1.dormID
+ AND cw2.startDate = DATE_ADD(cw1.startDate, INTERVAL 7 DAY)
+WHERE cw1.dormID = 3
+  AND cw1.assignedUserID = 24
+  AND cw2.assignedUserID = 20
+  AND cw1.startDate = DATE_ADD(@current_week_start, INTERVAL 7 DAY)
+LIMIT 1;
 
 DROP TEMPORARY TABLE weekOffsets;
 DROP TEMPORARY TABLE dormStudents;

@@ -16,6 +16,7 @@ const camelCaseColumns: Record<string, string> = {
   createdat: "createdAt", answeredat: "answeredAt", startdate: "startDate", enddate: "endDate",
   multiplechoice: "multipleChoice", assigneduserid: "assignedUserID", completedat: "completedAt",
   basetaskid: "baseTaskID", createdbyuserid: "createdByUserID", assignedusername: "assignedUsername",
+  requesteruserid: "requesterUserID", targetuserid: "targetUserID", sourceweekid: "sourceWeekID", targetweekid: "targetWeekID", requestid: "requestID",
   isimportant: "isImportant", isbasetask: "isBaseTask", iscompleted: "isCompleted",
   isdeleted: "isDeleted", activateduserid: "activatedUserID", taskname: "taskName",
   weektaskid: "weekTaskID", totaltasks: "totalTasks", completedtasks: "completedTasks",

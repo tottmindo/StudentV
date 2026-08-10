@@ -104,6 +104,20 @@ export interface CleaningWeekTask {
   isDeleted: boolean;
 }
 
+export interface CleaningWeekSwapRequest {
+  requestID: number;
+  dormID: number;
+  sourceWeekID: number;
+  targetWeekID: number;
+  requesterUserID: number;
+  requesterUsername: string;
+  targetUserID: number;
+  targetUsername: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface DashboardAlert {
   id: number;
   title: string;
@@ -225,12 +239,12 @@ class Data {
            ca.weekID,
            ca.assignedUserID,
            ca.templateID AS baseTaskID,
-           NULL AS createdByUserID,
+           ctt.createdByUserID,
            ctt.taskName AS title,
            ctt.description,
            assignedUser.username AS assignedUsername,
-           FALSE AS isImportant,
-           TRUE AS isBaseTask,
+           ctt.isImportant AS isImportant,
+           ctt.active AS isBaseTask,
            ca.completed AS isCompleted,
            ca.completedAt,
            FALSE AS isDeleted
@@ -343,9 +357,9 @@ class Data {
         await connection.beginTransaction();
 
         const [templateResult]: any = await connection.query(
-          `INSERT INTO cleaningTaskTemplate (taskName, description, active)
-           VALUES (?, ?, FALSE) RETURNING templateID`,
-          [title, description]
+          `INSERT INTO cleaningTaskTemplate (taskName, description, active, createdByUserID, isImportant)
+           VALUES (?, ?, FALSE, ?, ?) RETURNING templateID`,
+          [title, description, userID, isImportant]
         );
 
         await connection.query(
@@ -382,33 +396,35 @@ class Data {
         await connection.beginTransaction();
 
         const [assignmentRows] = await connection.query(
-          `SELECT templateID
-           FROM cleaningAssignments
-           WHERE assignmentID = ?
-             AND assignedUserID = ?`,
-          [weekTaskID, userID]
+          `SELECT ca.templateID, ctt.createdByUserID, ctt.active
+           FROM cleaningAssignments ca
+           INNER JOIN cleaningTaskTemplate ctt
+             ON ctt.templateID = ca.templateID
+           WHERE ca.assignmentID = ?`,
+          [weekTaskID]
         );
 
         const assignment = (assignmentRows as any[])[0];
+        if (!assignment) {
+          throw new Error("Cleaning task not found.");
+        }
+
+        if (assignment.active !== false || assignment.createdByUserID !== userID) {
+          throw new Error("Only the user who created this custom cleaning task can delete it.");
+        }
 
         await connection.query(
           `DELETE FROM cleaningAssignments
-           WHERE assignmentID = ?
-             AND assignedUserID = ?`,
-          [weekTaskID, userID]
+           WHERE templateID = ?`,
+          [assignment.templateID]
         );
 
-        if (assignment?.templateID) {
-          await connection.query(
-          `DELETE FROM cleaningTaskTemplate ctt
-             WHERE ctt.templateID = ?
-               AND ctt.active = FALSE
-               AND NOT EXISTS (
-                 SELECT 1 FROM cleaningAssignments ca WHERE ca.templateID = ctt.templateID
-               )`,
-            [assignment.templateID]
-          );
-        }
+        await connection.query(
+          `DELETE FROM cleaningTaskTemplate
+           WHERE templateID = ?
+             AND active = FALSE`,
+          [assignment.templateID]
+        );
 
         await connection.commit();
       } catch (err) {
@@ -420,6 +436,240 @@ class Data {
     } catch (err) {
       console.error("❌ Error deleting task:", err);
       throw new Error("Failed to delete task.");
+    }
+  }
+
+  /**
+   * Get dorm swap requests for the current user
+   */
+  async getCleaningWeekSwapRequests(userID: number, dormID: number): Promise<CleaningWeekSwapRequest[]> {
+    try {
+      const [rows] = await pool.query(
+        `SELECT
+           r.requestID,
+           r.dormID,
+           r.sourceWeekID,
+           r.targetWeekID,
+           r.requesterUserID,
+           requester.username AS requesterUsername,
+           r.targetUserID,
+           target.username AS targetUsername,
+           r.status,
+           r.createdAt,
+           r.updatedAt
+         FROM cleaningWeekSwapRequests r
+         INNER JOIN users requester
+           ON requester.userID = r.requesterUserID
+         INNER JOIN users target
+           ON target.userID = r.targetUserID
+         WHERE (r.requesterUserID = ? OR r.targetUserID = ?)
+           AND r.dormID = ?
+         ORDER BY r.createdAt DESC`,
+        [userID, userID, dormID]
+      );
+
+      return rows as CleaningWeekSwapRequest[];
+    } catch (err) {
+      console.error("❌ Error fetching cleaning week swap requests:", err);
+      throw new Error("Failed to fetch cleaning week swap requests.");
+    }
+  }
+
+  async createCleaningWeekSwapRequest(
+    userID: number,
+    sourceWeekID: number,
+    targetWeekID: number
+  ): Promise<void> {
+    try {
+      if (sourceWeekID === targetWeekID) {
+        throw new Error("Cannot request a swap for the same cleaning week.");
+      }
+      const connection = await pool.getConnection();
+      try {
+        await connection.beginTransaction();
+
+        // Lock in a consistent order, so competing requests cannot both use a week.
+        const [weekRows] = await connection.query(
+          `SELECT cw.weekID, cw.dormID, cw.assignedUserID, cw.startDate
+           FROM cleaningWeeks cw
+           WHERE cw.weekID IN (?, ?)
+           ORDER BY cw.weekID
+           FOR UPDATE`,
+          [sourceWeekID, targetWeekID]
+        );
+
+        const weeksByID = new Map((weekRows as any[]).map(week => [Number(week.weekID), week]));
+        const sourceWeek = weeksByID.get(sourceWeekID);
+        const targetWeek = weeksByID.get(targetWeekID);
+        if (!sourceWeek || !targetWeek) {
+          throw new Error("One of the cleaning weeks no longer exists.");
+        }
+        if (Number(sourceWeek.assignedUserID) !== userID) {
+          throw new Error("Only the user assigned to the offered week may request a swap.");
+        }
+        if (Number(sourceWeek.dormID) !== Number(targetWeek.dormID)) {
+          throw new Error("Cleaning weeks must belong to the same dorm.");
+        }
+        if (Number(sourceWeek.assignedUserID) === Number(targetWeek.assignedUserID)) {
+          throw new Error("Both weeks are already assigned to the same user.");
+        }
+        if (new Date(sourceWeek.startDate) <= new Date() || new Date(targetWeek.startDate) <= new Date()) {
+          throw new Error("Only future cleaning weeks can be swapped.");
+        }
+
+        const [pendingRows] = await connection.query(
+          `SELECT requestID
+           FROM cleaningWeekSwapRequests
+           WHERE status = 'pending'
+             AND (sourceWeekID IN (?, ?) OR targetWeekID IN (?, ?))
+           LIMIT 1`,
+          [sourceWeekID, targetWeekID, sourceWeekID, targetWeekID]
+        );
+        if ((pendingRows as any[]).length) {
+          throw new Error("One of these cleaning weeks already has a pending swap request.");
+        }
+
+        await connection.query(
+          `INSERT INTO cleaningWeekSwapRequests
+           (dormID, requesterUserID, targetUserID, sourceWeekID, targetWeekID, status)
+           VALUES (?, ?, ?, ?, ?, 'pending')`,
+          [sourceWeek.dormID, userID, targetWeek.assignedUserID, sourceWeekID, targetWeekID]
+        );
+        await connection.commit();
+      } catch (err) {
+        await connection.rollback();
+        throw err;
+      } finally {
+        connection.release();
+      }
+    } catch (err) {
+      console.error("❌ Error creating cleaning week swap request:", err);
+      throw err instanceof Error ? err : new Error("Failed to create cleaning week swap request.");
+    }
+  }
+
+  async respondCleaningWeekSwapRequest(
+    userID: number,
+    dormID: number,
+    requestID: number,
+    accepted: boolean
+  ): Promise<void> {
+    try {
+      const connection = await pool.getConnection();
+      try {
+        await connection.beginTransaction();
+
+        const [rows] = await connection.query(
+          `SELECT r.*
+          FROM cleaningWeekSwapRequests r
+          WHERE r.requestID = ?
+             AND r.dormID = ?
+             AND r.status = 'pending'
+           FOR UPDATE`,
+          [requestID, dormID]
+        );
+
+        const request = (rows as any[])[0];
+        if (!request) {
+          throw new Error("Swap request not found or already handled.");
+        }
+
+        if (request.targetUserID !== userID) {
+          throw new Error("Only the requested user may respond to this swap.");
+        }
+
+        if (!accepted) {
+          await connection.query(
+            `UPDATE cleaningWeekSwapRequests
+             SET status = 'rejected', updatedAt = NOW()
+             WHERE requestID = ?`,
+            [requestID]
+          );
+          await connection.commit();
+          return;
+        }
+
+        const [sourceRow] = await connection.query(
+          `SELECT cw.assignedUserID, cw.startDate
+           FROM cleaningWeeks cw
+           WHERE cw.weekID = ?
+           FOR UPDATE`,
+          [request.sourceWeekID]
+        );
+
+        const [targetRow] = await connection.query(
+          `SELECT cw.assignedUserID, cw.startDate
+           FROM cleaningWeeks cw
+           WHERE cw.weekID = ?
+           FOR UPDATE`,
+          [request.targetWeekID]
+        );
+
+        const sourceWeek = (sourceRow as any[])[0];
+        const targetWeek = (targetRow as any[])[0];
+
+        if (!sourceWeek || !targetWeek) {
+          throw new Error("One of the cleaning weeks no longer exists.");
+        }
+
+        if (sourceWeek.assignedUserID !== request.requesterUserID || targetWeek.assignedUserID !== request.targetUserID) {
+          throw new Error("One of the cleaning weeks has changed assignments since the request was created.");
+        }
+        if (new Date(sourceWeek.startDate) <= new Date() || new Date(targetWeek.startDate) <= new Date()) {
+          throw new Error("Cleaning weeks can only be swapped before they begin.");
+        }
+
+        await connection.query(
+          `UPDATE cleaningWeeks
+           SET assignedUserID = CASE
+             WHEN weekID = ? THEN ?
+             WHEN weekID = ? THEN ?
+           END
+           WHERE weekID IN (?, ?)`,
+          [Number(request.sourceWeekID), Number(request.targetUserID), Number(request.targetWeekID), Number(request.requesterUserID), Number(request.sourceWeekID), Number(request.targetWeekID)]
+        );
+
+        await connection.query(
+          `UPDATE cleaningAssignments
+           SET assignedUserID = ?
+           WHERE weekID = ?`,
+          [Number(request.targetUserID), Number(request.sourceWeekID)]
+        );
+
+        await connection.query(
+          `UPDATE cleaningAssignments
+           SET assignedUserID = ?
+           WHERE weekID = ?`,
+          [Number(request.requesterUserID), Number(request.targetWeekID)]
+        );
+
+        await connection.query(
+          `UPDATE cleaningWeekSwapRequests
+           SET status = 'accepted', updatedAt = NOW()
+           WHERE requestID = ?`,
+          [requestID]
+        );
+
+        // Requests involving either reassigned week are no longer valid.
+        await connection.query(
+          `UPDATE cleaningWeekSwapRequests
+           SET status = 'rejected', updatedAt = NOW()
+           WHERE status = 'pending'
+             AND requestID <> ?
+             AND (sourceWeekID IN (?, ?) OR targetWeekID IN (?, ?))`,
+          [requestID, request.sourceWeekID, request.targetWeekID, request.sourceWeekID, request.targetWeekID]
+        );
+
+        await connection.commit();
+      } catch (err) {
+        await connection.rollback();
+        throw err;
+      } finally {
+        connection.release();
+      }
+    } catch (err) {
+      console.error("❌ Error responding to cleaning week swap request:", err);
+      throw err instanceof Error ? err : new Error("Failed to respond to cleaning week swap request.");
     }
   }
 
