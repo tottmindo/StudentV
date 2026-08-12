@@ -51,7 +51,7 @@
     <!-- Legend -->
     <div class="flex flex-wrap items-center gap-4 text-xs opacity-70">
       <span class="inline-flex items-center gap-2">
-        <span class="w-3 h-3 rounded bg-accent inline-block"></span>
+        <span class="w-3 h-3 rounded bg-gray-800 inline-block"></span>
         Today
       </span>
       <span class="inline-flex items-center gap-2">
@@ -153,8 +153,10 @@ const calendarCells = computed(() => {
 function cellClasses(cell) {
   if (!cell.day) return ''
   const classes = []
+  
   if (cell.isToday) {
-    classes.push('bg-accent text-background-light font-semibold ')
+    // Give Today a distinct dark/neutral background with an accent border/ring
+    classes.push('bg-gray-800 text-white dark:bg-gray-100 dark:text-gray-950 font-semibold ring-2 ring-accent')
   } else if (cell.hasEvent || cell.hasCleaning || cell.hasExternal) {
     if (cell.hasCleaning) {
       classes.push('border border-emerald-500 text-text dark:text-text-dark')

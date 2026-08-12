@@ -570,16 +570,41 @@ const addEvent = () => {
   newEvent.value.type = 'SOCIAL'
 }
 
-const formatDate = (dateString: string) => {
+const formatDate = (dateString?: string) => {
   if (!dateString) return ''
-  // accept 'YYYY-MM-DD HH:mm:ss' or ISO-like strings
+  
   const normalized = dateString.replace(' ', 'T')
-  return new Date(normalized).toLocaleString()
-}
+  const dateObj = new Date(normalized)
 
+  if (isNaN(dateObj.getTime())) return dateString
+
+  // Check if the time is explicitly midnight (00:00:00)
+  const isMidnight = 
+    dateObj.getHours() === 0 && 
+    dateObj.getMinutes() === 0 && 
+    dateObj.getSeconds() === 0
+
+  // If it's midnight, only show the date (e.g., "5 augusti 2026")
+  if (isMidnight) {
+    return dateObj.toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+  }
+
+  // Otherwise, show both date and time
+  return dateObj.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  })
+}
 const formatDateRange = (start?: string, end?: string) => {
   if (!start) return ''
-  if (!end) return formatDate(start)
+  if (!end || start === end) return formatDate(start)
   return `${formatDate(start)} — ${formatDate(end)}`
 }
 
