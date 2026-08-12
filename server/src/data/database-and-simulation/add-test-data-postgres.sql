@@ -68,22 +68,65 @@ FROM dorms
 WHERE dormid > 3;
 
 INSERT INTO sensor (sensorcode, type, location, dormid) VALUES
-  ('wtr-d1-basement', 'Water Meter', 'Basement main inlet', 1),
-  ('wtr-d2-basement', 'Water Meter', 'Basement main inlet', 2),
-  ('wtr-d3-basement', 'Water Meter', 'Basement main inlet', 3);
-INSERT INTO sensor_data (sensorcode, recordedat, totalvolume, tempmin, tempmax, errorcode, battery, ambienttemp, humidity, leakstatus) VALUES
-  ('wtr-d1-basement', now(), 1230, 21.2, 24.8, 0, 95, 20.1, 45, false),
-  ('wtr-d2-basement', now(), 980, 20.8, 24.1, 0, 90, 19.8, 48, false),
-  ('wtr-d3-basement', now(), 1100, 21.0, 25.0, 0, 88, 20.5, 42, false);
-
-INSERT INTO sensor (sensorcode, type, location, dormid)
-SELECT 'wtr-d' || dormid || '-basement', 'Water Meter', 'Basement main inlet', dormid
-FROM dorms
-WHERE dormid > 3;
-INSERT INTO sensor_data (sensorcode, recordedat, totalvolume, tempmin, tempmax, errorcode, battery, ambienttemp, humidity, leakstatus)
-SELECT 'wtr-d' || dormid || '-basement', now(), 1000 + dormid * 25, 20.5, 24.0, 0, 90, 20.0, 45, false
-FROM dorms
-WHERE dormid > 3;
+  ('8c1f6461900014f5', 'Water Meter', 'gateway 24e124725d489523', 1),
+  ('8c1f646190001501', 'Water Meter', 'gateway 24e124725d489523', 1),
+  ('8c1f646190001592', 'Water Meter', 'gateway 24e124725d489523', 1),
+  ('8c1f6461900015ba', 'Water Meter', 'gateway 24e124725d489523', 1),
+  ('8c1f64619000160f', 'Water Meter', 'gateway 24e124725d489523', 1),
+  ('8c1f64619000171c', 'Water Meter', 'gateway 24e124725d489523', 1),
+  ('8c1f646190001743', 'Water Meter', 'gateway 24e124725d489523', 1),
+  ('8c1f64619000177c', 'Water Meter', 'gateway 24e124725d489523', 1),
+  ('8c1f646190001790', 'Water Meter', 'gateway 24e124725d489523', 1),
+  ('8c1f6461900017e3', 'Water Meter', 'gateway 24e124725d489523', 1),
+  ('8c1f6461900018f5', 'Water Meter', 'gateway 24e124725d489523', 1),
+  ('8c1f646190001968', 'Water Meter', 'gateway 24e124725d489523', 1),
+  ('8c1f6461900019cf', 'Water Meter', 'gateway 24e124725d489523', 1),
+  ('8c1f646190001ba9', 'Water Meter', 'gateway 24e124725d489523', 1),
+  ('8c1f646190001c1c', 'Water Meter', 'gateway 24e124725d489523', 1),
+  ('8c1f646190001c1f', 'Water Meter', 'gateway 24e124725d489523', 1),
+  ('8c1f646190001dd8', 'Water Meter', 'gateway 24e124725d489523', 1),
+  ('8c1f646190001e41', 'Water Meter', 'gateway 24e124725d489523', 1),
+  ('8c1f646190001ebd', 'Water Meter', 'gateway 24e124725d489523', 1),
+  ('8c1f646190002012', 'Water Meter', 'gateway 24e124725d489523', 1),
+  ('8c1f6461900020d1', 'Water Meter', 'gateway 24e124725d489523', 1),
+  ('8c1f646190002120', 'Water Meter', 'gateway 24e124725d489523', 1),
+  ('8c1f6461900021a9', 'Water Meter', 'gateway 24e124725d489523', 1),
+  ('8c1f6461900021c5', 'Water Meter', 'gateway 24e124725d489523', 1),
+  ('8c1f6461900021e0', 'Water Meter', 'gateway 24e124725d489523', 1),
+  ('8c1f6461900021e2', 'Water Meter', 'gateway 24e124725d489523', 1),
+  ('8c1f6461900021e8', 'Water Meter', 'gateway 24e124725d489523', 1),
+  ('8c1f646190002222', 'Water Meter', 'gateway 24e124725d489523', 1),
+  ('8c1f64619000227c', 'Water Meter', 'gateway 24e124725d489523', 1),
+  ('8c1f646190002291', 'Water Meter', 'gateway 24e124725d489523', 1),
+  ('8c1f6461900015c1', 'Water Meter', 'gateway 24e124fffef94d5c', 1),
+  ('8c1f6461900015ed', 'Water Meter', 'gateway 24e124fffef94d5c', 1),
+  ('8c1f64619000170a', 'Water Meter', 'gateway 24e124fffef94d5c', 1),
+  ('8c1f646190001833', 'Water Meter', 'gateway 24e124fffef94d5c', 1),
+  ('8c1f6461900018ba', 'Water Meter', 'gateway 24e124fffef94d5c', 1),
+  ('8c1f646190001901', 'Water Meter', 'gateway 24e124fffef94d5c', 1),
+  ('8c1f646190001947', 'Water Meter', 'gateway 24e124fffef94d5c', 1),
+  ('8c1f646190001963', 'Water Meter', 'gateway 24e124fffef94d5c', 1),
+  ('8c1f6461900019c7', 'Water Meter', 'gateway 24e124fffef94d5c', 1),
+  ('8c1f6461900019cb', 'Water Meter', 'gateway 24e124fffef94d5c', 1),
+  ('8c1f646190001af8', 'Water Meter', 'gateway 24e124fffef94d5c', 1),
+  ('8c1f646190001b0f', 'Water Meter', 'gateway 24e124fffef94d5c', 1),
+  ('8c1f646190001b91', 'Water Meter', 'gateway 24e124fffef94d5c', 1),
+  ('8c1f646190001baf', 'Water Meter', 'gateway 24e124fffef94d5c', 1),
+  ('8c1f646190001bea', 'Water Meter', 'gateway 24e124fffef94d5c', 1),
+  ('8c1f646190001bf1', 'Water Meter', 'gateway 24e124fffef94d5c', 1),
+  ('8c1f646190001c9b', 'Water Meter', 'gateway 24e124fffef94d5c', 1),
+  ('8c1f646190001d93', 'Water Meter', 'gateway 24e124fffef94d5c', 1),
+  ('8c1f646190001ec9', 'Water Meter', 'gateway 24e124fffef94d5c', 1),
+  ('8c1f646190001fc1', 'Water Meter', 'gateway 24e124fffef94d5c', 1),
+  ('8c1f646190001fcb', 'Water Meter', 'gateway 24e124fffef94d5c', 1),
+  ('8c1f6461900020a5', 'Water Meter', 'gateway 24e124fffef94d5c', 1),
+  ('8c1f6461900021bd', 'Water Meter', 'gateway 24e124fffef94d5c', 1),
+  ('8c1f6461900021c1', 'Water Meter', 'gateway 24e124fffef94d5c', 1),
+  ('8c1f6461900021da', 'Water Meter', 'gateway 24e124fffef94d5c', 1),
+  ('8c1f6461900021db', 'Water Meter', 'gateway 24e124fffef94d5c', 1),
+  ('8c1f646190002206', 'Water Meter', 'gateway 24e124fffef94d5c', 1),
+  ('8c1f646190002244', 'Water Meter', 'gateway 24e124fffef94d5c', 1),
+  ('8c1f64619000228d', 'Water Meter', 'gateway 24e124fffef94d5c', 1);
 
 INSERT INTO chat (name, dormid) VALUES ('Dorm 1 General', 1), ('Dorm 2 General', 2), ('Dorm 3 General', 3);
 INSERT INTO chat (name, dormid)

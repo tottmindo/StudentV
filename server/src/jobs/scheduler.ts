@@ -20,6 +20,7 @@
 import cron from 'node-cron';
 import "../config/env.js";
 import { Data } from "../data.js"
+import { importLatestSensorData } from "../services/sensorDataImportService.js";
 
 const data = new Data();
 let dorms: number[] = [];
@@ -101,3 +102,25 @@ cron.schedule('0 8 * * *', async () => {
   scheduled: true,
   timezone: 'Europe/Stockholm'
 });
+
+if (process.env.SENSOR_SYNC_ENABLED !== "false") {
+  const sensorSyncSchedule = process.env.SENSOR_SYNC_CRON || "0 0,12 * * *";
+  const sensorSyncTimezone = process.env.SENSOR_SYNC_TIMEZONE || "Europe/Stockholm";
+
+  if (!cron.validate(sensorSyncSchedule)) {
+    throw new Error("SENSOR_SYNC_CRON is not a valid cron expression");
+  }
+
+  cron.schedule(sensorSyncSchedule, async () => {
+    try {
+      console.log("📡 Collecting latest sensor data");
+      const result = await importLatestSensorData();
+      console.log(`✅ Sensor data collected: ${result.snapshots} snapshots imported`);
+    } catch (err) {
+      console.error("❌ Scheduled sensor data collection failed:", err);
+    }
+  }, {
+    scheduled: true,
+    timezone: sensorSyncTimezone,
+  });
+}

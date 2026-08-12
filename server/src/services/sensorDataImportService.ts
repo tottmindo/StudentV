@@ -11,9 +11,7 @@ const DEFAULT_VALUE_TYPES = [
   "leak_status",
 ];
 
-const DEFAULT_CLIENT_ID = process.env.IOTOPEN_CLIENT_ID || "1637";
-const DEFAULT_INSTALLATION_ID = process.env.IOTOPEN_INSTALLATION_ID || "1634";
-const DEFAULT_LIMIT = 500000;
+const DEFAULT_VALUE_TYPES_ENV = DEFAULT_VALUE_TYPES.join(",");
 
 export interface ImportHistoricalSensorDataOptions {
   from: number | string | Date;
@@ -25,6 +23,7 @@ export interface ImportHistoricalSensorDataOptions {
   aggrMethod?: string;
   aggrInterval?: string;
   defaultDormID?: number;
+  onProgress?: (progress: ImportSensorDataProgress) => void;
 }
 
 interface IoTOpenLogRecord {
@@ -57,7 +56,19 @@ export interface ImportHistoricalSensorDataResult {
   snapshots: number;
   insertedOrUpdated: number;
   sensorsEnsured: number;
+  batchesCompleted: number;
+  totalBatches: number;
+  retries: number;
+  startedFrom: number;
+  endedAt: number;
 }
+
+export interface ImportSensorDataProgress extends ImportHistoricalSensorDataResult {
+  currentFrom?: number;
+  currentTo?: number;
+}
+
+const TRANSIENT_HTTP_STATUSES = new Set([429, 500, 502, 503, 504]);
 
 function getRequiredEnv(name: string): string {
   const value = process.env[name];
@@ -65,6 +76,29 @@ function getRequiredEnv(name: string): string {
     throw new Error(`${name} is required`);
   }
   return value;
+}
+
+function getEnvNumber(name: string, fallback: number): number {
+  const value = Number(process.env[name] || fallback);
+  if (!Number.isFinite(value) || value <= 0) throw new Error(`${name} must be a positive number`);
+  return value;
+}
+
+function getConfiguredValueTypes(): string[] {
+  return (process.env.IOTOPEN_VALUE_TYPES || DEFAULT_VALUE_TYPES_ENV)
+    .split(",")
+    .map(valueType => valueType.trim())
+    .filter(Boolean);
+}
+
+function chunk<T>(values: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let index = 0; index < values.length; index += size) chunks.push(values.slice(index, index + size));
+  return chunks;
+}
+
+function wait(milliseconds: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, milliseconds));
 }
 
 function normalizeUnixTimestamp(value: number | string | Date): number {
@@ -108,8 +142,9 @@ function parseTopic(topic: string): ParsedTopic | null {
 }
 
 function buildTopics(sensorCodes: string[], valueTypes: string[]): string[] {
+  const clientID = process.env.IOTOPEN_CLIENT_ID || "1637";
   return sensorCodes.flatMap((sensorCode) =>
-    valueTypes.map((valueType) => `${DEFAULT_CLIENT_ID}/obj/lora/${sensorCode}/${valueType}`)
+    valueTypes.map((valueType) => `${clientID}/obj/lora/${sensorCode}/${valueType}`)
   );
 }
 
@@ -137,6 +172,12 @@ async function getSensorCodesFromDatabase(): Promise<string[]> {
   return (rows as { sensorCode: string }[]).map((row) => row.sensorCode.toLowerCase());
 }
 
+async function getLatestStoredSensorTimestamp(): Promise<number | null> {
+  const [rows] = await pool.query("SELECT MAX(recordedAt) AS latestRecordedAt FROM sensor_data");
+  const latestRecordedAt = (rows[0] as { latestRecordedAt?: Date | string | null } | undefined)?.latestRecordedAt;
+  return latestRecordedAt ? normalizeUnixTimestamp(latestRecordedAt) : null;
+}
+
 async function ensureSensors(sensorCodes: string[], defaultDormID: number): Promise<number> {
   if (sensorCodes.length === 0) {
     return 0;
@@ -144,7 +185,7 @@ async function ensureSensors(sensorCodes: string[], defaultDormID: number): Prom
 
   let inserted = 0;
   for (const sensorCode of sensorCodes) {
-    const [result]: any = await pool.query(
+    const [, result] = await pool.query(
       `INSERT INTO sensor (sensorCode, type, location, dormID)
        VALUES (?, ?, ?, ?) ON CONFLICT (sensorCode) DO NOTHING`,
       [sensorCode, "Water Meter", "Imported IoT Open sensor", defaultDormID]
@@ -239,7 +280,7 @@ async function upsertSnapshots(snapshots: SensorSnapshot[]): Promise<number> {
 
   let insertedOrUpdated = 0;
   for (const snapshot of snapshots) {
-    const [result]: any = await pool.query(
+    const [, result] = await pool.query(
       `INSERT INTO sensor_data
        (sensorCode, recordedAt, totalVolume, tempMin, tempMax, errorCode,
         battery, ambientTemp, humidity, leakStatus)
@@ -262,14 +303,43 @@ async function upsertSnapshots(snapshots: SensorSnapshot[]): Promise<number> {
   return insertedOrUpdated;
 }
 
+async function fetchRecordsWithRetry(url: URL, apiKey: string): Promise<{ records: IoTOpenLogRecord[]; retries: number }> {
+  const maxRetries = getEnvNumber("IOTOPEN_MAX_RETRIES", 3);
+  const retryBaseMilliseconds = getEnvNumber("IOTOPEN_RETRY_BASE_MS", 1000);
+
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      const response = await fetch(url, { headers: { Accept: "application/json", "X-API-Key": apiKey } });
+      if (response.ok) return { records: extractRecords(await response.json()), retries: attempt };
+
+      const body = await response.text();
+      if (!TRANSIENT_HTTP_STATUSES.has(response.status) || attempt >= maxRetries) {
+        throw new Error(`IoT Open API request failed (${response.status}): ${body}`);
+      }
+
+      const retryAfter = Number(response.headers.get("retry-after"));
+      await wait(Number.isFinite(retryAfter) && retryAfter > 0
+        ? retryAfter * 1000
+        : retryBaseMilliseconds * 2 ** attempt);
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith("IoT Open API request failed")) throw error;
+      if (attempt >= maxRetries) throw error;
+      await wait(retryBaseMilliseconds * 2 ** attempt);
+    }
+  }
+}
+
 export async function importHistoricalSensorData(
   options: ImportHistoricalSensorDataOptions
 ): Promise<ImportHistoricalSensorDataResult> {
   const apiKey = getRequiredEnv("IOTOPEN_API_KEY");
-  const installationID = process.env.IOTOPEN_INSTALLATION_ID || DEFAULT_INSTALLATION_ID;
+  const apiBaseURL = (process.env.IOTOPEN_API_BASE_URL || "https://lynx.iotopen.se/api/v3beta").replace(/\/$/, "");
+  const installationID = process.env.IOTOPEN_INSTALLATION_ID || "1634";
   const defaultDormID = options.defaultDormID ?? Number(process.env.IOTOPEN_DEFAULT_DORM_ID || 1);
   const from = normalizeUnixTimestamp(options.from);
-  const valueTypes = options.valueTypes?.length ? options.valueTypes : DEFAULT_VALUE_TYPES;
+  const to = options.to === undefined ? Math.floor(Date.now() / 1000) : normalizeUnixTimestamp(options.to);
+  if (to < from) throw new Error("Import end time must be after its start time");
+  const valueTypes = options.valueTypes?.length ? options.valueTypes : getConfiguredValueTypes();
   const envSensorCodes = getSensorCodesFromEnv();
   const sensorCodes = options.sensorCodes?.length
     ? options.sensorCodes.map((sensorCode) => sensorCode.toLowerCase())
@@ -282,39 +352,81 @@ export async function importHistoricalSensorData(
     throw new Error("No sensor topics configured for import");
   }
 
-  const url = new URL(`https://lynx.iotopen.se/api/v3beta/log/${installationID}`);
-  url.searchParams.set("topics", topics.join(","));
-  url.searchParams.set("limit", String(options.limit ?? DEFAULT_LIMIT));
-  url.searchParams.set("from", String(from));
-  url.searchParams.set("aggr_method", options.aggrMethod || "last");
-  url.searchParams.set("aggr_interval", options.aggrInterval || "1h");
-
-  if (options.to !== undefined) {
-    url.searchParams.set("to", String(normalizeUnixTimestamp(options.to)));
+  const configuredTopicBatchSize = getEnvNumber("IOTOPEN_TOPIC_BATCH_SIZE", 80);
+  const topicBatchSize = options.topics?.length
+    ? configuredTopicBatchSize
+    : Math.max(valueTypes.length, Math.floor(configuredTopicBatchSize / valueTypes.length) * valueTypes.length);
+  const windowDays = getEnvNumber("IOTOPEN_HISTORY_WINDOW_DAYS", 7);
+  const windowSeconds = windowDays * 24 * 60 * 60;
+  const topicBatches = chunk(topics, topicBatchSize);
+  const timeWindows: { from: number; to: number }[] = [];
+  for (let windowFrom = from; windowFrom <= to; windowFrom += windowSeconds) {
+    timeWindows.push({ from: windowFrom, to: Math.min(windowFrom + windowSeconds - 1, to) });
   }
 
-  const response = await fetch(url, {
-    headers: {
-      Accept: "application/json",
-      "X-API-Key": apiKey,
-    },
-  });
-
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`IoT Open API request failed (${response.status}): ${body}`);
-  }
-
-  const records = extractRecords(await response.json());
-  const normalized = snapshotsFromRecords(records);
-  const sensorsEnsured = await ensureSensors(normalized.sensorCodes, defaultDormID);
-  const insertedOrUpdated = await upsertSnapshots(normalized.snapshots);
-
-  return {
-    fetchedRows: records.length,
-    parsedRows: normalized.parsedRows,
-    snapshots: normalized.snapshots.length,
-    insertedOrUpdated,
-    sensorsEnsured,
+  const result: ImportHistoricalSensorDataResult = {
+    fetchedRows: 0, parsedRows: 0, snapshots: 0, insertedOrUpdated: 0,
+    sensorsEnsured: 0, batchesCompleted: 0,
+    totalBatches: topicBatches.length * timeWindows.length, retries: 0,
+    startedFrom: from, endedAt: to,
   };
+  const ensuredSensorCodes = new Set<string>();
+  const batchDelayMilliseconds = Number(process.env.IOTOPEN_BATCH_DELAY_MS || 100);
+
+  for (const timeWindow of timeWindows) {
+    for (const topicBatch of topicBatches) {
+      const url = new URL(`${apiBaseURL}/log/${installationID}`);
+      url.searchParams.set("topics", topicBatch.join(","));
+      url.searchParams.set("limit", String(options.limit ?? getEnvNumber("IOTOPEN_IMPORT_LIMIT", 25000)));
+      url.searchParams.set("from", String(timeWindow.from));
+      url.searchParams.set("to", String(timeWindow.to));
+      url.searchParams.set("aggr_method", options.aggrMethod || process.env.IOTOPEN_AGGR_METHOD || "last");
+      url.searchParams.set("aggr_interval", options.aggrInterval || process.env.IOTOPEN_AGGR_INTERVAL || "1h");
+
+      const fetched = await fetchRecordsWithRetry(url, apiKey);
+      const normalized = snapshotsFromRecords(fetched.records);
+      const newSensorCodes = normalized.sensorCodes.filter(sensorCode => !ensuredSensorCodes.has(sensorCode));
+      const sensorsEnsured = await ensureSensors(newSensorCodes, defaultDormID);
+      newSensorCodes.forEach(sensorCode => ensuredSensorCodes.add(sensorCode));
+      const insertedOrUpdated = await upsertSnapshots(normalized.snapshots);
+
+      result.fetchedRows += fetched.records.length;
+      result.parsedRows += normalized.parsedRows;
+      result.snapshots += normalized.snapshots.length;
+      result.insertedOrUpdated += insertedOrUpdated;
+      result.sensorsEnsured += sensorsEnsured;
+      result.retries += fetched.retries;
+      result.batchesCompleted += 1;
+      options.onProgress?.({ ...result, currentFrom: timeWindow.from, currentTo: timeWindow.to });
+      if (batchDelayMilliseconds > 0 && result.batchesCompleted < result.totalBatches) await wait(batchDelayMilliseconds);
+    }
+  }
+
+  return result;
+}
+
+export function importLatestSensorData(): Promise<ImportHistoricalSensorDataResult> {
+  const lookbackHours = getEnvNumber("SENSOR_LATEST_LOOKBACK_HOURS", 24);
+  return importHistoricalSensorData({
+    from: Date.now() - lookbackHours * 60 * 60 * 1000,
+    aggrInterval: process.env.SENSOR_LATEST_AGGR_INTERVAL || process.env.IOTOPEN_AGGR_INTERVAL || "1h",
+  });
+}
+
+export async function importAllHistoricalSensorData(
+  onProgress?: (progress: ImportSensorDataProgress) => void
+): Promise<ImportHistoricalSensorDataResult> {
+  const configuredFrom = normalizeUnixTimestamp(getRequiredEnv("SENSOR_HISTORICAL_FROM"));
+  const latestStoredTimestamp = await getLatestStoredSensorTimestamp();
+  const resumeOverlapHours = getEnvNumber("SENSOR_HISTORICAL_RESUME_OVERLAP_HOURS", 192);
+  const from = latestStoredTimestamp === null
+    ? configuredFrom
+    : Math.max(configuredFrom, latestStoredTimestamp - resumeOverlapHours * 60 * 60);
+  const to = process.env.SENSOR_HISTORICAL_TO?.trim() || undefined;
+  return importHistoricalSensorData({
+    from,
+    to,
+    aggrInterval: process.env.SENSOR_HISTORICAL_AGGR_INTERVAL || process.env.IOTOPEN_AGGR_INTERVAL || "1h",
+    onProgress,
+  });
 }
