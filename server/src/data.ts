@@ -126,6 +126,22 @@ interface DashboardAlert {
   actionLabel: string;
 }
 
+interface FloorWaterDay {
+  date: string;
+  currentLiters: number;
+  historicalAverageLiters: number;
+}
+
+interface FloorWaterConsumption {
+  available: boolean;
+  latestReadingAt: string | null;
+  currentWeekLiters: number;
+  historicalWeeklyAverageLiters: number;
+  coldLiters: number;
+  warmLiters: number;
+  days: FloorWaterDay[];
+}
+
 interface ExternalEvents {
   eventID: number,
   externalURL: string,
@@ -883,10 +899,12 @@ class Data {
   async getUser(userID: number): Promise<any | null> {
     try {
       const [rows] = await pool.query(
-        `SELECT userID, username, role, roomID, dormID
-        FROM users
-        WHERE userID = ?
-          AND active = TRUE`,
+        `SELECT u.userID, u.username, u.role, u.roomID, u.dormID,
+                d.address AS dormAddress, d.floor AS dormFloor
+         FROM users u
+         JOIN dorms d ON d.dormID = u.dormID
+         WHERE u.userID = ?
+           AND u.active = TRUE`,
         [userID]
       );
 
@@ -899,12 +917,13 @@ class Data {
 
 async getDashboard(userID: number, dormID: number): Promise<any> {
   try {
-    const [user, events, activatedEvents, userSurveys, alerts] = await Promise.all([
+    const [user, events, activatedEvents, userSurveys, alerts, waterConsumption] = await Promise.all([
       this.getUser(userID),
       this.getEvents({ dormID, active: true }),
       this.getActivatedEvents(userID),
       this.getUserSurvey(userID),
-      this.getDashboardAlerts(userID, dormID)
+      this.getDashboardAlerts(userID, dormID),
+      this.getFloorWaterConsumption(dormID),
     ]);
 
     if (!user) {
@@ -917,6 +936,8 @@ async getDashboard(userID: number, dormID: number): Promise<any> {
         name: user.username,
         room: user.roomID,
         corridor: user.dormID,
+        house: user.dormAddress,
+        floor: user.dormFloor,
       },
 
       alerts,
@@ -926,12 +947,7 @@ async getDashboard(userID: number, dormID: number): Promise<any> {
       activatedEvents,
 
       pendingSurveys: userSurveys,
-
-      stats: [
-        { id: 1, label: "Avg Shower Time", value: "8m 12s" },
-        { id: 2, label: "Water Usage", value: "1230L" },
-        { id: 3, label: "Avg Water Temp", value: "25.7°C" },
-      ],
+      waterConsumption,
 
       quickActions: [],
       challenges: [],
@@ -940,6 +956,75 @@ async getDashboard(userID: number, dormID: number): Promise<any> {
     console.error("❌ Error building dashboard:", err);
     throw new Error("DASHBOARD_BUILD_FAILED");
   }
+}
+
+async getFloorWaterConsumption(dormID: number): Promise<FloorWaterConsumption> {
+  const [rows] = await pool.query(
+    `WITH latest AS (
+       SELECT MAX(sd.recordedAt) AS latestReadingAt
+       FROM sensor_data sd
+       JOIN sensor s ON s.sensorCode = sd.sensorCode
+       WHERE s.dormID = ?
+         AND s.type IN ('Cold Water Meter', 'Warm Water Meter', 'Water Meter')
+     ), bounds AS (
+       SELECT latestReadingAt,
+              (latestReadingAt AT TIME ZONE 'Europe/Stockholm')::date - 1 AS weekEnd
+       FROM latest
+       WHERE latestReadingAt IS NOT NULL
+     ), readings AS (
+       SELECT sd.sensorCode, s.type, sd.recordedAt, sd.totalVolume,
+              LAG(sd.totalVolume) OVER (PARTITION BY sd.sensorCode ORDER BY sd.recordedAt) AS previousVolume
+       FROM sensor_data sd
+       JOIN sensor s ON s.sensorCode = sd.sensorCode
+       CROSS JOIN bounds b
+       WHERE s.dormID = ?
+         AND s.type IN ('Cold Water Meter', 'Warm Water Meter', 'Water Meter')
+         AND sd.recordedAt >= (b.weekEnd - 35)::timestamp AT TIME ZONE 'Europe/Stockholm'
+     ), daily AS (
+       SELECT (recordedAt AT TIME ZONE 'Europe/Stockholm')::date AS day,
+              SUM(GREATEST(totalVolume - previousVolume, 0))::real AS liters,
+              SUM(GREATEST(totalVolume - previousVolume, 0)) FILTER (WHERE type = 'Cold Water Meter')::real AS coldLiters,
+              SUM(GREATEST(totalVolume - previousVolume, 0)) FILTER (WHERE type = 'Warm Water Meter')::real AS warmLiters
+       FROM readings
+       WHERE previousVolume IS NOT NULL
+       GROUP BY 1
+     ), displayDays AS (
+       SELECT generate_series(b.weekEnd - 6, b.weekEnd, interval '1 day')::date AS day
+       FROM bounds b
+     ), historical AS (
+       SELECT EXTRACT(ISODOW FROM d.day)::int AS weekday, AVG(d.liters)::real AS historicalAverageLiters
+       FROM daily d CROSS JOIN bounds b
+       WHERE d.day BETWEEN b.weekEnd - 34 AND b.weekEnd - 7
+       GROUP BY 1
+     )
+     SELECT dd.day::text AS date,
+            COALESCE(d.liters, 0)::real AS currentLiters,
+            COALESCE(h.historicalAverageLiters, 0)::real AS historicalAverageLiters,
+            COALESCE(d.coldLiters, 0)::real AS coldLiters,
+            COALESCE(d.warmLiters, 0)::real AS warmLiters,
+            b.latestReadingAt
+     FROM displayDays dd
+     CROSS JOIN bounds b
+     LEFT JOIN daily d ON d.day = dd.day
+     LEFT JOIN historical h ON h.weekday = EXTRACT(ISODOW FROM dd.day)::int
+     ORDER BY dd.day`,
+    [dormID, dormID]
+  );
+
+  const days = (rows as any[]).map(row => ({
+    date: row.date,
+    currentLiters: Number(row.currentLiters),
+    historicalAverageLiters: Number(row.historicalAverageLiters),
+  }));
+  return {
+    available: days.length > 0,
+    latestReadingAt: rows[0]?.latestReadingAt ?? null,
+    currentWeekLiters: days.reduce((sum, day) => sum + day.currentLiters, 0),
+    historicalWeeklyAverageLiters: days.reduce((sum, day) => sum + day.historicalAverageLiters, 0),
+    coldLiters: (rows as any[]).reduce((sum, row) => sum + Number(row.coldLiters), 0),
+    warmLiters: (rows as any[]).reduce((sum, row) => sum + Number(row.warmLiters), 0),
+    days,
+  };
 }
 
 async getUsersByDorm(dormID: number): Promise<any[]> {

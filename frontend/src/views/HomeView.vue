@@ -37,10 +37,50 @@
           </h1>
 
           <p class="text-text dark:text-text-dark">
-            Room {{ room }} • Corridor {{ corridor }}
+            Room {{ room }} • {{ house }}, floor {{ floor }}
           </p>
         </div>
       </header>
+
+      <section class="rounded-lg bg-surface p-5 dark:bg-surface-dark">
+        <div class="mb-5 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 class="text-xl font-semibold">Your floor's water consumption</h2>
+            <p class="mt-1 text-sm opacity-70">The last seven complete days compared with the same weekdays over the previous four weeks.</p>
+          </div>
+          <p v-if="waterConsumption.latestReadingAt" class="text-xs opacity-60">
+            Data through {{ formatEventDate(waterConsumption.latestReadingAt) }}
+          </p>
+        </div>
+
+        <div v-if="waterConsumption.available" class="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(16rem,1fr)]">
+          <FloorWaterChart :days="waterConsumption.days" />
+          <div class="grid grid-cols-2 gap-3 xl:grid-cols-1">
+            <div class="rounded-lg bg-blue-50 p-4 dark:bg-blue-950/30">
+              <p class="text-sm opacity-70">Last 7 days</p>
+              <p class="text-3xl font-bold">{{ formatLiters(waterConsumption.currentWeekLiters) }}</p>
+              <p class="mt-1 text-sm" :class="comparisonPercent <= 0 ? 'text-green-700 dark:text-green-400' : 'text-orange-700 dark:text-orange-400'">
+                {{ comparisonLabel }}
+              </p>
+            </div>
+            <div class="rounded-lg bg-gray-50 p-4 dark:bg-gray-800/60">
+              <p class="text-sm opacity-70">Historical weekly average</p>
+              <p class="text-2xl font-semibold">{{ formatLiters(waterConsumption.historicalWeeklyAverageLiters) }}</p>
+            </div>
+            <div class="rounded-lg border border-border p-4">
+              <p class="text-sm opacity-70">Cold water</p>
+              <p class="text-xl font-semibold">{{ formatLiters(waterConsumption.coldLiters) }}</p>
+            </div>
+            <div class="rounded-lg border border-border p-4">
+              <p class="text-sm opacity-70">Warm water</p>
+              <p class="text-xl font-semibold">{{ formatLiters(waterConsumption.warmLiters) }}</p>
+            </div>
+          </div>
+        </div>
+        <p v-else class="rounded-lg bg-gray-50 p-6 text-center opacity-70 dark:bg-gray-800/60">
+          No collected water readings are available for this floor yet.
+        </p>
+      </section>
 
       <div class="grid lg:grid-cols-[2fr_1fr] gap-4">
 
@@ -111,33 +151,6 @@
                   {{ event.time || formatEventDate(event.startDate) }}
                 </span>
               </button>
-            </div>
-          </section>
-
-          <!-- Statistics -->
-          <section
-            class="bg-surface dark:bg-surface-dark rounded-lg p-5"
-          >
-            <h2 class="text-xl font-semibold mb-4">
-              Sustainability Overview
-            </h2>
-
-            <div class="grid md:grid-cols-3 gap-4">
-
-              <div
-                v-for="stat in stats"
-                :key="stat.id"
-                class="bg-surface dark:bg-surface-dark rounded-lg p-4 text-center"
-              >
-                <h3 class="font-medium mb-2">
-                  {{ stat.label }}
-                </h3>
-
-                <p class="text-4xl font-bold">
-                  {{ stat.value }}
-                </p>
-              </div>
-
             </div>
           </section>
 
@@ -330,24 +343,26 @@
 
 <script setup lang="ts">
 import NavComponent from '@/components/NavComponent.vue';
-import {  onMounted, ref } from 'vue';
+import FloorWaterChart from '@/components/FloorWaterChart.vue';
+import { computed, onMounted, ref } from 'vue';
 
 import { getSocket } from '@/composables/socket';
 const socket = getSocket(); // Import the socket instance from socket.ts
 
 
 import ModalComponent from '@/components/ModalComponent.vue';
-import { type AlertItem, type NewsItem, type HomeEventItem, type ActivatedEventItem, type StatItem, type QuickActionItem, type ChallengeItem, type DashboardPayload, type MenuItem, type SurveyItem } from '@/types';
+import { type AlertItem, type NewsItem, type HomeEventItem, type ActivatedEventItem, type FloorWaterConsumption, type QuickActionItem, type ChallengeItem, type DashboardPayload, type MenuItem, type SurveyItem } from '@/types';
 
 const isLoading = ref(true);
 const username = ref("")
 const room = ref<number | string>("")
-const corridor = ref<number | string>("")
+const house = ref("")
+const floor = ref<number | string>("")
 const alerts = ref<AlertItem[]>([]);
 const news = ref<NewsItem[]>([]);
 const events = ref<HomeEventItem[]>([]);
 const activatedEvents = ref<ActivatedEventItem[]>([]);
-const stats = ref<StatItem[]>([]);
+const waterConsumption = ref<FloorWaterConsumption>({ available: false, latestReadingAt: null, currentWeekLiters: 0, historicalWeeklyAverageLiters: 0, coldLiters: 0, warmLiters: 0, days: [] });
 const quickActions = ref<QuickActionItem[]>([]);
 const challenges = ref<ChallengeItem[]>([]);
 const userSurveys = ref<SurveyItem[]>([]);
@@ -361,6 +376,16 @@ const showNewsModal = ref(false);
 const showEventModal = ref(false);
 const selectedEvent = ref<HomeEventItem | null>(null);
 const navKey = ref(0); // Reactive key for NavComponent
+const comparisonPercent = computed(() => waterConsumption.value.historicalWeeklyAverageLiters
+  ? ((waterConsumption.value.currentWeekLiters - waterConsumption.value.historicalWeeklyAverageLiters) / waterConsumption.value.historicalWeeklyAverageLiters) * 100
+  : 0)
+const comparisonLabel = computed(() => {
+  if (!waterConsumption.value.historicalWeeklyAverageLiters) return 'Historical comparison unavailable'
+  const amount = Math.abs(comparisonPercent.value).toFixed(0)
+  if (Math.abs(comparisonPercent.value) < 0.5) return 'About the same as average'
+  return `${amount}% ${comparisonPercent.value < 0 ? 'below' : 'above'} average`
+})
+const formatLiters = (value: number) => `${Math.round(value).toLocaleString()} L`
 
 const openEventDetails = (event: HomeEventItem) => {
   selectedEvent.value = event;
@@ -412,13 +437,14 @@ onMounted(() => {
 
     username.value = dashboard.user.name;
     room.value = dashboard.user.room;
-    corridor.value = dashboard.user.corridor;
+    house.value = dashboard.user.house;
+    floor.value = dashboard.user.floor;
 
     alerts.value = dashboard.alerts;
     news.value = dashboard.news;
     events.value = dashboard.events;
     activatedEvents.value = dashboard.activatedEvents;
-    stats.value = dashboard.stats;
+    waterConsumption.value = dashboard.waterConsumption;
     userSurveys.value = dashboard.pendingSurveys;
 
     saveDashboardCache(dashboard);
@@ -432,13 +458,14 @@ onMounted(() => {
 
     username.value = cached.user.name;
     room.value = cached.user.room;
-    corridor.value = cached.user.corridor;
+    house.value = cached.user.house ?? `Dorm ${cached.user.corridor}`;
+    floor.value = cached.user.floor ?? cached.user.corridor;
 
     alerts.value = cached.alerts;
     news.value = cached.news;
     events.value = cached.events;
     activatedEvents.value = cached.activatedEvents;
-    stats.value = cached.stats;
+    waterConsumption.value = cached.waterConsumption ?? waterConsumption.value;
     userSurveys.value = cached.pendingSurveys
     isLoading.value = false;
   }

@@ -97,13 +97,16 @@ export async function registerUser(
       );
     }
 
-    const [result]: any = await connection.query(
+    const [insertedUsers]: [RowDataPacket[], any] = await connection.query(
       `INSERT INTO users (email, username, passwordHash, role, roomID, dormID, active, mustChangePassword)
        VALUES (?, NULL, ?, ?, ?, ?, TRUE, ?) RETURNING userID`,
       [email, hashedPassword, role, roomID, dormID, mustChangePassword]
     );
 
-    const newUserID = result.insertId;
+    const newUserID = insertedUsers[0]?.userID;
+    if (typeof newUserID !== "number") {
+      throw new Error("Failed to retrieve the newly created user ID.");
+    }
 
     if (activeRows.length > 0) {
       const previousUserIDs = activeRows.map(row => row.userID);
@@ -374,11 +377,12 @@ export async function listDormsForAdmin() {
      LEFT JOIN room r ON r.dormID = d.dormID
      ORDER BY d.dormID, r.roomID`
   );
-  const dorms = new Map<number, { dormID: number; dormName: string; rooms: number[] }>();
+  const dorms = new Map<number, { dormID: number; address: string; floor: number; rooms: number[] }>();
   for (const row of rows) {
-    const dorm: { dormID: number; dormName: string; rooms: number[] } = dorms.get(row.dormID) ?? {
+    const dorm: { dormID: number; address: string; floor: number; rooms: number[] } = dorms.get(row.dormID) ?? {
       dormID: row.dormID,
-      dormName: `${row.address}, floor ${row.floor}`,
+      address: row.address,
+      floor: row.floor,
       rooms: [],
     };
     if (row.roomID != null) dorm.rooms.push(row.roomID);
