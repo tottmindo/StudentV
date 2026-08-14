@@ -70,6 +70,17 @@
           </div>
         </router-link>
         <router-link
+          to="/admin/water-analytics"
+          v-if="role?.toLowerCase() === 'admin'"
+          @click="closeMenu"
+          class="block"
+          active-class="menu-active"
+        >
+          <div class="inline-flex w-full items-center gap-2 rounded-xl px-4 py-2 font-semibold text-text hover:bg-accent-dark dark:text-text-dark dark:hover:bg-accent">
+            Water analytics
+          </div>
+        </router-link>
+        <router-link
           to="/survey"
           v-if="role === 'admin'"
           @click="closeMenu"

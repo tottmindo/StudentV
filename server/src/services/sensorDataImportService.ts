@@ -406,7 +406,7 @@ export async function importHistoricalSensorData(
 }
 
 export function importLatestSensorData(): Promise<ImportHistoricalSensorDataResult> {
-  const lookbackHours = getEnvNumber("SENSOR_LATEST_LOOKBACK_HOURS", 24);
+  const lookbackHours = getEnvNumber("SENSOR_LATEST_LOOKBACK_HOURS", 2);
   return importHistoricalSensorData({
     from: Date.now() - lookbackHours * 60 * 60 * 1000,
     aggrInterval: process.env.SENSOR_LATEST_AGGR_INTERVAL || process.env.IOTOPEN_AGGR_INTERVAL || "1h",

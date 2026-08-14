@@ -10,8 +10,10 @@ import {
   ImportHistoricalSensorDataResult,
   ImportHistoricalSensorDataOptions,
 } from "../services/sensorDataImportService.js";
+import { Data } from "../data.js";
 
 const router = express.Router();
+const data = new Data();
 
 type HistoricalImportJob = {
   status: "idle" | "running" | "completed" | "failed";
@@ -46,31 +48,118 @@ const createSensorsSchema = sensorDetailsSchema.extend({
 });
 
 const updateSensorSchema = sensorDetailsSchema;
+const sensorNoteSchema = z.object({ note: z.string().trim().max(2000) });
 
 router.get("/admin/sensors", authenticate, requireCompletedAccount, requireAdmin, async (_req, res) => {
   try {
     const [rows] = await pool.query(
       `SELECT s.sensorCode, s.type, s.location, s.dormID,
               d.address AS dormAddress, d.floor AS dormFloor,
-              latest.recordedAt, latest.totalVolume, latest.tempMin, latest.tempMax,
-              latest.errorCode, latest.battery, latest.ambientTemp,
-              latest.humidity, latest.leakStatus
+              latest.recordedAt, latest.errorCode, latest.leakStatus,
+              latest.battery, latest.ambientTemp, latest.tempMin, latest.tempMax,
+              notes.note AS adminNote, notes.updatedAt AS noteUpdatedAt,
+              usage24.last24HoursLiters
        FROM sensor s
        JOIN dorms d ON d.dormID = s.dormID
        LEFT JOIN LATERAL (
-         SELECT sd.recordedAt, sd.totalVolume, sd.tempMin, sd.tempMax,
-                sd.errorCode, sd.battery, sd.ambientTemp, sd.humidity, sd.leakStatus
+         SELECT sd.recordedAt, sd.errorCode, sd.leakStatus, sd.battery,
+                sd.ambientTemp, sd.tempMin, sd.tempMax
          FROM sensor_data sd
          WHERE sd.sensorCode = s.sensorCode
+           AND sd.totalVolume <> 0
+           AND sd.battery <> 0
+           AND sd.ambientTemp <> 0
+           AND sd.tempMin <> 0
+           AND sd.tempMax <> 0
          ORDER BY sd.recordedAt DESC
          LIMIT 1
        ) latest ON true
+       LEFT JOIN LATERAL (
+         SELECT COALESCE(SUM(GREATEST(reading.totalVolume - reading.previousVolume, 0)), 0)::real AS last24HoursLiters
+         FROM (
+           SELECT sd.recordedAt, sd.totalVolume,
+                  LAG(sd.totalVolume) OVER (ORDER BY sd.recordedAt) AS previousVolume
+           FROM sensor_data sd
+           WHERE sd.sensorCode = s.sensorCode
+             AND sd.recordedAt >= NOW() - interval '25 hours'
+         ) reading
+         WHERE reading.recordedAt >= NOW() - interval '24 hours'
+           AND reading.previousVolume IS NOT NULL
+       ) usage24 ON true
+       LEFT JOIN sensor_notes notes ON notes.sensorCode = s.sensorCode
        ORDER BY s.sensorCode`
     );
     res.json(rows);
   } catch (err) {
     console.error("Could not load sensors:", err);
     res.status(500).json({ error: "Could not load sensors." });
+  }
+});
+
+router.put("/admin/sensors/:sensorCode/note", authenticate, requireCompletedAccount, requireAdmin, async (req, res) => {
+  try {
+    const sensorCode = String(req.params.sensorCode).toLowerCase();
+    const { note } = sensorNoteSchema.parse(req.body);
+    const [sensorRows] = await pool.query("SELECT sensorCode FROM sensor WHERE sensorCode = ? LIMIT 1", [sensorCode]);
+    if (!(sensorRows as any[]).length) {
+      res.status(404).json({ error: "Sensor not found." });
+      return;
+    }
+    await pool.query(
+      `INSERT INTO sensor_notes (sensorCode, note, updatedAt)
+       VALUES (?, ?, NOW())
+       ON CONFLICT (sensorCode) DO UPDATE SET note = EXCLUDED.note, updatedAt = NOW()`,
+      [sensorCode, note]
+    );
+    res.json({ sensorCode, note, updatedAt: new Date().toISOString() });
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      res.status(400).json({ error: "Notes may contain up to 2,000 characters." });
+      return;
+    }
+    console.error("Could not save sensor note:", err);
+    res.status(500).json({ error: "Could not save sensor note." });
+  }
+});
+
+router.get("/admin/stats/:dormID", authenticate, requireCompletedAccount, requireAdmin, async (req, res) => {
+  const dormID = Number(req.params.dormID);
+  const days = Number(req.query.days) || 30;
+  if (!Number.isInteger(dormID) || dormID <= 0 || ![1, 7, 30, 90].includes(days)) {
+    res.status(400).json({ error: "Invalid dorm or time period." });
+    return;
+  }
+  try {
+    const [dormRows] = await pool.query("SELECT dormID FROM dorms WHERE dormID = ? LIMIT 1", [dormID]);
+    if (!(dormRows as any[]).length) {
+      res.status(404).json({ error: "Dorm not found." });
+      return;
+    }
+    res.json(await data.getFloorWaterStats(dormID, days));
+  } catch (err) {
+    console.error("Could not load admin water statistics:", err);
+    res.status(500).json({ error: "Could not load water statistics." });
+  }
+});
+
+router.get("/admin/sensors/:sensorCode/stats", authenticate, requireCompletedAccount, requireAdmin, async (req, res) => {
+  const sensorCode = String(req.params.sensorCode).toLowerCase();
+  const days = Number(req.query.days) || 30;
+  if (![1, 7, 30, 90].includes(days)) {
+    res.status(400).json({ error: "Invalid time period." });
+    return;
+  }
+  try {
+    const [rows] = await pool.query("SELECT dormID FROM sensor WHERE sensorCode = ? LIMIT 1", [sensorCode]);
+    const sensor = (rows as any[])[0];
+    if (!sensor) {
+      res.status(404).json({ error: "Sensor not found." });
+      return;
+    }
+    res.json(await data.getFloorWaterStats(Number(sensor.dormID), days, sensorCode));
+  } catch (err) {
+    console.error("Could not load sensor statistics:", err);
+    res.status(500).json({ error: "Could not load sensor statistics." });
   }
 });
 

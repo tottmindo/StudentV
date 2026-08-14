@@ -122,6 +122,33 @@ export type FloorWaterConsumption = {
   days: FloorWaterDay[]
 }
 
+export type WaterStatsDay = {
+  date: string
+  totalLiters: number
+  coldLiters: number
+  warmLiters: number
+  averageWaterTemp: number | null
+  peakWaterTemp: number | null
+}
+
+export type FloorWaterStats = {
+  available: boolean
+  floor: number | null
+  address: string | null
+  latestReadingAt: string | null
+  periodDays: number
+  totalLiters: number
+  previousPeriodLiters: number
+  coldLiters: number
+  warmLiters: number
+  averageDailyLiters: number
+  peakDay: WaterStatsDay | null
+  activeSensors: number
+  alerts: number
+  days: WaterStatsDay[]
+  hourlyProfile: { hour: number; averageLiters: number; averageColdLiters: number; averageWarmLiters: number; averageWaterTemp: number | null; averagePeakWaterTemp: number | null }[]
+}
+
 export type MenuItem = {
   name: string
   link: string

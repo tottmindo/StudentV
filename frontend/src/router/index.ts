@@ -80,7 +80,13 @@ const router = createRouter({
       path: '/admin',
       name: 'admin',
       component: () => import('../views/AdminView.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/admin/water-analytics',
+      name: 'admin-water-analytics',
+      component: () => import('../views/AdminWaterStatsView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: '/chat',
@@ -108,7 +114,7 @@ router.beforeEach((to, from, next) => {
     next({ name: 'login' });
   } else if (mustChangePassword && to.name !== 'change-password') {
     next({ name: 'change-password' });
-  } else if (to.name === 'admin' && userRole !== 'admin') {
+  } else if (to.meta.requiresAdmin && userRole?.toLowerCase() !== 'admin') {
     // If the user tries to access the AdminView but is not an admin, redirect to login
     next({ name: 'login' });
   } else {

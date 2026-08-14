@@ -142,6 +142,33 @@ interface FloorWaterConsumption {
   days: FloorWaterDay[];
 }
 
+interface WaterStatsDay {
+  date: string;
+  totalLiters: number;
+  coldLiters: number;
+  warmLiters: number;
+  averageWaterTemp: number | null;
+  peakWaterTemp: number | null;
+}
+
+interface FloorWaterStats {
+  available: boolean;
+  floor: number | null;
+  address: string | null;
+  latestReadingAt: string | null;
+  periodDays: number;
+  totalLiters: number;
+  previousPeriodLiters: number;
+  coldLiters: number;
+  warmLiters: number;
+  averageDailyLiters: number;
+  peakDay: WaterStatsDay | null;
+  activeSensors: number;
+  alerts: number;
+  days: WaterStatsDay[];
+  hourlyProfile: { hour: number; averageLiters: number; averageColdLiters: number; averageWarmLiters: number; averageWaterTemp: number | null; averagePeakWaterTemp: number | null }[];
+}
+
 interface ExternalEvents {
   eventID: number,
   externalURL: string,
@@ -1024,6 +1051,140 @@ async getFloorWaterConsumption(dormID: number): Promise<FloorWaterConsumption> {
     coldLiters: (rows as any[]).reduce((sum, row) => sum + Number(row.coldLiters), 0),
     warmLiters: (rows as any[]).reduce((sum, row) => sum + Number(row.warmLiters), 0),
     days,
+  };
+}
+
+async getFloorWaterStats(dormID: number, requestedDays: number, sensorCode?: string): Promise<FloorWaterStats> {
+  const periodDays = [1, 7, 30, 90].includes(requestedDays) ? requestedDays : 30;
+  const [dormRows] = await pool.query(
+    `SELECT floor, address FROM dorms WHERE dormID = ? LIMIT 1`,
+    [dormID]
+  );
+  const dorm = (dormRows as any[])[0] ?? null;
+
+  const [rows] = await pool.query(
+    `WITH latest AS (
+       SELECT MAX(sd.recordedAt) AS latestReadingAt
+       FROM sensor_data sd
+       JOIN sensor s ON s.sensorCode = sd.sensorCode
+       WHERE s.dormID = ?
+         AND s.type IN ('Cold Water Meter', 'Warm Water Meter', 'Water Meter')
+         AND (?::text IS NULL OR s.sensorCode = ?)
+     ), readings AS (
+       SELECT sd.sensorCode, s.type, sd.recordedAt, sd.totalVolume, sd.tempMin, sd.tempMax,
+              LAG(sd.totalVolume) OVER (PARTITION BY sd.sensorCode ORDER BY sd.recordedAt) AS previousVolume
+       FROM sensor_data sd
+       JOIN sensor s ON s.sensorCode = sd.sensorCode
+       CROSS JOIN latest l
+       WHERE s.dormID = ?
+         AND s.type IN ('Cold Water Meter', 'Warm Water Meter', 'Water Meter')
+         AND (?::text IS NULL OR s.sensorCode = ?)
+         AND sd.recordedAt >= l.latestReadingAt - (? * interval '1 day') - interval '1 day'
+     ), deltas AS (
+       SELECT type, recordedAt, tempMin, tempMax,
+              GREATEST(totalVolume - previousVolume, 0)::real AS liters
+       FROM readings
+       WHERE previousVolume IS NOT NULL
+     )
+     SELECT (recordedAt AT TIME ZONE 'Europe/Stockholm')::date::text AS date,
+            SUM(liters)::real AS totalLiters,
+            COALESCE(SUM(liters) FILTER (WHERE type = 'Cold Water Meter'), 0)::real AS coldLiters,
+            COALESCE(SUM(liters) FILTER (WHERE type = 'Warm Water Meter'), 0)::real AS warmLiters,
+            AVG(NULLIF((tempMin + tempMax) / 2.0, 0))::real AS averageWaterTemp,
+            MAX(NULLIF(tempMax, 0))::real AS peakWaterTemp,
+            MAX((SELECT latestReadingAt FROM latest)) AS latestReadingAt
+     FROM deltas
+     GROUP BY 1
+     ORDER BY 1`,
+    [dormID, sensorCode ?? null, sensorCode ?? null, dormID, sensorCode ?? null, sensorCode ?? null, periodDays * 2]
+  );
+
+  const normalized = (rows as any[]).map(row => ({
+    date: String(row.date),
+    totalLiters: Number(row.totalLiters) || 0,
+    coldLiters: Number(row.coldLiters) || 0,
+    warmLiters: Number(row.warmLiters) || 0,
+    averageWaterTemp: row.averageWaterTemp == null ? null : Number(row.averageWaterTemp),
+    peakWaterTemp: row.peakWaterTemp == null ? null : Number(row.peakWaterTemp),
+  }));
+  const today = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Stockholm" }).format(new Date());
+  const days = periodDays === 1 ? normalized.filter(day => day.date === today) : normalized.slice(-periodDays);
+  const previousDays = periodDays === 1
+    ? normalized.filter(day => day.date < today).slice(-1)
+    : normalized.slice(-(periodDays * 2), -periodDays);
+  const totalLiters = days.reduce((sum, day) => sum + day.totalLiters, 0);
+
+  const [hourRows] = await pool.query(
+    `WITH latest AS (
+       SELECT MAX(sd.recordedAt) AS latestReadingAt FROM sensor_data sd
+       JOIN sensor s ON s.sensorCode = sd.sensorCode WHERE s.dormID = ? AND (?::text IS NULL OR s.sensorCode = ?)
+     ), readings AS (
+       SELECT sd.sensorCode, s.type, sd.recordedAt, sd.totalVolume, sd.tempMin, sd.tempMax,
+              LAG(sd.totalVolume) OVER (PARTITION BY sd.sensorCode ORDER BY sd.recordedAt) AS previousVolume
+       FROM sensor_data sd JOIN sensor s ON s.sensorCode = sd.sensorCode CROSS JOIN latest l
+       WHERE s.dormID = ? AND s.type IN ('Cold Water Meter', 'Warm Water Meter', 'Water Meter')
+         AND (?::text IS NULL OR s.sensorCode = ?)
+         AND sd.recordedAt >= l.latestReadingAt - (? * interval '1 day') - interval '1 hour'
+     ), hourly AS (
+       SELECT date_trunc('hour', recordedAt AT TIME ZONE 'Europe/Stockholm') AS bucket,
+              SUM(GREATEST(totalVolume - previousVolume, 0))::real AS liters,
+              COALESCE(SUM(GREATEST(totalVolume - previousVolume, 0)) FILTER (WHERE type = 'Cold Water Meter'), 0)::real AS coldLiters,
+              COALESCE(SUM(GREATEST(totalVolume - previousVolume, 0)) FILTER (WHERE type = 'Warm Water Meter'), 0)::real AS warmLiters,
+              AVG(NULLIF((tempMin + tempMax) / 2.0, 0))::real AS averageWaterTemp,
+              MAX(NULLIF(tempMax, 0))::real AS peakWaterTemp
+       FROM readings
+       WHERE previousVolume IS NOT NULL
+         AND (? <> 1 OR (recordedAt AT TIME ZONE 'Europe/Stockholm')::date = (NOW() AT TIME ZONE 'Europe/Stockholm')::date)
+       GROUP BY 1
+     )
+     SELECT EXTRACT(HOUR FROM bucket)::int AS hour,
+            AVG(liters)::real AS averageLiters,
+            AVG(coldLiters)::real AS averageColdLiters,
+            AVG(warmLiters)::real AS averageWarmLiters,
+            AVG(averageWaterTemp)::real AS averageWaterTemp,
+            AVG(peakWaterTemp)::real AS averagePeakWaterTemp
+     FROM hourly GROUP BY 1 ORDER BY 1`,
+    [dormID, sensorCode ?? null, sensorCode ?? null, dormID, sensorCode ?? null, sensorCode ?? null, periodDays, periodDays]
+  );
+
+  const [healthRows] = await pool.query(
+    `SELECT COUNT(*)::int AS activeSensors,
+            COUNT(*) FILTER (WHERE COALESCE(latest.errorCode, 0) <> 0 OR COALESCE(latest.leakStatus, FALSE))::int AS alerts,
+            MAX(latest.recordedAt) AS latestReadingAt
+     FROM sensor s
+     LEFT JOIN LATERAL (
+       SELECT recordedAt, errorCode, leakStatus FROM sensor_data sd
+       WHERE sd.sensorCode = s.sensorCode ORDER BY recordedAt DESC LIMIT 1
+     ) latest ON TRUE
+     WHERE s.dormID = ? AND s.type IN ('Cold Water Meter', 'Warm Water Meter', 'Water Meter')
+       AND (?::text IS NULL OR s.sensorCode = ?)`,
+    [dormID, sensorCode ?? null, sensorCode ?? null]
+  );
+  const health = (healthRows as any[])[0] ?? {};
+
+  return {
+    available: days.length > 0,
+    floor: dorm?.floor == null ? null : Number(dorm.floor),
+    address: dorm?.address ?? null,
+    latestReadingAt: health.latestReadingAt ?? null,
+    periodDays,
+    totalLiters,
+    previousPeriodLiters: previousDays.reduce((sum, day) => sum + day.totalLiters, 0),
+    coldLiters: days.reduce((sum, day) => sum + day.coldLiters, 0),
+    warmLiters: days.reduce((sum, day) => sum + day.warmLiters, 0),
+    averageDailyLiters: days.length ? totalLiters / days.length : 0,
+    peakDay: days.reduce<WaterStatsDay | null>((peak, day) => !peak || day.totalLiters > peak.totalLiters ? day : peak, null),
+    activeSensors: Number(health.activeSensors) || 0,
+    alerts: Number(health.alerts) || 0,
+    days,
+    hourlyProfile: (hourRows as any[]).map(row => ({
+      hour: Number(row.hour),
+      averageLiters: Number(row.averageLiters) || 0,
+      averageColdLiters: Number(row.averageColdLiters) || 0,
+      averageWarmLiters: Number(row.averageWarmLiters) || 0,
+      averageWaterTemp: row.averageWaterTemp == null ? null : Number(row.averageWaterTemp),
+      averagePeakWaterTemp: row.averagePeakWaterTemp == null ? null : Number(row.averagePeakWaterTemp),
+    })),
   };
 }
 

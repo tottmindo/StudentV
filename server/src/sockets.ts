@@ -290,6 +290,17 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
     }
   });                                         
 
+  socket.on("getWaterStats", async (payload?: { days?: number }) => {
+    try {
+      const days = Number(payload?.days) || 30;
+      const stats = await data.getFloorWaterStats(dormID, days);
+      socket.emit("waterStats", stats);
+    } catch (err) {
+      console.error("Water stats error:", err);
+      socket.emit("waterStatsError", { message: "Failed to fetch water statistics." });
+    }
+  });
+
   //---------------SURVEYS-------------------
 
   socket.on("createSurvey", async(item: any, callback: any) => {

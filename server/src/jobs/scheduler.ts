@@ -104,7 +104,7 @@ cron.schedule('0 8 * * *', async () => {
 });
 
 if (process.env.SENSOR_SYNC_ENABLED !== "false") {
-  const sensorSyncSchedule = process.env.SENSOR_SYNC_CRON || "0 0,12 * * *";
+  const sensorSyncSchedule = process.env.SENSOR_SYNC_CRON || "*/15 * * * *";
   const sensorSyncTimezone = process.env.SENSOR_SYNC_TIMEZONE || "Europe/Stockholm";
 
   if (!cron.validate(sensorSyncSchedule)) {
