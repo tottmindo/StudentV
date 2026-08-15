@@ -80,9 +80,10 @@ PG_DB_PASSWORD=your-password
 ```
 
 The application accepts the former `DB_*` names as a temporary fallback, but
-new deployments should use the `PG_DB_*` variables. The old MySQL schema and
-expanded MySQL test-data script remain in the repository only as migration
-references; do not run them against PostgreSQL.
+new deployments should use the `PG_DB_*` variables. PostgreSQL is the only
+supported database. The database directory contains one complete schema and
+one development-data script; changes to database features belong in those two
+files instead of separate migration or fixture fragments.
 
 To load the PostgreSQL development fixtures, which erase the current
 application data, run:
@@ -107,6 +108,10 @@ is house 12, floor 5, room 1. It seeds an occupied resident in rooms 1–7 of
 each floor (leaving room 8 vacant), plus events, sensors, and chats on every
 floor. Generated residents use `resident-<room-number>@example.test`, username
 `resident<room-number>`, and password `test123`.
+
+Administrators are global accounts with no dorm or room assignment. This keeps
+physical locations exclusive to residents and allows administrators to manage
+all dorms.
 
 ## Notes
 

@@ -95,14 +95,16 @@
       const dormID = data?.dormID ?? data?.dormId;
       const userID = data?.userID ?? data?.userId;
       const role = data?.role;
+      const isAdmin = role === 'ADMIN';
 
-      if (!token || !dormID || !userID || !role) {
+      if (!token || !userID || !role || (!isAdmin && !dormID)) {
         throw new Error('Login response is missing required fields.');
       }
 
       // Save the token in sessionStorage
       sessionStorage.setItem('authToken', String(token));
-      sessionStorage.setItem('dormID', String(dormID));
+      if (isAdmin) sessionStorage.removeItem('dormID');
+      else sessionStorage.setItem('dormID', String(dormID));
       sessionStorage.setItem('role', String(role));
       sessionStorage.setItem('userID', String(userID));
       sessionStorage.setItem('email', String(data.email || username.value.trim().toLowerCase()));
@@ -117,7 +119,7 @@
         sessionStorage.removeItem('mustChangePassword');
       }
 
-      if (role === 'ADMIN') {
+      if (isAdmin) {
         sessionStorage.setItem('userRole', 'admin');
       } else {
         sessionStorage.setItem('userRole', 'user');
@@ -136,7 +138,7 @@
       // Redirect to the home view
       const requestedPath = typeof route.query.redirect === 'string' && /^\/(?!\/)/.test(route.query.redirect)
         ? route.query.redirect
-        : '/home';
+        : (isAdmin ? '/admin' : '/home');
       await router.replace(data.mustChangePassword ? '/change-password' : requestedPath);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Login failed. Please try again.';

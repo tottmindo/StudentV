@@ -1,4 +1,4 @@
--- StudentV PostgreSQL schema. Run this after creating the database itself.
+-- Complete StudentV PostgreSQL schema. This is the only schema source of truth.
 -- Example: createdb dorms_db && psql -d dorms_db -f generate-postgres.sql
 
 CREATE TABLE dorms (
@@ -19,11 +19,17 @@ CREATE TABLE users (
   username varchar(50) UNIQUE,
   passwordhash varchar(255) NOT NULL,
   role varchar(50) NOT NULL,
-  roomid integer NOT NULL,
-  dormid integer NOT NULL,
+  -- Global administrators have no physical dorm or room assignment.
+  roomid integer,
+  dormid integer,
   active boolean NOT NULL DEFAULT true,
   mustchangepassword boolean NOT NULL DEFAULT false,
   credentialversion integer NOT NULL DEFAULT 0,
+  CONSTRAINT users_role_check CHECK (role IN ('ADMIN', 'STUDENT')),
+  CONSTRAINT users_room_assignment_check CHECK (
+    (role = 'ADMIN' AND roomid IS NULL AND dormid IS NULL) OR
+    (role = 'STUDENT' AND roomid IS NOT NULL AND dormid IS NOT NULL)
+  ),
   FOREIGN KEY (roomid, dormid) REFERENCES room(roomid, dormid)
 );
 

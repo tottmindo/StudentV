@@ -91,7 +91,11 @@ function applyDashboard(dashboard: DashboardPayload) {
   sessionStorage.setItem('dashboard', JSON.stringify(dashboard)); isLoading.value = false; loadError.value = false
 }
 function receiveError() { loadError.value = true; isLoading.value = false }
-function requestDashboard() { loadError.value = false; socket.emit('getDashboard') }
+function requestDashboard() {
+  if (isAdmin.value) { isLoading.value = false; loadError.value = false; return }
+  loadError.value = false
+  socket.emit('getDashboard')
+}
 function loadCache() { try { const cached = JSON.parse(sessionStorage.getItem('dashboard') || 'null') as DashboardPayload | null; if (cached) applyDashboard(cached) } catch { sessionStorage.removeItem('dashboard') } }
 onMounted(() => { loadCache(); socket.on('dashboard', applyDashboard); socket.on('error', receiveError); requestDashboard() })
 onBeforeUnmount(() => { socket.off('dashboard', applyDashboard); socket.off('error', receiveError) })

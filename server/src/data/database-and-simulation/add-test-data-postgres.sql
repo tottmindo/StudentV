@@ -1,6 +1,7 @@
 -- PostgreSQL development-only seed data for StudentV.
 -- This deliberately removes all existing application data.
 BEGIN;
+TRUNCATE TABLE externalevents, page_visit_stats RESTART IDENTITY CASCADE;
 TRUNCATE TABLE dorms RESTART IDENTITY CASCADE;
 
 -- A room number is house + floor + room, for example 1251 means
@@ -21,13 +22,13 @@ SELECT setval(pg_get_serial_sequence('room', 'roomid'), (SELECT MAX(roomid) FROM
 
 -- All accounts use password: test123
 INSERT INTO users (email, username, passwordhash, role, roomid, dormid, active, mustchangepassword, credentialversion) VALUES
-  ('admin1@example.test', 'admin1', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'ADMIN', 1211, 1, true, false, 0),
+  ('admin1@example.test', 'admin1', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'ADMIN', NULL, NULL, true, false, 0),
   ('clara@example.test', 'clara', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 1212, 1, true, false, 0),
   ('john@example.test', 'john', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 1213, 1, true, false, 0),
-  ('admin2@example.test', 'admin2', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'ADMIN', 1221, 2, true, false, 0),
+  ('admin2@example.test', 'admin2', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'ADMIN', NULL, NULL, true, false, 0),
   ('alice@example.test', 'alice', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 1222, 2, true, false, 0),
   ('bob@example.test', 'bob', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 1223, 2, true, false, 0),
-  ('admin3@example.test', 'admin3', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'ADMIN', 1231, 3, true, false, 0),
+  ('admin3@example.test', 'admin3', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'ADMIN', NULL, NULL, true, false, 0),
   ('emma@example.test', 'emma', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 1232, 3, true, false, 0),
   ('sarah@example.test', 'sarah', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 1233, 3, true, true, 0);
 
@@ -48,6 +49,13 @@ INSERT INTO survey (question, active, expiresat, multiplechoice) VALUES
   ('How satisfied are you with the dorm facilities?', true, now() + interval '30 days', false),
   ('Which facility should be upgraded next?', true, now() + interval '14 days', true);
 INSERT INTO surveyanswers (eid, userid, answer) VALUES (1, 2, 'Very satisfied');
+
+-- Authentication fixtures cover unused, expired, and already-used reset tokens.
+-- The raw development-only tokens are unused-token, expired-token, and used-token.
+INSERT INTO passwordresettokens (userid, tokenhash, expiresat, usedat, createdat) VALUES
+  (2, 'c03ef7a2bf0f7cdd443dcdc2ec919f6930d02b9596db3143b4a246b684f1cb4b', now() + interval '1 hour', NULL, now() - interval '10 minutes'),
+  (3, 'b52b3ef2233858ce1156d85f235cf2c41eddfa8ca1eedc924398b9af1db303cb', now() - interval '1 hour', NULL, now() - interval '2 hours'),
+  (5, '229240ad993e5afe89360f52f424812bb0c8cc5ab5ccacb1745d444de9036b7f', now() + interval '1 hour', now() - interval '5 minutes', now() - interval '30 minutes');
 
 INSERT INTO events (title, description, startdate, enddate, active, type, dormid) VALUES
   ('Movie Night', 'Community movie screening in the common room.', now() + interval '2 days', now() + interval '2 days 3 hours', true, 'SOCIAL', 1),
@@ -132,6 +140,36 @@ INSERT INTO sensor (sensorcode, type, location, dormid) VALUES
   ('8c1f646190001fcb', 'Cold Water Meter', 'Kitchen', 6),
   ('8c1f6461900021c1', 'Warm Water Meter', 'Right shower', 10);
 
+-- Give every installation sensor recent and historical telemetry. Values are
+-- deterministic per sensor while timestamps stay useful for dashboard testing.
+INSERT INTO sensor_data
+  (sensorcode, recordedat, totalvolume, tempmin, tempmax, errorcode,
+   battery, ambienttemp, humidity, leakstatus)
+SELECT
+  s.sensorcode,
+  now() - sample.age,
+  1000 + row_number() OVER (ORDER BY s.sensorcode) * 20 + sample.litres,
+  CASE WHEN s.type = 'Cold Water Meter' THEN 7.5 ELSE 43.0 END,
+  CASE WHEN s.type = 'Cold Water Meter' THEN 12.0 ELSE 50.0 END,
+  CASE WHEN s.sensorcode = '8c1f64619000228d' AND sample.age = interval '2 hours' THEN 12 ELSE 0 END,
+  96.0 - sample.litres / 100,
+  20.5 + s.dormid / 10.0,
+  42.0 + s.dormid,
+  s.sensorcode = '8c1f646190001ebd' AND sample.age = interval '1 hour'
+FROM sensor s
+CROSS JOIN (VALUES
+  (interval '0 hours', 18.0::real),
+  (interval '1 hour', 12.0::real),
+  (interval '2 hours', 8.0::real),
+  (interval '1 day', 4.0::real),
+  (interval '7 days', 0.0::real)
+) AS sample(age, litres);
+
+INSERT INTO sensor_notes (sensorcode, note, updatedat) VALUES
+  ('8c1f64619000228d', 'Inspect error-code history during the next maintenance round.', now() - interval '1 day'),
+  ('8c1f646190001ebd', 'Test fixture: a recent reading reports a leak.', now() - interval '30 minutes'),
+  ('8c1f646190001592', 'Kitchen warm-water meter verified after installation.', now() - interval '2 days');
+
 INSERT INTO chat (name, dormid) VALUES ('Dorm 1 General', 1), ('Dorm 2 General', 2), ('Dorm 3 General', 3);
 INSERT INTO chat (name, dormid)
 SELECT address || ' floor ' || floor || ' General', dormid
@@ -147,6 +185,20 @@ GROUP BY chat.chatid;
 INSERT INTO chathistory (msg, chatid, userid) VALUES
   ('Welcome everyone!', 1, 1), ('Thanks for adding me.', 1, 2), ('Hello from Dorm 2.', 2, 4),
   ('Anyone want to get coffee?', 1, 3), ('Sure, lets meet at the cafe', 1, 2), ('Count me in!', 3, 8);
+
+-- Scraper and anonymous usage-statistics fixtures cover the remaining features.
+INSERT INTO externalevents (externalurl, title, startdate, enddate, createdat, updatedat, lastseen) VALUES
+  ('https://example.test/events/welcome-fair', 'Campus welcome fair', now() + interval '4 days', now() + interval '4 days 4 hours', now() - interval '2 days', now() - interval '1 day', now()),
+  ('https://example.test/events/library-workshop', 'Library study workshop', now() + interval '8 days', now() + interval '8 days 2 hours', now() - interval '3 days', now() - interval '1 day', now());
+
+INSERT INTO page_visit_stats (visitdate, page, visits) VALUES
+  (current_date - 2, '/', 14),
+  (current_date - 1, '/', 21),
+  (current_date, '/', 8),
+  (current_date - 1, '/events', 12),
+  (current_date, '/events', 7),
+  (current_date, '/cleaning', 5),
+  (current_date, '/sensors', 9);
 
 -- Base cleaning tasks with new fields (createdByUserID NULL for base tasks, isImportant varies)
 INSERT INTO cleaningtasktemplate (taskname, description, active, createdbyuserid, isimportant) VALUES

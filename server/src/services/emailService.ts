@@ -33,7 +33,7 @@ async function smtpTransport() {
 
 export async function sendResidentWelcomeEmail(
   email: string,
-  roomID: number,
+  roomID: number | null,
   temporaryPassword: string
 ) {
   const appUrl = process.env.APP_URL || "http://localhost:5173";
@@ -44,7 +44,7 @@ export async function sendResidentWelcomeEmail(
     text: [
       "Welcome to DORMS!",
       "",
-      `Your account for room ${roomID} is ready.`,
+      roomID == null ? "Your administrator account is ready." : `Your account for room ${roomID} is ready.`,
       `Email: ${email}`,
       `Temporary password: ${temporaryPassword}`,
       "",

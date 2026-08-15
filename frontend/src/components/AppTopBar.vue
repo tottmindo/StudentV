@@ -207,7 +207,7 @@ function handleKeydown(event: KeyboardEvent) {
   if (notificationsOpen.value) closeNotifications()
   else closeMenu()
 }
-function requestDashboard() { socket.emit('getDashboard') }
+function requestDashboard() { if (!isAdmin.value) socket.emit('getDashboard') }
 onMounted(() => {
   loadCachedNotifications()
   socket.on('dashboard', receiveDashboard)

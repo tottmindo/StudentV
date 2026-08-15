@@ -237,8 +237,11 @@ class Data {
            ON u.userID = ?
           AND u.dormID = cw.dormID
           AND u.active = TRUE
+          AND UPPER(u.role) <> 'ADMIN'
          INNER JOIN users assignedUser
            ON assignedUser.userID = cw.assignedUserID
+          AND assignedUser.active = TRUE
+          AND UPPER(assignedUser.role) <> 'ADMIN'
          LEFT JOIN cleaningAssignments ca
            ON ca.weekID = cw.weekID
          WHERE cw.dormID = ?
@@ -304,10 +307,15 @@ class Data {
            ON ctt.templateID = ca.templateID
          INNER JOIN cleaningWeeks cw
            ON cw.weekID = ca.weekID
+         INNER JOIN users weekUser
+           ON weekUser.userID = cw.assignedUserID
+          AND weekUser.active = TRUE
+          AND UPPER(weekUser.role) <> 'ADMIN'
          INNER JOIN users currentUser
            ON currentUser.userID = ?
           AND currentUser.dormID = cw.dormID
           AND currentUser.active = TRUE
+          AND UPPER(currentUser.role) <> 'ADMIN'
          LEFT JOIN users assignedUser
            ON assignedUser.userID = ca.assignedUserID
          WHERE ca.weekID = ?
@@ -511,8 +519,12 @@ class Data {
          FROM cleaningWeekSwapRequests r
          INNER JOIN users requester
            ON requester.userID = r.requesterUserID
+          AND requester.active = TRUE
+          AND UPPER(requester.role) <> 'ADMIN'
          INNER JOIN users target
            ON target.userID = r.targetUserID
+          AND target.active = TRUE
+          AND UPPER(target.role) <> 'ADMIN'
          WHERE (r.requesterUserID = ? OR r.targetUserID = ?)
            AND r.dormID = ?
          ORDER BY r.createdAt DESC`,
@@ -1195,6 +1207,7 @@ async getUsersByDorm(dormID: number): Promise<any[]> {
        FROM users
        WHERE dormID = ?
          AND active = TRUE
+         AND UPPER(role) <> 'ADMIN'
        ORDER BY userID ASC`,
       [dormID]
     );
@@ -1206,21 +1219,42 @@ async getUsersByDorm(dormID: number): Promise<any[]> {
   }
 }
 
-async getLatestCleaningWeek(dormID: number): Promise<any | null> {
+async getLatestCleaningWeekBefore(dormID: number, startDate: Date): Promise<any | null> {
   try {
     const [rows] = await pool.query(
-      `SELECT *
-       FROM cleaningWeeks
-       WHERE dormID = ?
-       ORDER BY startDate DESC
+      `SELECT cw.*
+       FROM cleaningWeeks cw
+       INNER JOIN users u
+         ON u.userID = cw.assignedUserID
+        AND u.active = TRUE
+        AND UPPER(u.role) <> 'ADMIN'
+       WHERE cw.dormID = ?
+         AND cw.startDate < ?
+       ORDER BY cw.startDate DESC
        LIMIT 1`,
-      [dormID]
+      [dormID, startDate]
     );
 
     return (rows as any[])[0] ?? null;
   } catch (err) {
     console.error("❌ Error fetching latest cleaning week:", err);
     throw new Error("Failed to fetch latest cleaning week.");
+  }
+}
+
+async getCleaningWeekByStart(dormID: number, startDate: Date): Promise<any | null> {
+  try {
+    const [rows] = await pool.query(
+      `SELECT weekID, assignedUserID
+       FROM cleaningWeeks
+       WHERE dormID = ? AND startDate = ?
+       LIMIT 1`,
+      [dormID, startDate]
+    );
+    return (rows as any[])[0] ?? null;
+  } catch (err) {
+    console.error("❌ Error fetching cleaning week by date:", err);
+    throw new Error("Failed to fetch cleaning week.");
   }
 }
 
@@ -1236,7 +1270,8 @@ async createCleaningWeek(
        FROM users
        WHERE userID = ?
          AND dormID = ?
-         AND active = TRUE`,
+         AND active = TRUE
+         AND UPPER(role) <> 'ADMIN'`,
       [assignedUserID, dormID]
     );
 
@@ -1248,7 +1283,9 @@ async createCleaningWeek(
     const [result]: any = await pool.query(
       `INSERT INTO cleaningWeeks (dormID, assignedUserID, startDate, endDate)
        VALUES (?, ?, ?, ?)
-       ON CONFLICT (dormID, startDate) DO UPDATE SET weekID = cleaningWeeks.weekID
+       ON CONFLICT (dormID, startDate) DO UPDATE
+         SET assignedUserID = EXCLUDED.assignedUserID,
+             endDate = EXCLUDED.endDate
        RETURNING weekID`,
       [dormID, assignedUserID, startDate, endDate]
     );

@@ -34,11 +34,11 @@
       <div class="grid gap-6 lg:grid-cols-2">
         <section class="rounded-2xl bg-surface p-8 shadow-lg dark:bg-surface-dark">
           <h2 class="text-2xl font-bold">Add a new user</h2>
-          <p class="mt-2 text-sm opacity-75">Choose any dorm and room. A temporary password will be emailed to the user.</p>
+          <p class="mt-2 text-sm opacity-75">Residents occupy a room. Administrators are assigned only to a dorm.</p>
           <form class="mt-6 space-y-4" @submit.prevent="createResident(false)">
             <input v-model.trim="email" type="email" required class="w-full rounded border border-border p-3" placeholder="resident@example.com" />
-            <select v-model.number="dormID" required class="w-full rounded border border-border p-3"><option disabled value="">Select dorm</option><option v-for="dorm in dorms" :key="dorm.dormID" :value="dorm.dormID">{{ dormLabel(dorm) }}</option></select>
-            <select v-model.number="roomID" required class="w-full rounded border border-border p-3"><option disabled value="">Select room</option><option v-for="room in selectedRooms(dormID)" :key="room" :value="room">Room {{ room }}</option></select>
+            <select v-if="createRole === 'STUDENT'" v-model.number="dormID" required class="w-full rounded border border-border p-3"><option disabled value="">Select dorm</option><option v-for="dorm in dorms" :key="dorm.dormID" :value="dorm.dormID">{{ dormLabel(dorm) }}</option></select>
+            <select v-if="createRole === 'STUDENT'" v-model.number="roomID" required class="w-full rounded border border-border p-3"><option disabled value="">Select room</option><option v-for="room in selectedRooms(dormID)" :key="room" :value="room">Room {{ room }}</option></select>
             <select v-model="createRole" class="w-full rounded border border-border p-3"><option value="STUDENT">Student</option><option value="ADMIN">Administrator</option></select>
             <button :disabled="isSubmitting" class="w-full rounded-lg bg-accent p-3 font-semibold text-white disabled:opacity-50">{{ isSubmitting ? 'Creating and sending…' : 'Create account and send email' }}</button>
           </form>
@@ -59,7 +59,7 @@
 
       <section class="rounded-2xl bg-surface p-6 shadow-lg dark:bg-surface-dark">
         <div class="flex flex-wrap items-center justify-between gap-3"><div><h2 class="text-2xl font-bold">Manage users</h2><p class="text-sm opacity-75">Edit users across every dorm.</p></div><select v-model="filterDorm" class="rounded border border-border p-2"><option value="all">All dorms</option><option v-for="dorm in dorms" :key="dorm.dormID" :value="String(dorm.dormID)">{{ dormLabel(dorm) }}</option></select></div>
-        <div class="mt-5 overflow-x-auto"><table class="w-full text-left text-sm"><thead><tr class="border-b border-border"><th class="p-3">Email / username</th><th class="p-3">Dorm / room</th><th class="p-3">Role</th><th class="p-3">Status</th><th class="p-3"></th></tr></thead><tbody><tr v-for="user in filteredUsers" :key="user.userID" class="border-b border-border/50"><td class="p-3"><div class="font-semibold">{{ user.email }}</div><div class="opacity-70">{{ user.username || 'Setup incomplete' }}</div></td><td class="p-3">{{ user.dormID }} / {{ user.roomID }}</td><td class="p-3">{{ user.role }}</td><td class="p-3">{{ user.active ? (user.mustChangePassword ? 'Temporary password' : 'Active') : 'Inactive' }}</td><td class="p-3"><button class="rounded bg-accent px-3 py-2 text-white" @click="startEdit(user)">Edit</button></td></tr></tbody></table></div>
+        <div class="mt-5 overflow-x-auto"><table class="w-full text-left text-sm"><thead><tr class="border-b border-border"><th class="p-3">Email / username</th><th class="p-3">Dorm / room</th><th class="p-3">Role</th><th class="p-3">Status</th><th class="p-3"></th></tr></thead><tbody><tr v-for="user in filteredUsers" :key="user.userID" class="border-b border-border/50"><td class="p-3"><div class="font-semibold">{{ user.email }}</div><div class="opacity-70">{{ user.username || 'Setup incomplete' }}</div></td><td class="p-3">{{ user.role === 'ADMIN' ? 'Global access' : `${user.dormID} / ${user.roomID}` }}</td><td class="p-3">{{ user.role }}</td><td class="p-3">{{ user.active ? (user.mustChangePassword ? 'Temporary password' : 'Active') : 'Inactive' }}</td><td class="p-3"><button class="rounded bg-accent px-3 py-2 text-white" @click="startEdit(user)">Edit</button></td></tr></tbody></table></div>
       </section>
     </template>
 
@@ -123,7 +123,7 @@ import { getSocket } from '@/composables/socket'
 import { apiUrl } from '@/composables/api'
 
 type Dorm = { dormID: number; floor: number; address: string; rooms: number[] }
-type User = { userID: number; email: string; username: string | null; dormID: number; roomID: number; role: 'STUDENT' | 'ADMIN'; active: boolean; mustChangePassword: boolean }
+type User = { userID: number; email: string; username: string | null; dormID: number | null; roomID: number | null; role: 'STUDENT' | 'ADMIN'; active: boolean; mustChangePassword: boolean }
 type Sensor = { sensorCode: string; type: string; location: string; dormID: number; dormAddress: string; dormFloor: number; recordedAt: string | null; errorCode: number | null; leakStatus: boolean | null; adminNote: string; noteUpdatedAt: string | null }
 type SensorSortKey = keyof Sensor
 
@@ -143,7 +143,7 @@ const sensorColumns: { key: SensorSortKey; label: string }[] = [{ key: 'sensorCo
 
 const sectionTitle = computed(() => activeSection.value === 'users' ? 'User administration' : activeSection.value === 'sensors' ? 'Sensor administration' : 'Choose an administration area')
 const parsedSensorCodes = computed(() => [...new Set(newSensorCodes.value.split(/[\s,;]+/).map(code => code.trim().toLowerCase()).filter(Boolean))])
-const selectedRooms = (id: number | '') => dorms.value.find(dorm => dorm.dormID === Number(id))?.rooms || []
+const selectedRooms = (id: number | '' | null) => dorms.value.find(dorm => dorm.dormID === Number(id))?.rooms || []
 const dormLabel = (dorm: Dorm) => `${dorm.address}, floor ${dorm.floor}`
 const dormName = (sensor: Sensor) => `${sensor.dormAddress}, floor ${sensor.dormFloor}`
 const filteredUsers = computed(() => users.value.filter(user => filterDorm.value === 'all' || String(user.dormID) === filterDorm.value))
@@ -184,7 +184,15 @@ function startEdit(user: User) { editing.value = { ...user }; editFeedback.value
 async function saveUser(replaceExisting: boolean) { if (!editing.value) return; isSaving.value = true; editFeedback.value = ''; try { const payload = { ...editing.value, username: editing.value.username?.trim() || null, replaceExisting }; const response = await fetch(apiUrl(`/api/auth/admin/users/${editing.value.userID}`), { method: 'PATCH', headers: headers(), body: JSON.stringify(payload) }); const data = await response.json(); if (!response.ok) { if (response.status === 409 && data.code === 'ROOM_OCCUPIED') { pendingReplacement.value = data.existingUser; replacementAction.value = () => saveUser(true); return } throw new Error(data.error || 'Could not update user.') } editing.value = null; await loadUsers() } catch (error) { editFeedback.value = error instanceof Error ? error.message : 'Could not update user.' } finally { isSaving.value = false } }
 async function confirmReplacement() { const action = replacementAction.value; pendingReplacement.value = null; replacementAction.value = null; if (action) await action() }
 
-watch(() => editing.value?.dormID, () => { if (editing.value && !selectedRooms(editing.value.dormID).includes(editing.value.roomID)) editing.value.roomID = selectedRooms(editing.value.dormID)[0] })
+watch(() => [editing.value?.dormID, editing.value?.role], () => {
+  if (!editing.value) return
+  if (editing.value.role === 'ADMIN') {
+    editing.value.dormID = null
+    editing.value.roomID = null
+  } else if (editing.value.dormID != null && (editing.value.roomID == null || !selectedRooms(editing.value.dormID).includes(editing.value.roomID))) {
+    editing.value.roomID = selectedRooms(editing.value.dormID)[0]
+  }
+})
 watch(sensorHouses, houses => { if (sensorHouseFilter.value !== 'all' && !houses.includes(sensorHouseFilter.value)) sensorHouseFilter.value = 'all' })
 watch(sensorFloors, floors => { if (sensorFloorFilter.value !== 'all' && !floors.includes(Number(sensorFloorFilter.value))) sensorFloorFilter.value = 'all' })
 onMounted(() => loadDorms().catch(error => { feedbackMessage.value = error.message; feedbackClass.value = 'text-red-500' }))

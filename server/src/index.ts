@@ -99,18 +99,20 @@ io.on("connection", async (socket: Socket) => {
         return;
       }
 
-      if (dormID && userID) {
-        socket.join(`dorm-${dormID}`);
+      if (userID && (dormID || role === "ADMIN")) {
+        if (dormID) socket.join(`dorm-${dormID}`);
         socket.join(`user-${userID}`);
-        console.log(`✅ Authenticated socket ${socket.id} joined dorm room: dorm-${dormID}`);
-        sockets(socket, data, dormID, userID, role);
+        console.log(`✅ Authenticated socket ${socket.id} for ${role === "ADMIN" ? "global administrator" : `dorm-${dormID}`}`);
+        sockets(socket, data, dormID ?? 0, userID, role);
 
-        try {
-          const dashboard = await data.getDashboard(userID, dormID);
-          socket.emit("dashboard", dashboard);
-        } catch (err) {
-          console.error(`Error sending dashboard to socket ${socket.id}:`, err);
-          socket.emit("error", { message: "Failed to send dashboard." });
+        if (dormID) {
+          try {
+            const dashboard = await data.getDashboard(userID, dormID);
+            socket.emit("dashboard", dashboard);
+          } catch (err) {
+            console.error(`Error sending dashboard to socket ${socket.id}:`, err);
+            socket.emit("error", { message: "Failed to send dashboard." });
+          }
         }
       }
     } catch (err) {
