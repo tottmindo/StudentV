@@ -1,25 +1,14 @@
 <template>
   <div class="min-h-screen bg-background-light px-4 py-6 text-text dark:bg-background-dark dark:text-text-dark sm:px-6 lg:px-10">
-    <NavComponent :menu="navMenuType" :socket="socket" class="fixed right-4 top-4 z-40" />
     <main class="mx-auto max-w-7xl">
-      <header class="mb-7 pr-14">
-        <p class="mb-2 text-sm font-bold uppercase tracking-[0.16em] text-accent">Water insights</p>
-        <div class="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 class="text-3xl font-bold tracking-tight sm:text-4xl">Your floor's water use</h1>
-            <p class="mt-2 max-w-2xl opacity-70">See when water is used, how the mix changes, and how this period compares with the last.</p>
-          </div>
-          <div v-if="stats" class="rounded-full border border-border-border bg-background px-4 py-2 text-sm font-semibold dark:bg-surface-dark">
-            {{ stats.address || 'Your residence' }} · Floor {{ stats.floor ?? '—' }}
-          </div>
-        </div>
-      </header>
-
       <section class="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border-border bg-background p-2 shadow-sm dark:bg-surface-dark">
         <div class="flex gap-1" aria-label="Time period">
           <button v-for="days in periods" :key="days" class="rounded-xl px-4 py-2 text-sm font-bold transition" :class="period === days ? 'bg-text text-white dark:bg-text-dark dark:text-primary-dark' : 'hover:bg-surface dark:hover:bg-black/20'" @click="period = days">{{ days === 1 ? 'Today' : `${days} days` }}</button>
         </div>
-        <p v-if="stats?.latestReadingAt" class="px-3 text-xs opacity-60">Updated {{ formatUpdated(stats.latestReadingAt) }}</p>
+        <div class="flex flex-wrap items-center justify-end gap-2 px-2 text-xs opacity-60">
+          <span v-if="stats">{{ stats.address || 'Your residence' }} · Floor {{ stats.floor ?? '—' }}</span>
+          <span v-if="stats?.latestReadingAt">Updated {{ formatUpdated(stats.latestReadingAt) }}</span>
+        </div>
       </section>
 
       <div v-if="loading && !stats" class="grid place-items-center rounded-2xl bg-background py-28 dark:bg-surface-dark"><p class="animate-pulse font-semibold opacity-60">Loading water readings…</p></div>
@@ -67,13 +56,12 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import NavComponent from '@/components/NavComponent.vue'
 import WaterStatsChart from '@/components/WaterStatsChart.vue'
 import { getSocket } from '@/composables/socket'
 import type { FloorWaterStats } from '@/types'
 
 type View = 'usage' | 'split' | 'temperature' | 'hourly'
-const socket = getSocket(), navMenuType = ref('home'), periods = [1, 7, 30, 90] as const
+const socket = getSocket(), periods = [1, 7, 30, 90] as const
 const period = ref<(typeof periods)[number]>(30), view = ref<View>('usage'), stats = ref<FloorWaterStats | null>(null), loading = ref(true), error = ref('')
 const views: { label: string; value: View }[] = [{ label: 'Usage', value: 'usage' }, { label: 'Cold vs warm', value: 'split' }, { label: 'Temperature', value: 'temperature' }, { label: 'By hour', value: 'hourly' }]
 const visibleViews = computed(() => period.value === 1 ? views.filter(option => option.value !== 'hourly') : views)

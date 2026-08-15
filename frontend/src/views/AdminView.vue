@@ -1,12 +1,10 @@
 <template>
-  <NavComponent :socket="socket" menu="home" class="fixed right-4 top-4" />
-  <main class="mx-auto min-h-screen max-w-7xl space-y-6 px-4 py-20">
-    <header class="flex flex-wrap items-center justify-between gap-4">
+  <main class="mx-auto min-h-screen max-w-7xl space-y-6 px-4 py-6">
+    <header v-if="activeSection" class="flex flex-wrap items-center justify-between gap-4">
       <div>
-        <p class="text-sm font-semibold uppercase tracking-wider text-accent">Administration</p>
         <h1 class="text-3xl font-bold">{{ sectionTitle }}</h1>
       </div>
-      <button v-if="activeSection" class="rounded-lg border border-border px-4 py-2 font-semibold" @click="activeSection = null">Back to administration</button>
+      <button class="rounded-lg border border-border px-4 py-2 font-semibold" @click="activeSection = null">Back to administration</button>
     </header>
 
     <div v-if="!activeSection" class="grid gap-6 md:grid-cols-2">
@@ -14,6 +12,11 @@
         <div class="text-4xl">📊</div>
         <h2 class="mt-5 text-2xl font-bold">Water analytics</h2>
         <p class="mt-2 opacity-75">Compare water use across houses and floors and review meter health.</p>
+      </router-link>
+      <router-link to="/admin/app-usage" class="rounded-2xl bg-surface p-8 text-left shadow-lg transition hover:-translate-y-1 hover:shadow-xl dark:bg-surface-dark">
+        <div class="text-4xl">📈</div>
+        <h2 class="mt-5 text-2xl font-bold">Application usage</h2>
+        <p class="mt-2 opacity-75">Review anonymous, aggregated page visits without tracking individual users.</p>
       </router-link>
       <button class="rounded-2xl bg-surface p-8 text-left shadow-lg transition hover:-translate-y-1 hover:shadow-xl dark:bg-surface-dark" @click="openSection('users')">
         <div class="text-4xl">👥</div>
@@ -116,7 +119,6 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import NavComponent from '@/components/NavComponent.vue'
 import { getSocket } from '@/composables/socket'
 import { apiUrl } from '@/composables/api'
 

@@ -112,6 +112,8 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import type { MenuItem } from '@/types'
+import { clearSession } from '@/composables/session'
+import { disconnectSocket } from '@/composables/socket'
 
 const props = defineProps<{
   menu: string
@@ -124,8 +126,9 @@ const closeMenu = () => (isOpen.value = false)
 const role = sessionStorage.getItem('userRole')
 const router = useRouter()
 const logout = () => {
-  sessionStorage.clear()
-  router.push({ name: 'login' })
+  disconnectSocket()
+  clearSession()
+  router.replace({ name: 'login' })
 }
 
 const menuItems = ref<MenuItem[]>([])

@@ -1,15 +1,5 @@
 <template>
-  <NavComponent
-    :socket="socket"
-    :menu="navMenuType"
-    class="fixed top-4 right-4 z-50"
-  />
-
   <div class="max-w-5xl mx-auto p-6">
-
-    <h1 class="text-3xl font-bold mb-6">
-      Chats
-    </h1>
 
     <div
       v-if="chatRooms.length === 0"
@@ -42,12 +32,10 @@
 import { ref, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import { getSocket } from "@/composables/socket";
-import NavComponent from "@/components/NavComponent.vue";
 
 const socket = getSocket();
 const router = useRouter();
 
-const navMenuType = ref("home");
 
 const chatRooms = ref<any[]>([]);
 

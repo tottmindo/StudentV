@@ -10,6 +10,7 @@
     "start:scheduler": "node dist/jobs/scheduler.js",
     "db:schema": "node scripts/run-sql.mjs src/data/database-and-simulation/generate-postgres.sql",
     "db:migrate:sensor-notes": "node scripts/run-sql.mjs src/data/database-and-simulation/add-sensor-notes.sql",
+    "db:migrate:page-visits": "node scripts/run-sql.mjs src/data/database-and-simulation/add-page-visit-stats.sql",
     "db:seed": "node scripts/run-sql.mjs src/data/database-and-simulation/add-test-data-postgres.sql --seed"
   },
   "dependencies": {

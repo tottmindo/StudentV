@@ -1,15 +1,6 @@
 <template>
   <div class="min-h-screen bg-background-light px-4 py-8 text-text dark:bg-background-dark dark:text-text-dark sm:px-6 lg:px-10">
-    <NavComponent :socket="socket" menu="home" class="fixed right-4 top-4 z-40" />
     <main class="mx-auto max-w-7xl">
-      <header class="mb-7 pr-14">
-        <p class="text-sm font-bold uppercase tracking-[.16em] text-accent">Administration</p>
-        <div class="mt-2 flex flex-wrap items-end justify-between gap-4">
-          <div><h1 class="text-3xl font-bold sm:text-4xl">Water analytics</h1><p class="mt-2 opacity-65">Compare floors and monitor the meters behind the data.</p></div>
-          <router-link to="/admin" class="rounded-xl border border-border-border bg-background px-4 py-2 font-bold dark:bg-surface-dark">Back to administration</router-link>
-        </div>
-      </header>
-
       <div class="mb-6 grid items-stretch gap-4 lg:grid-cols-[minmax(15rem,1fr)_minmax(0,2fr)]">
         <section class="flex flex-col justify-between rounded-2xl border border-border-border bg-background p-5 shadow-sm dark:bg-surface-dark">
           <label class="text-sm font-bold">Choose house<select v-model="house" class="mt-2 block w-full rounded-xl border border-border-border bg-transparent p-3 font-normal"><option v-for="value in houses" :key="value" :value="value">{{ value }}</option></select></label>
@@ -62,7 +53,6 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import NavComponent from '@/components/NavComponent.vue'
 import WaterStatsChart from '@/components/WaterStatsChart.vue'
 import ModalComponent from '@/components/ModalComponent.vue'
 import { apiUrl } from '@/composables/api'

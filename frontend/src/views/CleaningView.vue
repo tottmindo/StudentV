@@ -1,5 +1,4 @@
 <template>
-  <NavComponent :socket="socket" :menu="navMenuType" class="fixed top-4 right-4 z-50" />
 
   <!-- Notification -->
   <div
@@ -13,17 +12,6 @@
   </div>
 
   <div class="min-h-screen p-6 bg-background dark:bg-background-dark">
-    <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
-      <div>
-        <h1 class="text-3xl font-bold text-headline dark:text-text-dark">
-          Cleaning Schedule
-        </h1>
-        <p class="text-sm text-text dark:text-text-dark opacity-70">
-          See whose week it is and complete your cleaning checklist.
-        </p>
-      </div>
-    </div>
-
     <div class="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
 
       <!-- =====================================================
@@ -370,7 +358,6 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import NavComponent from '@/components/NavComponent.vue'
 import { getSocket } from '@/composables/socket'
 import { useRoute } from 'vue-router'
 
@@ -417,7 +404,6 @@ type CleaningWeekTask = {
   createdByUserID?: number | null
 }
 
-const navMenuType = ref('home')
 
 const weeks = ref<CleaningWeek[]>([])
 const selectedWeek = ref<CleaningWeek | null>(null)

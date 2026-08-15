@@ -158,3 +158,11 @@ CREATE TABLE externalevents (
     updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     lastSeen TIMESTAMP
 );
+
+-- Daily anonymous page-view counters. Deliberately has no user/device identifier.
+CREATE TABLE page_visit_stats (
+  visitdate date NOT NULL,
+  page varchar(80) NOT NULL,
+  visits integer NOT NULL DEFAULT 0 CHECK (visits >= 0),
+  PRIMARY KEY (visitdate, page)
+);

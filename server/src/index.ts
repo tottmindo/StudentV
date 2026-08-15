@@ -34,6 +34,7 @@ import { Server } from "socket.io";
 import express from "express";
 import authRoutes from "./routes/authRoutes.js";
 import sensorDataRoutes from "./routes/sensorDataRoutes.js";
+import usageRoutes from "./routes/usageRoutes.js";
 import { Data } from "./data.js";
 import { Socket } from "socket.io";
 import { sockets } from "./sockets.js";
@@ -69,6 +70,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use("/api/auth", authRoutes);
 app.use("/api/sensor-data", sensorDataRoutes);
+app.use("/api/usage", usageRoutes);
 
 const data = new Data();
 
@@ -92,6 +94,7 @@ io.on("connection", async (socket: Socket) => {
         [userID]
       );
       if (!authRows[0]?.active || authRows[0].mustChangePassword || authRows[0].credentialVersion !== decoded.credentialVersion) {
+        socket.emit("auth-error", { message: "This session is no longer valid." });
         socket.disconnect(true);
         return;
       }
@@ -111,7 +114,9 @@ io.on("connection", async (socket: Socket) => {
         }
       }
     } catch (err) {
-      console.warn(`⚠️ Invalid token for socket ${socket.id}, continuing unauthenticated.`);
+      console.warn(`⚠️ Invalid token for socket ${socket.id}.`);
+      socket.emit("auth-error", { message: "Invalid or expired session." });
+      socket.disconnect(true);
     }
   } else {
     console.log(`🟡 Unauthenticated socket connected: ${socket.id}`);

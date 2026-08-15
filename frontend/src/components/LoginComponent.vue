@@ -9,7 +9,7 @@
         :id="usernameID"
         v-model="username"
         :placeholder="usernamePlaceholder"
-        autocomplete="off"
+        autocomplete="email"
         required
         class="w-full p-3 rounded border border-border text placeholder-text-light bg-background-light
                focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent
@@ -22,7 +22,7 @@
         :id="passwordID"
         v-model="password"
         :placeholder="passwordPlaceholder"
-        autocomplete="off"
+        autocomplete="current-password"
         required
         class="w-full p-3 rounded border border-border text placeholder-text-light bg-background-light
                focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent
@@ -32,10 +32,11 @@
       <!-- Submit Button -->
       <button
         type="submit"
-        class="w-full p-3 rounded font-semibold text-background-light bg-accent hover:bg-accent-dark transition-colors
+        :disabled="isSubmitting"
+        class="w-full p-3 rounded font-semibold text-background-light bg-accent hover:bg-accent-dark transition-colors disabled:cursor-wait disabled:opacity-60
                dark:bg-accent-dark dark:hover:bg-accent"
       >
-        Login
+        {{ isSubmitting ? 'Signing in…' : 'Login' }}
       </button>
       <router-link to="/forgot-password" class="block text-center text-sm text-accent hover:underline">
         Forgot your password?
@@ -48,6 +49,7 @@
 <script setup lang="ts">
   import { ref } from 'vue';
   import { useRouter } from 'vue-router';
+  import { useRoute } from 'vue-router';
   import { apiUrl } from '@/composables/api';
   import { connectSocket } from '@/composables/socket';
 
@@ -61,8 +63,12 @@
   const username = ref('');
   const password = ref('');
   const router = useRouter();
+  const route = useRoute();
+  const isSubmitting = ref(false);
 
   const login = async () => {
+    if (isSubmitting.value) return;
+    isSubmitting.value = true;
     try {
       const response = await fetch(apiUrl('/api/auth/login'), {
         method: 'POST',
@@ -128,10 +134,15 @@
       }
 
       // Redirect to the home view
-      router.push(data.mustChangePassword ? '/change-password' : '/home');
+      const requestedPath = typeof route.query.redirect === 'string' && /^\/(?!\/)/.test(route.query.redirect)
+        ? route.query.redirect
+        : '/home';
+      await router.replace(data.mustChangePassword ? '/change-password' : requestedPath);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Login failed. Please try again.';
       alert(errorMessage);
+    } finally {
+      isSubmitting.value = false;
     }
   };
 

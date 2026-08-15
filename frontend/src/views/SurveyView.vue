@@ -1,33 +1,7 @@
 <template>
-  <NavComponent :socket="socket" :menu="navMenuType" class="fixed top-4 right-4 z-50"/>
 
   
-  <div class="max-w-5xl mx-auto flex flex-col gap-6">
-
-    <!-- Header -->
-    <section class="bg-surface dark:bg-surface-dark rounded-lg p-6">
-      <div class="flex items-center justify-between">
-
-        <h2 class="text-2xl font-bold text-headline dark:text-text-dark">
-          Surveys
-        </h2>
-
-        <span class="text-sm opacity-70">
-          Total: {{ surveys.length }}
-        </span>
-
-      </div>
-        <button
-          class="fixed bottom-6 right-6
-                w-14 h-14 rounded-full
-                bg-accent text-white text-3xl
-                flex items-center justify-center
-                shadow-lg hover:opacity-90"
-          @click="showCreateModal = true"
-        >
-          +
-      </button>
-    </section>
+  <div class="max-w-5xl mx-auto flex flex-col gap-6 p-4 sm:p-6">
 
     <!-- Survey List -->
     <section class="flex flex-col gap-3">
@@ -108,9 +82,6 @@
     </section>
 
   </div>
-  <ModalComponent v-model="showCreateModal">
-    <SurveyForm />
-  </ModalComponent>
 </template>
 
 
@@ -118,16 +89,11 @@
 import { ref, computed, onMounted, onUnmounted } from "vue"
 import { getSocket } from "@/composables/socket"
 import { useRouter } from "vue-router"
-import ModalComponent from "@/components/ModalComponent.vue"
-import SurveyForm from "@/components/CreateSurveyComponent.vue"
-import NavComponent from "@/components/NavComponent.vue"
 
 const socket = getSocket();
 const router = useRouter();
-const navMenuType = ref('home');
 
 const surveys = ref<any[]>([]);
-const showCreateModal = ref(false);
 
 const page = ref(0);
 const limit = 10;
