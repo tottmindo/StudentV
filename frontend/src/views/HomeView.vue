@@ -370,7 +370,7 @@ const openEventDetails = (event: HomeEventItem) => {
 const formatEventDate = (dateString?: string) => {
   if (!dateString) return '';
 
-  const date = new Date(dateString.replace(' ', 'T'));
+  const date = new Date(dateString.replace(' ', 'T').replace('Z', ''));
   return Number.isNaN(date.getTime()) ? dateString : date.toLocaleString();
 };
 

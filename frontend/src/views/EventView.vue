@@ -150,13 +150,51 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <label class="grid gap-1">
-            <span class="font-semibold">Start (date & time)</span>
-            <input v-model="newEvent.startDateLocal" type="datetime-local" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded" />
+            <span class="font-semibold">Start date</span>
+            <input
+              v-model="newEvent.startDateLocal"
+              type="date"
+              required
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded"
+            />
           </label>
 
           <label class="grid gap-1">
-            <span class="font-semibold">End (date & time)</span>
-            <input v-model="newEvent.endDateLocal" type="datetime-local" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded" />
+            <span class="font-semibold">End date</span>
+            <input
+              v-model="newEvent.endDateLocal"
+              type="date"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded"
+            />
+          </label>
+        </div>
+
+        <label class="flex items-center gap-2">
+          <input
+            v-model="newEvent.hasTime"
+            type="checkbox"
+            class="w-4 h-4"
+          />
+          <span class="text-sm font-semibold">Specify time</span>
+        </label>
+
+        <div v-if="newEvent.hasTime" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <label class="grid gap-1">
+            <span class="font-semibold">Start time</span>
+            <input
+              v-model="newEvent.startTime"
+              type="time"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded"
+            />
+          </label>
+
+          <label class="grid gap-1">
+            <span class="font-semibold">End time</span>
+            <input
+              v-model="newEvent.endTime"
+              type="time"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded"
+            />
           </label>
         </div>
 
@@ -298,7 +336,12 @@ const externalEventDates = computed(() =>{
 
 const parseEventDate = (dateString?: string) => {
   if (!dateString) return undefined
-  return new Date(dateString.replace(' ', 'T'))
+
+  const normalized = dateString
+    .replace(' ', 'T')
+    .replace('Z', '')
+
+  return new Date(normalized)
 }
 
 const eventHasNotEnded = (event: CalendarEvent) => {
@@ -476,6 +519,7 @@ const bindSocket = () => {
   socket.off('externalEvents')
 
   socket.on('eventsData', (events: CalendarEvent[]) => {
+    console.log('EVENTS FROM SERVER:', events)
     upcomingEvents.value = events
     sessionStorage.setItem('events', JSON.stringify(events))
     openRequestedEvent()
@@ -496,26 +540,48 @@ const fetchCalendarData = () => {
   socket.emit('getExternalEvents')
 }
 
-const newEvent = ref<Partial<CalendarEvent> & { startDateLocal?: string; endDateLocal?: string }>({
+const newEvent = ref<Partial<CalendarEvent> & {
+  startDateLocal?: string
+  endDateLocal?: string
+  startTime?: string
+  endTime?: string
+  hasTime?: boolean
+}>({
   title: '',
   description: '',
   active: true,
   type: 'SOCIAL',
   startDateLocal: '',
-  endDateLocal: ''
+  endDateLocal: '',
+  startTime: '',
+  endTime: '',
+  hasTime: false
 })
 
-const toDbDatetime = (local: string) => {
-  // Convert 'YYYY-MM-DDTHH:MM' to 'YYYY-MM-DD HH:MM:00'
-  if (!local) return ''
-  return local.replace('T', ' ') + ':00'
+const toDbDatetime = (date: string, time?: string) => {
+  if (!date) return ''
+
+  if (!time) {
+    return `${date} 00:00:00`
+  }
+
+  return `${date} ${time}:00`
 }
 
 const addEvent = () => {
   if (!newEvent.value.title || !newEvent.value.startDateLocal) return
 
-  const start = toDbDatetime(newEvent.value.startDateLocal as string)
-  const end = newEvent.value.endDateLocal ? toDbDatetime(newEvent.value.endDateLocal as string) : undefined
+  const start = toDbDatetime(
+  newEvent.value.startDateLocal as string,
+  newEvent.value.hasTime ? newEvent.value.startTime : undefined
+)
+
+const end = newEvent.value.endDateLocal
+  ? toDbDatetime(
+      newEvent.value.endDateLocal,
+      newEvent.value.hasTime ? newEvent.value.endTime : undefined
+    )
+  : undefined
 
   // temporary negative id for optimistic UI
   const tempId = -Date.now()
@@ -566,6 +632,9 @@ const addEvent = () => {
   newEvent.value.description = ''
   newEvent.value.startDateLocal = ''
   newEvent.value.endDateLocal = ''
+  newEvent.value.startTime = ''
+  newEvent.value.endTime = ''
+  newEvent.value.hasTime = false
   newEvent.value.active = true
   newEvent.value.type = 'SOCIAL'
 }
@@ -573,18 +642,16 @@ const addEvent = () => {
 const formatDate = (dateString?: string) => {
   if (!dateString) return ''
   
-  const normalized = dateString.replace(' ', 'T')
+  const normalized = dateString.replace(' ', 'T').replace('Z', '')
   const dateObj = new Date(normalized)
 
   if (isNaN(dateObj.getTime())) return dateString
 
-  // Check if the time is explicitly midnight (00:00:00)
   const isMidnight = 
     dateObj.getHours() === 0 && 
     dateObj.getMinutes() === 0 && 
     dateObj.getSeconds() === 0
 
-  // If it's midnight, only show the date (e.g., "5 augusti 2026")
   if (isMidnight) {
     return dateObj.toLocaleDateString(undefined, {
       year: 'numeric',
@@ -593,7 +660,6 @@ const formatDate = (dateString?: string) => {
     })
   }
 
-  // Otherwise, show both date and time
   return dateObj.toLocaleString(undefined, {
     year: 'numeric',
     month: 'long',
@@ -602,6 +668,7 @@ const formatDate = (dateString?: string) => {
     minute: '2-digit'
   })
 }
+
 const formatDateRange = (start?: string, end?: string) => {
   if (!start) return ''
   if (!end || start === end) return formatDate(start)
