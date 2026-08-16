@@ -33,10 +33,10 @@
       </router-link>
       <button
         class="relative grid h-11 w-11 shrink-0 place-items-center rounded-xl transition hover:bg-surface focus:outline-none focus:ring-2 focus:ring-accent dark:hover:bg-surface-dark"
-        :class="notifications.length ? 'text-accent' : 'opacity-65'"
+        :class="[notifications.length ? 'text-accent' : 'opacity-65', { 'bell-ring': bellRinging }]"
         type="button"
         :aria-label="notifications.length ? `${notifications.length} notifications` : 'No notifications'"
-        @click="notificationsOpen = true"
+        @click="openNotifications"
       >
         <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
@@ -103,7 +103,7 @@
 
       <div class="overflow-y-auto p-4 sm:p-5">
         <button
-          v-for="notification in notifications"
+          v-for="notification in displayedNotifications"
           :key="notification.id"
           class="mb-3 flex min-h-16 w-full items-start gap-3 rounded-2xl border border-border-border p-4 text-left transition last:mb-0 hover:border-accent hover:bg-accent/5 focus:outline-none focus:ring-2 focus:ring-accent"
           @click="openNotification(notification)"
@@ -111,7 +111,7 @@
           <span class="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-error/10 text-error" aria-hidden="true">!</span>
           <span class="min-w-0 flex-1"><strong class="block">{{ notification.title }}</strong><span class="mt-1 block text-sm opacity-70">{{ notification.description }}</span><span class="mt-2 block text-sm font-bold text-accent">{{ notification.actionLabel || 'View details' }} →</span></span>
         </button>
-        <div v-if="!notifications.length" class="px-4 py-12 text-center">
+        <div v-if="!displayedNotifications.length" class="px-4 py-12 text-center">
           <span class="mx-auto grid h-12 w-12 place-items-center rounded-full bg-success/10 text-2xl text-success" aria-hidden="true">✓</span>
           <h3 class="mt-4 font-bold">You’re all caught up</h3>
           <p class="mt-1 text-sm opacity-60">Nothing needs your attention right now.</p>
@@ -136,13 +136,17 @@ const socket = getSocket()
 const menuOpen = ref(false)
 const notificationsOpen = ref(false)
 const notifications = ref<AlertItem[]>([])
+const displayedNotifications = ref<AlertItem[]>([])
+const bellRinging = ref(false)
+const receivedAlertIDs = ref<Set<number>>(new Set())
+let bellTimer: ReturnType<typeof setTimeout> | undefined
 const dashboardUser = ref<DashboardPayload['user'] | null>(null)
 const closeButton = ref<HTMLButtonElement | null>(null)
 const notificationCloseButton = ref<HTMLButtonElement | null>(null)
 const isAdmin = computed(() => sessionStorage.getItem('userRole')?.toLowerCase() === 'admin')
 const userLabel = computed(() => dashboardUser.value?.name || sessionStorage.getItem('username') || sessionStorage.getItem('email') || (isAdmin.value ? 'Administrator' : 'Resident'))
 const initials = computed(() => userLabel.value.split(/[\s@._-]+/).filter(Boolean).slice(0, 2).map(word => word[0]).join('').toUpperCase() || 'U')
-const notificationSummary = computed(() => notifications.value.length === 1 ? '1 item needs your attention' : `${notifications.value.length} items need your attention`)
+const notificationSummary = computed(() => displayedNotifications.value.length === 1 ? '1 new item' : `${displayedNotifications.value.length} new items`)
 
 const residentLinks = [
   { label: 'Home', to: '/home', icon: '⌂' },
@@ -182,8 +186,35 @@ const page = computed(() => route.name === 'home' ? homePage.value : pages[Strin
 
 function closeMenu() { menuOpen.value = false }
 function closeNotifications() { notificationsOpen.value = false }
+function notificationStorageKey(userID?: number) { return `read-dashboard-alerts:${userID || 'resident'}` }
+function readAlertIDs(userID?: number) {
+  try { return new Set<number>(JSON.parse(localStorage.getItem(notificationStorageKey(userID)) || '[]')) }
+  catch { return new Set<number>() }
+}
+function markNotificationsRead() {
+  const userID = dashboardUser.value?.id
+  const readIDs = readAlertIDs(userID)
+  displayedNotifications.value.forEach(item => readIDs.add(item.id))
+  localStorage.setItem(notificationStorageKey(userID), JSON.stringify([...readIDs].slice(-500)))
+  notifications.value = []
+}
+function openNotifications() {
+  displayedNotifications.value = [...notifications.value]
+  notificationsOpen.value = true
+  markNotificationsRead()
+}
 function openNotification(notification: AlertItem) { closeNotifications(); router.push(notification.route || '/home') }
 function logout() { disconnectSocket(); clearSession(); closeMenu(); router.replace({ name: 'login' }) }
+function dashboardNotifications(dashboard: DashboardPayload) {
+  const surveyAlerts: AlertItem[] = (dashboard.pendingSurveys || []).map(survey => ({
+    id: 700000 + Number(survey.eID),
+    title: 'Resident survey',
+    description: survey.question,
+    route: `/answerSurvey/${survey.eID}`,
+    actionLabel: 'Share your answer',
+  }))
+  return [...(dashboard.alerts || []), ...surveyAlerts]
+}
 watch(() => route.fullPath, closeMenu)
 watch([menuOpen, notificationsOpen], async ([menuIsOpen, modalIsOpen]) => {
   document.body.style.overflow = menuIsOpen || modalIsOpen ? 'hidden' : ''
@@ -191,15 +222,30 @@ watch([menuOpen, notificationsOpen], async ([menuIsOpen, modalIsOpen]) => {
   if (modalIsOpen) { await nextTick(); notificationCloseButton.value?.focus() }
 })
 function receiveDashboard(dashboard: DashboardPayload) {
-  notifications.value = dashboard.alerts || []
   dashboardUser.value = dashboard.user
+  const alerts = dashboardNotifications(dashboard)
+  const readIDs = readAlertIDs(dashboard.user.id)
+  notifications.value = alerts.filter(alert => !readIDs.has(alert.id))
+  const hasNewArrival = receivedAlertIDs.value.size > 0 && alerts.some(alert => !receivedAlertIDs.value.has(alert.id) && !readIDs.has(alert.id))
+  receivedAlertIDs.value = new Set(alerts.map(alert => alert.id))
+  if (hasNewArrival) {
+    bellRinging.value = false
+    requestAnimationFrame(() => {
+      bellRinging.value = true
+      if (bellTimer) clearTimeout(bellTimer)
+      bellTimer = setTimeout(() => { bellRinging.value = false }, 1400)
+    })
+  }
   sessionStorage.setItem('dashboard', JSON.stringify(dashboard))
 }
 function loadCachedNotifications() {
   try {
     const cached = JSON.parse(sessionStorage.getItem('dashboard') || 'null') as DashboardPayload | null
-    notifications.value = cached?.alerts || []
     dashboardUser.value = cached?.user || null
+    const alerts = cached ? dashboardNotifications(cached) : []
+    const readIDs = readAlertIDs(cached?.user?.id)
+    notifications.value = alerts.filter(alert => !readIDs.has(alert.id))
+    receivedAlertIDs.value = new Set(alerts.map(alert => alert.id))
   } catch { notifications.value = [] }
 }
 function handleKeydown(event: KeyboardEvent) {
@@ -212,12 +258,15 @@ onMounted(() => {
   loadCachedNotifications()
   socket.on('dashboard', receiveDashboard)
   socket.on('connect', requestDashboard)
+  socket.on('swapRequestUpdated', requestDashboard)
   requestDashboard()
   window.addEventListener('keydown', handleKeydown)
 })
 onBeforeUnmount(() => {
   socket.off('dashboard', receiveDashboard)
   socket.off('connect', requestDashboard)
+  socket.off('swapRequestUpdated', requestDashboard)
+  if (bellTimer) clearTimeout(bellTimer)
   window.removeEventListener('keydown', handleKeydown)
   document.body.style.overflow = ''
 })
@@ -228,6 +277,13 @@ onBeforeUnmount(() => {
 .mobile-drawer { padding-top: env(safe-area-inset-top); }
 .drawer-footer { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
 .notification-panel { padding-bottom: env(safe-area-inset-bottom); }
+.bell-ring svg { transform-origin: 50% 15%; animation: bell-ring 1.1s ease-in-out; }
+@keyframes bell-ring {
+  0%, 100% { transform: rotate(0); }
+  15%, 45%, 75% { transform: rotate(16deg); }
+  30%, 60%, 90% { transform: rotate(-16deg); }
+}
+@media (prefers-reduced-motion: reduce) { .bell-ring svg { animation: none; } }
 .nav-link { @apply mb-1 flex items-center gap-3 rounded-xl px-3 py-2.5 font-semibold transition hover:bg-surface dark:hover:bg-surface-dark; }
 .nav-link-active { @apply bg-accent text-white hover:bg-accent dark:hover:bg-accent; }
 @media (max-width: 380px) {

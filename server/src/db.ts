@@ -25,7 +25,10 @@ const camelCaseColumns: Record<string, string> = {
   createdat: "createdAt", answeredat: "answeredAt", startdate: "startDate", enddate: "endDate",
   multiplechoice: "multipleChoice", assigneduserid: "assignedUserID", completedat: "completedAt",
   basetaskid: "baseTaskID", createdbyuserid: "createdByUserID", assignedusername: "assignedUsername",
-  requesteruserid: "requesterUserID", targetuserid: "targetUserID", sourceweekid: "sourceWeekID", targetweekid: "targetWeekID", requestid: "requestID",
+  requesteruserid: "requesterUserID", requesterusername: "requesterUsername",
+  targetuserid: "targetUserID", targetusername: "targetUsername",
+  sourceweekid: "sourceWeekID", sourcestartdate: "sourceStartDate",
+  targetweekid: "targetWeekID", targetstartdate: "targetStartDate", requestid: "requestID",
   isimportant: "isImportant", isbasetask: "isBaseTask", iscompleted: "isCompleted",
   isdeleted: "isDeleted", activateduserid: "activatedUserID", taskname: "taskName",
   weektaskid: "weekTaskID", totaltasks: "totalTasks", completedtasks: "completedTasks",
@@ -57,7 +60,12 @@ function convertPlaceholders(sql: string, values: unknown[] = []): { text: strin
 }
 
 class PostgreSqlConnection {
-  constructor(private readonly client: Pool | PoolClient, private readonly releaseClient?: () => void) {}
+  private transactionActive = false;
+
+  constructor(
+    private readonly client: Pool | PoolClient,
+    private readonly releaseClient?: (error?: Error) => void,
+  ) {}
 
   async query<T extends QueryResultRow = QueryResultRow>(sql: string, values: unknown[] = []): Promise<QueryResponse<T>> {
     const query = convertPlaceholders(sql, values);
@@ -67,10 +75,29 @@ class PostgreSqlConnection {
     return [rows, { affectedRows: result.rowCount ?? 0, insertId: typeof inserted === "number" ? inserted : undefined }];
   }
 
-  async beginTransaction() { await this.client.query("BEGIN"); }
-  async commit() { await this.client.query("COMMIT"); }
-  async rollback() { await this.client.query("ROLLBACK"); }
-  release() { this.releaseClient?.(); }
+  async beginTransaction() {
+    await this.client.query("BEGIN");
+    this.transactionActive = true;
+  }
+  async commit() {
+    await this.client.query("COMMIT");
+    this.transactionActive = false;
+  }
+  async rollback() {
+    await this.client.query("ROLLBACK");
+    this.transactionActive = false;
+  }
+  release() {
+    if (this.transactionActive) {
+      // Never return an open or aborted transaction to the shared pool. Passing an
+      // error makes pg discard this client instead of allowing it to poison a
+      // later, unrelated request.
+      this.releaseClient?.(new Error("Database connection released with an active transaction"));
+      this.transactionActive = false;
+      return;
+    }
+    this.releaseClient?.();
+  }
 }
 
 const connectionString = process.env.DATABASE_URL
@@ -95,7 +122,7 @@ const pool = new PostgreSqlConnection(pgPool);
 export default Object.assign(pool, {
   getConnection: async () => {
     const client = await pgPool.connect();
-    return new PostgreSqlConnection(client, () => client.release());
+    return new PostgreSqlConnection(client, (err?: Error) => client.release(err));
   },
   end: () => pgPool.end(),
 });

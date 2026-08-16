@@ -124,6 +124,7 @@ interface DashboardAlert {
   description: string;
   route: string;
   actionLabel: string;
+  dismissible?: boolean;
 }
 
 interface FloorWaterDay {
@@ -887,7 +888,74 @@ class Data {
           description: `It is your cleaning week. You still have ${this.formatTaskCount(pendingTasks)} to complete before ${this.formatAlertDate(week.endDate)}.`,
           route: `/cleaning?weekID=${week.weekID}`,
           actionLabel: "Open checklist",
+          dismissible: false,
         });
+      }
+
+      const [swapRows] = await pool.query(
+        `SELECT
+           r.requestID,
+           r.requesterUserID,
+           r.targetUserID,
+           r.status,
+           r.updatedAt,
+           requester.username AS requesterUsername,
+           target.username AS targetUsername,
+           sourceWeek.startDate AS sourceStartDate,
+           targetWeek.startDate AS targetStartDate
+         FROM cleaningWeekSwapRequests r
+         INNER JOIN users requester ON requester.userID = r.requesterUserID
+         INNER JOIN users target ON target.userID = r.targetUserID
+         INNER JOIN cleaningWeeks sourceWeek ON sourceWeek.weekID = r.sourceWeekID
+         INNER JOIN cleaningWeeks targetWeek ON targetWeek.weekID = r.targetWeekID
+         WHERE r.dormID = ?
+           AND (r.requesterUserID = ? OR r.targetUserID = ?)
+           AND (
+             r.status = 'pending'
+             OR (r.requesterUserID = ? AND r.status IN ('accepted', 'rejected') AND r.updatedAt >= NOW() - INTERVAL '14 days')
+           )
+         ORDER BY r.updatedAt DESC`,
+        [dormID, userID, userID, userID]
+      );
+
+      for (const request of swapRows as any[]) {
+        const requestID = Number(request.requestID);
+        const sourceDate = this.formatAlertDate(request.sourceStartDate);
+        const targetDate = this.formatAlertDate(request.targetStartDate);
+
+        if (request.status === "pending" && Number(request.targetUserID) === userID) {
+          alerts.push({
+            id: 300000 + requestID,
+            title: "Cleaning week swap request",
+            description: `${request.requesterUsername} wants to swap their cleaning week starting ${sourceDate} for yours starting ${targetDate}.`,
+            route: "/cleaning?section=swaps",
+            actionLabel: "Review request",
+          });
+        } else if (request.status === "pending") {
+          alerts.push({
+            id: 400000 + requestID,
+            title: "Cleaning week swap pending",
+            description: `Waiting for ${request.targetUsername} to respond to your request to swap the weeks starting ${sourceDate} and ${targetDate}.`,
+            route: "/cleaning?section=swaps",
+            actionLabel: "View request",
+          });
+        } else if (request.status === "accepted") {
+          alerts.push({
+            id: 500000 + requestID,
+            title: "Cleaning week swap accepted",
+            description: `${request.targetUsername} accepted your request. Your cleaning weeks have been swapped.`,
+            route: "/cleaning?section=swaps",
+            actionLabel: "View new schedule",
+          });
+        } else {
+          alerts.push({
+            id: 600000 + requestID,
+            title: "Cleaning week swap declined",
+            description: `${request.targetUsername} declined your cleaning week swap request.`,
+            route: "/cleaning?section=swaps",
+            actionLabel: "View cleaning weeks",
+          });
+        }
       }
 
       const [eventRows] = await pool.query(
@@ -1504,12 +1572,12 @@ async createCleaningWeekTasks(tasks: any[]): Promise<void> {
 
       return { msg: `Answered logged for survey ${eID}`};
     } catch (err:any) {
+      await connection.rollback();
       if(err.code === "23505"){
         throw new Error("Survey already answered")
       }
-        await connection.rollback();
-        console.error("Transaction rolled back:", err);
-        throw err;
+      console.error("Transaction rolled back:", err);
+      throw err;
     } finally {
           connection.release();
     }
