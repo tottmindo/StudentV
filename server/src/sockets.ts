@@ -490,6 +490,7 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
   socket.on("getExternalEvents", async () => {
     try {
       const weeks = await data.getExternalEvents();
+     
       socket.emit("externalEvents", weeks);
     } catch (error) {
       console.error("Error fetching external events:", error);

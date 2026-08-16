@@ -85,11 +85,21 @@
       <div class="space-y-4">
         <h3 class="text-xl font-semibold">{{ eventModalTitle }}</h3>
         <template v-if="selectedEvents.length || selectedCleaningWeeks.length || selectedExternalEvents.length">
-          <div v-for="event in selectedEvents" :key="event.id" class="space-y-2 rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-surface dark:bg-surface-dark">
+          <div
+            v-for="event in selectedEvents"
+            :key="event.id"
+            class="space-y-2 rounded-lg border border-gray-200 bg-white p-4 text-gray-900
+                  dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+          >
             <div class="flex items-start justify-between gap-4">
               <div>
                 <p class="text-lg font-semibold">{{ event.title }}</p>
-                <p class="text-sm opacity-70">{{ event.type }} <span v-if="!event.active" class="text-red-500">(inactive)</span></p>
+                <p class="text-sm text-gray-600 dark:text-gray-400">
+                  {{ event.type }}
+                  <span v-if="!event.active" class="text-red-600 dark:text-red-400">
+                    (inactive)
+                  </span>
+                </p>
               </div>
               <div class="text-sm opacity-70 text-right">
                 <div>{{ formatDateRange(event.startDate, event.endDate) }}</div>
@@ -98,14 +108,20 @@
             <p class="text-sm opacity-80">{{ event.description }}</p>
           </div>
           <div
-            v-for="week in selectedCleaningWeeks"
-            :key="week.weekID"
-            class="space-y-2 rounded-lg border border-emerald-500 p-4 bg-emerald-50 text-emerald-950 dark:bg-emerald-950/30 dark:text-emerald-100"
-          >
+              v-for="week in selectedCleaningWeeks"
+              :key="week.weekID"
+              class="space-y-2 rounded-lg border border-emerald-300
+                    bg-emerald-50 p-4 text-emerald-950
+                    dark:border-emerald-700
+                    dark:bg-emerald-950/50
+                    dark:text-emerald-100"
+            >
             <div class="flex items-start justify-between gap-4">
               <div>
                 <p class="text-lg font-semibold">Cleaning week</p>
-                <p class="text-sm opacity-80">Assigned to {{ week.assignedUsername }}</p>
+                <p class="text-sm text-emerald-800 dark:text-emerald-300">
+                  Assigned to {{ week.assignedUsername }}
+                </p>
               </div>
               <div class="text-sm opacity-80 text-right">
                 <div>{{ formatDateRange(week.startDate, week.endDate) }}</div>
@@ -118,19 +134,31 @@
           <div
             v-for="event in selectedExternalEvents"
             :key="event.eventID"
-            class="space-y-2 rounded-lg border border-blue-400 p-4 bg-blue-50 text-blue-950 dark:bg-blue-900/30 dark:text-blue-100 dark:border-blue-700"
+            class="space-y-2 rounded-lg border border-blue-300
+                  bg-blue-50 p-4 text-blue-950
+                  dark:border-blue-700
+                  dark:bg-blue-950/50
+                  dark:text-blue-100"
           >
             <div class="flex items-start justify-between gap-4">
             <div>
               <p class="text-lg font-semibold">{{ event.title }}</p>
-              <p class="text-sm opacity-80 uppercase">External Event</p>
+              <p class="text-sm font-medium uppercase text-blue-700 dark:text-blue-300">
+                External Event
+              </p>
             </div>
             <div class="text-sm opacity-80 text-right">
               <div>{{ formatDateRange(event.startDate, event.endDate) }}</div>
             </div>
           </div>
-          <a :href="event.externalurl" target="_blank" rel="noopener noreferrer" class="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline">
-            View Event Page &rarr;
+          <a
+            :href="event.externalurl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-sm font-semibold text-blue-600 hover:underline
+                  dark:text-blue-400"
+          >
+            View Event Page →
           </a>
         </div>
         </template>
@@ -148,13 +176,51 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <label class="grid gap-1">
-            <span class="font-semibold">Start (date & time)</span>
-            <input v-model="newEvent.startDateLocal" type="datetime-local" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded" />
+            <span class="font-semibold">Start date</span>
+            <input
+              v-model="newEvent.startDateLocal"
+              type="date"
+              required
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded"
+            />
           </label>
 
           <label class="grid gap-1">
-            <span class="font-semibold">End (date & time)</span>
-            <input v-model="newEvent.endDateLocal" type="datetime-local" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded" />
+            <span class="font-semibold">End date</span>
+            <input
+              v-model="newEvent.endDateLocal"
+              type="date"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded"
+            />
+          </label>
+        </div>
+
+        <label class="flex items-center gap-2">
+          <input
+            v-model="newEvent.hasTime"
+            type="checkbox"
+            class="w-4 h-4"
+          />
+          <span class="text-sm font-semibold">Specify time</span>
+        </label>
+
+        <div v-if="newEvent.hasTime" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <label class="grid gap-1">
+            <span class="font-semibold">Start time</span>
+            <input
+              v-model="newEvent.startTime"
+              type="time"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded"
+            />
+          </label>
+
+          <label class="grid gap-1">
+            <span class="font-semibold">End time</span>
+            <input
+              v-model="newEvent.endTime"
+              type="time"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded"
+            />
           </label>
         </div>
 
@@ -282,20 +348,33 @@ const cleaningWeeks = ref<CleaningWeek[]>([])
 
 const selectedExternalEvents = ref<ExternalEvents[]>([]);
 
-const externalEventDates = computed(() =>{
+const externalEventDates = computed(() => {
   const dates = new Set<string>()
-  externalEvents.value.filter((event) => showHistoricalEvents.value || displayEventHasNotEnded(event)).forEach((event) => {
-    const d = parseEventDate(event.startDate)
-    if(d) {
-      dates.add(toDateKey(d))
-    }
-  })
+
+  externalEvents.value
+    .filter((event) => showHistoricalEvents.value || displayEventHasNotEnded(event))
+    .forEach((event) => {
+      if (!event.startDate) return
+
+      getDateKeysInRange(
+        event.startDate,
+        event.endDate || event.startDate
+      ).forEach((dateKey) => {
+        dates.add(dateKey)
+      })
+    })
+
   return Array.from(dates)
 })
 
 const parseEventDate = (dateString?: string) => {
   if (!dateString) return undefined
-  return new Date(dateString.replace(' ', 'T'))
+
+  const normalized = dateString
+    .replace(' ', 'T')
+    .replace('Z', '')
+
+  return new Date(normalized)
 }
 
 const eventHasNotEnded = (event: CalendarEvent) => {
@@ -320,11 +399,18 @@ const allEvents = computed(() => {
 
 const allEventDates = computed(() => {
   const dates = new Set<string>()
+
   allEvents.value.forEach((event) => {
-    if (event.startDate) {
-      dates.add(event.startDate.slice(0, 10))
-    }
+    if (!event.startDate) return
+
+    const start = event.startDate
+    const end = event.endDate || event.startDate
+
+    getDateKeysInRange(start, end).forEach((dateKey) => {
+      dates.add(dateKey)
+    })
   })
+
   return Array.from(dates)
 })
 
@@ -422,20 +508,29 @@ const openEventDetails = (events: CalendarEvent[], dayKey = '') => {
     ? ownCleaningWeeks.value.filter((week) => dateIsInRange(dayKey, week.startDate, week.endDate))
     : []
   selectedExternalEvents.value = (dayKey && filters.value.external)
-    ? externalEvents.value.filter((event) => {
-        const d = parseEventDate(event.startDate)
-        return d && toDateKey(d) === dayKey
-      })
-    : []
+  ? externalEvents.value.filter((event) => {
+      return dateIsInRange(
+        dayKey,
+        event.startDate,
+        event.endDate || event.startDate
+      )
+    })
+  : []
   selectedEventDay.value = dayKey
   showEventDetailsModal.value = true
 }
 
 const onCalendarDayClick = (dateKey: string) => {
   const matchingEvents = allEvents.value.filter((event) => {
-    const d = parseEventDate(event.startDate)
-    return d && toDateKey(d) === dateKey
+    if (!event.startDate) return false
+
+    return dateIsInRange(
+      dateKey,
+      event.startDate,
+      event.endDate || event.startDate
+    )
   })
+
   openEventDetails(matchingEvents, dateKey)
 }
 
@@ -478,6 +573,7 @@ const bindSocket = () => {
   socket.off('externalEvents')
 
   socket.on('eventsData', (events: CalendarEvent[]) => {
+    console.log('EVENTS FROM SERVER:', events)
     upcomingEvents.value = events
     sessionStorage.setItem('events', JSON.stringify(events))
     openRequestedEvent()
@@ -493,31 +589,53 @@ const bindSocket = () => {
 }
 
 const fetchCalendarData = () => {
-  socket.emit('getEvents', { active: true })
+  socket.emit('getEvents', { active: true, dormID: sessionStorage.getItem('dormID') })
   socket.emit('getCleaningWeeks')
   socket.emit('getExternalEvents')
 }
 
-const newEvent = ref<Partial<CalendarEvent> & { startDateLocal?: string; endDateLocal?: string }>({
+const newEvent = ref<Partial<CalendarEvent> & {
+  startDateLocal?: string
+  endDateLocal?: string
+  startTime?: string
+  endTime?: string
+  hasTime?: boolean
+}>({
   title: '',
   description: '',
   active: true,
   type: 'SOCIAL',
   startDateLocal: '',
-  endDateLocal: ''
+  endDateLocal: '',
+  startTime: '',
+  endTime: '',
+  hasTime: false
 })
 
-const toDbDatetime = (local: string) => {
-  // Convert 'YYYY-MM-DDTHH:MM' to 'YYYY-MM-DD HH:MM:00'
-  if (!local) return ''
-  return local.replace('T', ' ') + ':00'
+const toDbDatetime = (date: string, time?: string) => {
+  if (!date) return ''
+
+  if (!time) {
+    return `${date} 00:00:00`
+  }
+
+  return `${date} ${time}:00`
 }
 
 const addEvent = () => {
   if (!newEvent.value.title || !newEvent.value.startDateLocal) return
 
-  const start = toDbDatetime(newEvent.value.startDateLocal as string)
-  const end = newEvent.value.endDateLocal ? toDbDatetime(newEvent.value.endDateLocal as string) : undefined
+  const start = toDbDatetime(
+  newEvent.value.startDateLocal as string,
+  newEvent.value.hasTime ? newEvent.value.startTime : undefined
+)
+
+const end = newEvent.value.endDateLocal
+  ? toDbDatetime(
+      newEvent.value.endDateLocal,
+      newEvent.value.hasTime ? newEvent.value.endTime : undefined
+    )
+  : undefined
 
   // temporary negative id for optimistic UI
   const tempId = -Date.now()
@@ -568,23 +686,92 @@ const addEvent = () => {
   newEvent.value.description = ''
   newEvent.value.startDateLocal = ''
   newEvent.value.endDateLocal = ''
+  newEvent.value.startTime = ''
+  newEvent.value.endTime = ''
+  newEvent.value.hasTime = false
   newEvent.value.active = true
   newEvent.value.type = 'SOCIAL'
 }
 
-const formatDate = (dateString: string) => {
+const formatDate = (dateString?: string, showTime = true) => {
   if (!dateString) return ''
-  // accept 'YYYY-MM-DD HH:mm:ss' or ISO-like strings
-  const normalized = dateString.replace(' ', 'T')
-  return new Date(normalized).toLocaleString()
+
+  const normalized = dateString
+    .replace(' ', 'T')
+    .replace('Z', '')
+
+  const dateObj = new Date(normalized)
+
+  if (isNaN(dateObj.getTime())) return dateString
+
+  if (!showTime) {
+    return dateObj.toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+  }
+
+  return dateObj.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  })
 }
 
 const formatDateRange = (start?: string, end?: string) => {
   if (!start) return ''
-  if (!end) return formatDate(start)
-  return `${formatDate(start)} — ${formatDate(end)}`
-}
 
+  const normalizedStart = start
+    .replace(' ', 'T')
+    .replace('Z', '')
+
+  const startDate = new Date(normalizedStart)
+
+  if (isNaN(startDate.getTime())) {
+    return start
+  }
+
+  // No end date
+  if (!end) {
+    const startIsMidnight =
+      startDate.getHours() === 0 &&
+      startDate.getMinutes() === 0 &&
+      startDate.getSeconds() === 0
+
+    return formatDate(start, !startIsMidnight)
+  }
+
+  const normalizedEnd = end
+    .replace(' ', 'T')
+    .replace('Z', '')
+
+  const endDate = new Date(normalizedEnd)
+
+  if (isNaN(endDate.getTime())) {
+    return `${formatDate(start)} — ${formatDate(end)}`
+  }
+
+  // Same exact datetime
+  if (startDate.getTime() === endDate.getTime()) {
+    return formatDate(start, false)
+  }
+
+  const sameDate =
+    startDate.getFullYear() === endDate.getFullYear() &&
+    startDate.getMonth() === endDate.getMonth() &&
+    startDate.getDate() === endDate.getDate()
+
+  // Same date, different times
+  if (sameDate) {
+    return `${formatDate(start, true)} — ${formatDate(end, true)}`
+  }
+
+  // Different dates
+  return `${formatDate(start, true)} — ${formatDate(end, true)}`
+}
 const toDateKey = (date: Date) => {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')

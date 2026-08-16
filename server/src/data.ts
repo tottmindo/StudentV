@@ -1660,10 +1660,11 @@ async getExternalEvents(): Promise<ExternalEvents[]>{
   try {
     const query = "SELECT * FROM externalevents WHERE endDate >= NOW()"
     const [rows] = await pool.query(query);
+    
       return rows as ExternalEvents[];
     }catch (err){
       console.error(`Error fetching external events`);
-      throw new Error("Error fetiching chat rooms");
+      throw new Error("Error fetiching external events");
     }
 }
 }
