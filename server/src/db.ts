@@ -10,6 +10,15 @@ const camelCaseColumns: Record<string, string> = {
   eventid: "eventID", chatid: "chatID", messageid: "messageID", tokenid: "tokenID",
   templateid: "templateID", weekid: "weekID", assignmentid: "assignmentID",
   sensorcode: "sensorCode", recordedat: "recordedAt", totalvolume: "totalVolume",
+  dormaddress: "dormAddress", dormfloor: "dormFloor",
+  currentliters: "currentLiters", historicalaverageliters: "historicalAverageLiters",
+  coldliters: "coldLiters", warmliters: "warmLiters", latestreadingat: "latestReadingAt",
+  totalliters: "totalLiters", averagewatertemp: "averageWaterTemp",
+  peakwatertemp: "peakWaterTemp", averageliters: "averageLiters",
+  activesensors: "activeSensors",
+  last24hoursliters: "last24HoursLiters",
+  averagecoldliters: "averageColdLiters", averagewarmliters: "averageWarmLiters",
+  averagepeakwatertemp: "averagePeakWaterTemp",
   tempmin: "tempMin", tempmax: "tempMax", errorcode: "errorCode", ambienttemp: "ambientTemp",
   leakstatus: "leakStatus", passwordhash: "passwordHash", mustchangepassword: "mustChangePassword",
   credentialversion: "credentialVersion", expiresat: "expiresAt", usedat: "usedAt",
@@ -21,6 +30,7 @@ const camelCaseColumns: Record<string, string> = {
   isdeleted: "isDeleted", activateduserid: "activatedUserID", taskname: "taskName",
   weektaskid: "weekTaskID", totaltasks: "totalTasks", completedtasks: "completedTasks",
   pendingtasks: "pendingTasks",
+  adminnote: "adminNote", noteupdatedat: "noteUpdatedAt",
 };
 
 function camelCaseRow<T extends QueryResultRow>(row: T): T {

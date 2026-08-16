@@ -1,46 +1,43 @@
 <template>
-  <NavComponent :socket="socket" :menu="navMenuType" class="fixed top-4 right-4 z-50" />
-  <div class="flex items-center gap-3 mb-6 p-3 bg-surface dark:bg-surface-dark rounded-lg border border-gray-200 dark:border-gray-700">
-  <span class="text-sm font-semibold opacity-80">Filter View:</span>
-
-  <button
-    type="button"
-    @click="filters.events = !filters.events"
-    class="px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
-    :class="filters.events ? 'bg-accent text-white' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 opacity-50'"
-  >
-    Internal Events
-  </button>
-
-  <button
-    type="button"
-    @click="filters.cleaning = !filters.cleaning"
-    class="px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
-    :class="filters.cleaning ? 'bg-emerald-600 text-white' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 opacity-50'"
-  >
-    Cleaning Weeks
-  </button>
-
-  <button
-    type="button"
-    @click="filters.external = !filters.external"
-    class="px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
-    :class="filters.external ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 opacity-50'"
-  >
-    External Events
-  </button>
-</div>
   <div class="min-h-screen p-6 bg-background dark:bg-background-dark">
-    <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
-      <div>
-        <h1 class="text-3xl font-bold text-headline dark:text-text-dark">Events</h1>
-        <p class="text-sm text-text dark:text-text-dark opacity-70">View the calendar and upcoming event schedule.</p>
-      </div>
-    </div>
-
     <div class="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
       <section class="bg-surface dark:bg-surface-dark rounded-lg p-5 border border-gray-200 dark:border-gray-700">
-        <h2 class="text-2xl font-bold mb-4">Calendar</h2>
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 class="text-2xl font-bold">Calendar</h2>
+          <button type="button" class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold transition hover:border-accent hover:text-accent dark:border-gray-600" :aria-pressed="showHistoricalEvents" @click="showHistoricalEvents = !showHistoricalEvents">
+            {{ showHistoricalEvents ? 'Hide event history' : 'Show event history' }}
+          </button>
+        </div>
+        <div class="mb-4 flex flex-wrap items-center gap-3">
+          <span class="text-sm font-semibold opacity-80">Filter View:</span>
+
+          <button
+            type="button"
+            @click="filters.events = !filters.events"
+            class="px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
+            :class="filters.events ? 'bg-accent text-white' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 opacity-50'"
+          >
+            Internal Events
+          </button>
+
+          <button
+            type="button"
+            @click="filters.cleaning = !filters.cleaning"
+            class="px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
+            :class="filters.cleaning ? 'bg-emerald-600 text-white' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 opacity-50'"
+          >
+            Cleaning Weeks
+          </button>
+
+          <button
+            type="button"
+            @click="filters.external = !filters.external"
+            class="px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
+            :class="filters.external ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 opacity-50'"
+          >
+            External Events
+          </button>
+        </div>
         <div class="w-full max-w-full">
                 <CalendarComponent
                   :marked-dates="filteredEventDates"
@@ -53,7 +50,8 @@
       </section>
 
       <section class="bg-surface dark:bg-surface-dark rounded-lg p-5 border border-gray-200 dark:border-gray-700">
-        <h2 class="text-xl font-semibold mb-4">Upcoming Events</h2>
+        <h2 class="text-xl font-semibold" :class="showHistoricalEvents ? 'mb-1' : 'mb-4'">{{ showHistoricalEvents ? 'All Events' : 'Upcoming Events' }}</h2>
+        <p v-if="showHistoricalEvents" class="mb-4 text-sm opacity-65">Past events are shown together with upcoming events.</p>
         <ul v-if="filteredEvents.length" class="list-none">
           <li
             v-for="event in filteredEvents"
@@ -79,7 +77,7 @@
             </div>
           </li>
         </ul>
-        <p v-else class="text-sm opacity-70">No upcoming events.</p>
+        <p v-else class="text-sm opacity-70">{{ showHistoricalEvents ? 'No events.' : 'No upcoming events.' }}</p>
       </section>
     </div>
 
@@ -229,12 +227,10 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import CalendarComponent from '@/components/CalendarComponent.vue'
 import ModalComponent from '@/components/ModalComponent.vue'
-import NavComponent from '@/components/NavComponent.vue'
 import { getSocket } from '@/composables/socket'
 import { useRoute } from 'vue-router'
 import type { CalendarEvent } from '@/types'
 
-const navMenuType = ref('home')
 const socket = getSocket()
 const route = useRoute()
 const userID = Number(sessionStorage.getItem('userID') || 0)
@@ -280,6 +276,7 @@ const filters = ref({
   cleaning : true,
   external : true
 })
+const showHistoricalEvents = ref(false)
 
 const externalEvents = ref<ExternalEvents[]>([]);
 
@@ -325,7 +322,7 @@ const selectedExternalEvents = ref<ExternalEvents[]>([]);
 
 const externalEventDates = computed(() =>{
   const dates = new Set<string>()
-  externalEvents.value.forEach((event) => {
+  externalEvents.value.filter((event) => showHistoricalEvents.value || displayEventHasNotEnded(event)).forEach((event) => {
     const d = parseEventDate(event.startDate)
     if(d) {
       dates.add(toDateKey(d))
@@ -350,8 +347,13 @@ const eventHasNotEnded = (event: CalendarEvent) => {
   return end.getTime() >= Date.now()
 }
 
+const displayEventHasNotEnded = (event: { startDate: string; endDate?: string }) => {
+  const end = parseEventDate(event.endDate || event.startDate)
+  return Boolean(end && end.getTime() >= Date.now())
+}
+
 const allEvents = computed(() => {
-  return upcomingEvents.value.slice().sort((a, b) => {
+  return upcomingEvents.value.filter((event) => showHistoricalEvents.value || eventHasNotEnded(event)).sort((a, b) => {
     const aStart = parseEventDate(a.startDate)
     const bStart = parseEventDate(b.startDate)
     if (!aStart || !bStart) return 0
@@ -389,7 +391,7 @@ const filteredEvents = computed<DisplayEvent[]>(() => {
   // 1. Process Internal Events (if filter is active)
   if (filters.value.events) {
     upcomingEvents.value.forEach((event, index) => {
-      if (eventHasNotEnded(event)) {
+      if (showHistoricalEvents.value || eventHasNotEnded(event)) {
         const uniqueKey = `${event.title}-${event.startDate}`
         if (!seenEventKeys.has(uniqueKey)) {
           seenEventKeys.add(uniqueKey)
@@ -412,7 +414,7 @@ const filteredEvents = computed<DisplayEvent[]>(() => {
   if (filters.value.external) {
     externalEvents.value.forEach((event, index) => {
       const end = parseEventDate(event.endDate || event.startDate)
-      if (end && end.getTime() >= now) {
+      if (end && (showHistoricalEvents.value || end.getTime() >= now)) {
         const uniqueKey = `${event.title}-${event.startDate}`
         if (!seenEventKeys.has(uniqueKey)) {
           seenEventKeys.add(uniqueKey)

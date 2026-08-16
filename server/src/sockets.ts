@@ -14,7 +14,7 @@ import { Data } from "./data.js";
 import { generateCleaningWeekForDorm } from "./jobs/scheduler.js";
 import { getIO } from "./routes/socketManager.js";
 function sockets(socket: Socket, data: Data, dormID: number, userID: number, role: string): void {
-  if (!dormID || dormID === 0 || !userID || userID === 0) {
+  if ((!dormID && role !== "ADMIN") || !userID) {
     console.warn(`⚠️ Unauthorized socket (${socket.id}) attempted to access restricted features.`);
     socket.emit("unauthorized", { message: "Authentication required." });
     return;
@@ -281,6 +281,9 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
   });
 
   socket.on("getDashboard", async () => {
+    // Global administrators have no resident/dorm dashboard. Their landing
+    // data is loaded by the dedicated administration endpoints instead.
+    if (role === "ADMIN") return;
     try {
       const dashboard = await data.getDashboard(userID, dormID);
       socket.emit("dashboard", dashboard);
@@ -289,6 +292,17 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
       socket.emit("error", { message: "Failed to fetch dashboard." });
     }
   });                                         
+
+  socket.on("getWaterStats", async (payload?: { days?: number }) => {
+    try {
+      const days = Number(payload?.days) || 30;
+      const stats = await data.getFloorWaterStats(dormID, days);
+      socket.emit("waterStats", stats);
+    } catch (err) {
+      console.error("Water stats error:", err);
+      socket.emit("waterStatsError", { message: "Failed to fetch water statistics." });
+    }
+  });
 
   //---------------SURVEYS-------------------
 

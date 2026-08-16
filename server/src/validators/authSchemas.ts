@@ -1,42 +1,57 @@
 
 import { z } from "zod";
 
-export const registerSchema = z.object({
-  roomID: z.coerce.number().int().positive(),
-  dormID: z.coerce.number().int().positive(),
+const optionalRoomID = z.preprocess(
+  value => value === "" || value === undefined ? null : value,
+  z.coerce.number().int().positive().nullable()
+);
+const optionalDormID = z.preprocess(
+  value => value === "" || value === undefined ? null : value,
+  z.coerce.number().int().positive().nullable()
+);
+
+const requireStudentLocation = <T extends z.ZodTypeAny>(schema: T) => schema.superRefine((data: any, context) => {
+  if (data.role === "STUDENT" && (data.roomID == null || data.dormID == null)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["roomID"], message: "Students must be assigned to a dorm and room." });
+  }
+});
+
+export const registerSchema = requireStudentLocation(z.object({
+  roomID: optionalRoomID,
+  dormID: optionalDormID,
   role: z.enum(["ADMIN", "STUDENT"]),
   email: z.string().trim().email().transform(email => email.toLowerCase()),
   password: z.string().min(12).max(128),
   replaceExisting: z.boolean().optional(),
-});
+}));
 
 export const loginSchema = z.object({
   email: z.string().trim().email().transform(email => email.toLowerCase()),
   password: z.string().min(6),
 });
 
-export const createResidentSchema = z.object({
-  dormID: z.coerce.number().int().positive(),
-  roomID: z.coerce.number().int().positive(),
+export const createResidentSchema = requireStudentLocation(z.object({
+  dormID: optionalDormID,
+  roomID: optionalRoomID,
   email: z.string().trim().email().transform(email => email.toLowerCase()),
   role: z.enum(["ADMIN", "STUDENT"]).default("STUDENT"),
   replaceExisting: z.boolean().optional(),
-});
+}));
 
 export const adminResetPasswordSchema = z.object({
   email: z.string().trim().email().transform(email => email.toLowerCase()),
   dormID: z.coerce.number().int().positive(),
 });
 
-export const adminUpdateUserSchema = z.object({
+export const adminUpdateUserSchema = requireStudentLocation(z.object({
   email: z.string().trim().email().transform(email => email.toLowerCase()),
   username: z.string().trim().min(3).max(50).nullable(),
   role: z.enum(["ADMIN", "STUDENT"]),
-  dormID: z.coerce.number().int().positive(),
-  roomID: z.coerce.number().int().positive(),
+  dormID: optionalDormID,
+  roomID: optionalRoomID,
   active: z.boolean(),
   replaceExisting: z.boolean().optional(),
-});
+}));
 
 export const changePasswordSchema = z.object({
   username: z.string().trim().min(3).max(50),

@@ -34,6 +34,7 @@ import { Server } from "socket.io";
 import express from "express";
 import authRoutes from "./routes/authRoutes.js";
 import sensorDataRoutes from "./routes/sensorDataRoutes.js";
+import usageRoutes from "./routes/usageRoutes.js";
 import { Data } from "./data.js";
 import { Socket } from "socket.io";
 import { sockets } from "./sockets.js";
@@ -69,6 +70,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use("/api/auth", authRoutes);
 app.use("/api/sensor-data", sensorDataRoutes);
+app.use("/api/usage", usageRoutes);
 
 const data = new Data();
 
@@ -92,26 +94,31 @@ io.on("connection", async (socket: Socket) => {
         [userID]
       );
       if (!authRows[0]?.active || authRows[0].mustChangePassword || authRows[0].credentialVersion !== decoded.credentialVersion) {
+        socket.emit("auth-error", { message: "This session is no longer valid." });
         socket.disconnect(true);
         return;
       }
 
-      if (dormID && userID) {
-        socket.join(`dorm-${dormID}`);
+      if (userID && (dormID || role === "ADMIN")) {
+        if (dormID) socket.join(`dorm-${dormID}`);
         socket.join(`user-${userID}`);
-        console.log(`✅ Authenticated socket ${socket.id} joined dorm room: dorm-${dormID}`);
-        sockets(socket, data, dormID, userID, role);
+        console.log(`✅ Authenticated socket ${socket.id} for ${role === "ADMIN" ? "global administrator" : `dorm-${dormID}`}`);
+        sockets(socket, data, dormID ?? 0, userID, role);
 
-        try {
-          const dashboard = await data.getDashboard(userID, dormID);
-          socket.emit("dashboard", dashboard);
-        } catch (err) {
-          console.error(`Error sending dashboard to socket ${socket.id}:`, err);
-          socket.emit("error", { message: "Failed to send dashboard." });
+        if (dormID) {
+          try {
+            const dashboard = await data.getDashboard(userID, dormID);
+            socket.emit("dashboard", dashboard);
+          } catch (err) {
+            console.error(`Error sending dashboard to socket ${socket.id}:`, err);
+            socket.emit("error", { message: "Failed to send dashboard." });
+          }
         }
       }
     } catch (err) {
-      console.warn(`⚠️ Invalid token for socket ${socket.id}, continuing unauthenticated.`);
+      console.warn(`⚠️ Invalid token for socket ${socket.id}.`);
+      socket.emit("auth-error", { message: "Invalid or expired session." });
+      socket.disconnect(true);
     }
   } else {
     console.log(`🟡 Unauthenticated socket connected: ${socket.id}`);

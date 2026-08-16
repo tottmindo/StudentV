@@ -4,7 +4,7 @@ import { getJwtSecret } from "../config/jwt.js";
 import pool from "../db.js";
 
 export type AuthUser = {
-  dormID: number;
+  dormID: number | null;
   userID: number;
   role: string;
   credentialVersion: number;

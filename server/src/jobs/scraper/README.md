@@ -20,7 +20,7 @@ External Website
 Python Scraper
         |
         v
-MySQL Database
+PostgreSQL Database
         |
         v
 StudentV Backend
@@ -35,7 +35,7 @@ The scraper is only responsible for data collection and database updates.
 ## Features
 
 - Scrapes external event pages
-- Stores event information in MySQL
+- Stores event information in PostgreSQL
 - Automatically inserts new events
 - Updates existing events using database upsert logic
 - Tracks when events were last seen
@@ -60,7 +60,7 @@ scraper/
 ## Requirements
 
 - Python 3.10+
-- MySQL database
+- PostgreSQL database
 - Internet connection
 - Database credentials
 
@@ -106,7 +106,7 @@ The scraper uses the following packages:
 |---|---|
 | requests | Sending HTTP requests |
 | beautifulsoup4 | Parsing HTML pages |
-| mysql-connector-python | Connecting to MySQL |
+| psycopg | Connecting to PostgreSQL |
 | python-dotenv | Loading environment variables |
 
 ## Database Behaviour
@@ -242,7 +242,7 @@ Server
 |
 ├── StudentV Frontend
 |
-├── MySQL Database
+├── PostgreSQL Database
 |
 └── External Events Scraper
         |

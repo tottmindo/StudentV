@@ -1,12 +1,6 @@
 <template>
-  <NavComponent :socket="socket" menu="home" class="fixed right-4 top-4" />
   <main class="flex min-h-screen items-center justify-center px-4 py-16 lg:py-8">
     <div class="grid w-full max-w-5xl grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
-      <header class="lg:col-span-2">
-        <h1 class="text-3xl font-bold">Account settings</h1>
-        <p class="mt-2 text-sm opacity-75">Manage your public profile and login security.</p>
-      </header>
-
       <section class="rounded-2xl bg-surface p-6 shadow-lg dark:bg-surface-dark lg:p-8">
         <h2 class="text-xl font-bold">Profile</h2>
         <p class="mt-2 text-sm opacity-75">Your email is used privately for login and account recovery.</p>
@@ -59,9 +53,9 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import NavComponent from '@/components/NavComponent.vue'
 import { apiUrl } from '@/composables/api'
-import { getSocket } from '@/composables/socket'
+import { disconnectSocket, getSocket } from '@/composables/socket'
+import { clearSession } from '@/composables/session'
 import { useRouter } from 'vue-router'
 
 const socket = getSocket()
@@ -123,9 +117,9 @@ async function changePassword() {
     })
     const data = await response.json()
     if (!response.ok) throw new Error(data.error || 'Could not change your password.')
-    sessionStorage.clear()
-    socket.disconnect()
-    await router.push({ name: 'login' })
+    disconnectSocket()
+    clearSession()
+    await router.replace({ name: 'login' })
   } catch (error) {
     passwordMessage.value = error instanceof Error ? error.message : 'Could not change your password.'
   } finally { changingPassword.value = false }

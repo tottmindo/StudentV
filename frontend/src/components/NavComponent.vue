@@ -70,6 +70,17 @@
           </div>
         </router-link>
         <router-link
+          to="/admin/water-analytics"
+          v-if="role?.toLowerCase() === 'admin'"
+          @click="closeMenu"
+          class="block"
+          active-class="menu-active"
+        >
+          <div class="inline-flex w-full items-center gap-2 rounded-xl px-4 py-2 font-semibold text-text hover:bg-accent-dark dark:text-text-dark dark:hover:bg-accent">
+            Water analytics
+          </div>
+        </router-link>
+        <router-link
           to="/survey"
           v-if="role === 'admin'"
           @click="closeMenu"
@@ -101,6 +112,8 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import type { MenuItem } from '@/types'
+import { clearSession } from '@/composables/session'
+import { disconnectSocket } from '@/composables/socket'
 
 const props = defineProps<{
   menu: string
@@ -113,8 +126,9 @@ const closeMenu = () => (isOpen.value = false)
 const role = sessionStorage.getItem('userRole')
 const router = useRouter()
 const logout = () => {
-  sessionStorage.clear()
-  router.push({ name: 'login' })
+  disconnectSocket()
+  clearSession()
+  router.replace({ name: 'login' })
 }
 
 const menuItems = ref<MenuItem[]>([])

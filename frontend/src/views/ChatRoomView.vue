@@ -1,10 +1,4 @@
 <template>
-  <NavComponent
-    :socket="socket"
-    :menu="navMenuType"
-    class="fixed top-4 right-4 z-50"
-  />
-
   <div class="max-w-3xl mx-auto h-screen flex flex-col p-6">
     <!-- Header -->
     <div class="mb-4">
@@ -79,12 +73,10 @@
 import { ref, onMounted, onUnmounted, nextTick } from "vue"
 import { useRoute } from "vue-router"
 import { getSocket } from "@/composables/socket"
-import NavComponent from "@/components/NavComponent.vue"
 
 const socket = getSocket()
 const route = useRoute()
 
-const navMenuType = ref("home")
 
 const currentUserID = Number(sessionStorage.getItem('userID') || 0);
 

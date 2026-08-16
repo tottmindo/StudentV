@@ -93,15 +93,60 @@ export type DashboardPayload = {
     name: string
     room: number
     corridor: number
+    house: string
+    floor: number
   }
   alerts: AlertItem[]
   news: NewsItem[]
   events: HomeEventItem[]
   activatedEvents: ActivatedEventItem[]
-  stats: StatItem[]
+  waterConsumption: FloorWaterConsumption
   quickActions: QuickActionItem[]
   challenges: ChallengeItem[]
   pendingSurveys: SurveyItem[]
+}
+
+export type FloorWaterDay = {
+  date: string
+  currentLiters: number
+  historicalAverageLiters: number
+}
+
+export type FloorWaterConsumption = {
+  available: boolean
+  latestReadingAt: string | null
+  currentWeekLiters: number
+  historicalWeeklyAverageLiters: number
+  coldLiters: number
+  warmLiters: number
+  days: FloorWaterDay[]
+}
+
+export type WaterStatsDay = {
+  date: string
+  totalLiters: number
+  coldLiters: number
+  warmLiters: number
+  averageWaterTemp: number | null
+  peakWaterTemp: number | null
+}
+
+export type FloorWaterStats = {
+  available: boolean
+  floor: number | null
+  address: string | null
+  latestReadingAt: string | null
+  periodDays: number
+  totalLiters: number
+  previousPeriodLiters: number
+  coldLiters: number
+  warmLiters: number
+  averageDailyLiters: number
+  peakDay: WaterStatsDay | null
+  activeSensors: number
+  alerts: number
+  days: WaterStatsDay[]
+  hourlyProfile: { hour: number; averageLiters: number; averageColdLiters: number; averageWarmLiters: number; averageWaterTemp: number | null; averagePeakWaterTemp: number | null }[]
 }
 
 export type MenuItem = {

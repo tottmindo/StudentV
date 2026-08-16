@@ -126,6 +126,49 @@ interface DashboardAlert {
   actionLabel: string;
 }
 
+interface FloorWaterDay {
+  date: string;
+  currentLiters: number;
+  historicalAverageLiters: number;
+}
+
+interface FloorWaterConsumption {
+  available: boolean;
+  latestReadingAt: string | null;
+  currentWeekLiters: number;
+  historicalWeeklyAverageLiters: number;
+  coldLiters: number;
+  warmLiters: number;
+  days: FloorWaterDay[];
+}
+
+interface WaterStatsDay {
+  date: string;
+  totalLiters: number;
+  coldLiters: number;
+  warmLiters: number;
+  averageWaterTemp: number | null;
+  peakWaterTemp: number | null;
+}
+
+interface FloorWaterStats {
+  available: boolean;
+  floor: number | null;
+  address: string | null;
+  latestReadingAt: string | null;
+  periodDays: number;
+  totalLiters: number;
+  previousPeriodLiters: number;
+  coldLiters: number;
+  warmLiters: number;
+  averageDailyLiters: number;
+  peakDay: WaterStatsDay | null;
+  activeSensors: number;
+  alerts: number;
+  days: WaterStatsDay[];
+  hourlyProfile: { hour: number; averageLiters: number; averageColdLiters: number; averageWarmLiters: number; averageWaterTemp: number | null; averagePeakWaterTemp: number | null }[];
+}
+
 interface ExternalEvents {
   eventID: number,
   externalURL: string,
@@ -194,8 +237,11 @@ class Data {
            ON u.userID = ?
           AND u.dormID = cw.dormID
           AND u.active = TRUE
+          AND UPPER(u.role) <> 'ADMIN'
          INNER JOIN users assignedUser
            ON assignedUser.userID = cw.assignedUserID
+          AND assignedUser.active = TRUE
+          AND UPPER(assignedUser.role) <> 'ADMIN'
          LEFT JOIN cleaningAssignments ca
            ON ca.weekID = cw.weekID
          WHERE cw.dormID = ?
@@ -261,10 +307,15 @@ class Data {
            ON ctt.templateID = ca.templateID
          INNER JOIN cleaningWeeks cw
            ON cw.weekID = ca.weekID
+         INNER JOIN users weekUser
+           ON weekUser.userID = cw.assignedUserID
+          AND weekUser.active = TRUE
+          AND UPPER(weekUser.role) <> 'ADMIN'
          INNER JOIN users currentUser
            ON currentUser.userID = ?
           AND currentUser.dormID = cw.dormID
           AND currentUser.active = TRUE
+          AND UPPER(currentUser.role) <> 'ADMIN'
          LEFT JOIN users assignedUser
            ON assignedUser.userID = ca.assignedUserID
          WHERE ca.weekID = ?
@@ -468,8 +519,12 @@ class Data {
          FROM cleaningWeekSwapRequests r
          INNER JOIN users requester
            ON requester.userID = r.requesterUserID
+          AND requester.active = TRUE
+          AND UPPER(requester.role) <> 'ADMIN'
          INNER JOIN users target
            ON target.userID = r.targetUserID
+          AND target.active = TRUE
+          AND UPPER(target.role) <> 'ADMIN'
          WHERE (r.requesterUserID = ? OR r.targetUserID = ?)
            AND r.dormID = ?
          ORDER BY r.createdAt DESC`,
@@ -883,10 +938,12 @@ class Data {
   async getUser(userID: number): Promise<any | null> {
     try {
       const [rows] = await pool.query(
-        `SELECT userID, username, role, roomID, dormID
-        FROM users
-        WHERE userID = ?
-          AND active = TRUE`,
+        `SELECT u.userID, u.username, u.role, u.roomID, u.dormID,
+                d.address AS dormAddress, d.floor AS dormFloor
+         FROM users u
+         JOIN dorms d ON d.dormID = u.dormID
+         WHERE u.userID = ?
+           AND u.active = TRUE`,
         [userID]
       );
 
@@ -899,12 +956,13 @@ class Data {
 
 async getDashboard(userID: number, dormID: number): Promise<any> {
   try {
-    const [user, events, activatedEvents, userSurveys, alerts] = await Promise.all([
+    const [user, events, activatedEvents, userSurveys, alerts, waterConsumption] = await Promise.all([
       this.getUser(userID),
       this.getEvents({ dormID, active: true }),
       this.getActivatedEvents(userID),
       this.getUserSurvey(userID),
-      this.getDashboardAlerts(userID, dormID)
+      this.getDashboardAlerts(userID, dormID),
+      this.getFloorWaterConsumption(dormID),
     ]);
 
     if (!user) {
@@ -917,6 +975,8 @@ async getDashboard(userID: number, dormID: number): Promise<any> {
         name: user.username,
         room: user.roomID,
         corridor: user.dormID,
+        house: user.dormAddress,
+        floor: user.dormFloor,
       },
 
       alerts,
@@ -926,12 +986,7 @@ async getDashboard(userID: number, dormID: number): Promise<any> {
       activatedEvents,
 
       pendingSurveys: userSurveys,
-
-      stats: [
-        { id: 1, label: "Avg Shower Time", value: "8m 12s" },
-        { id: 2, label: "Water Usage", value: "1230L" },
-        { id: 3, label: "Avg Water Temp", value: "25.7°C" },
-      ],
+      waterConsumption,
 
       quickActions: [],
       challenges: [],
@@ -942,6 +997,209 @@ async getDashboard(userID: number, dormID: number): Promise<any> {
   }
 }
 
+async getFloorWaterConsumption(dormID: number): Promise<FloorWaterConsumption> {
+  const [rows] = await pool.query(
+    `WITH latest AS (
+       SELECT MAX(sd.recordedAt) AS latestReadingAt
+       FROM sensor_data sd
+       JOIN sensor s ON s.sensorCode = sd.sensorCode
+       WHERE s.dormID = ?
+         AND s.type IN ('Cold Water Meter', 'Warm Water Meter', 'Water Meter')
+     ), bounds AS (
+       SELECT latestReadingAt,
+              (latestReadingAt AT TIME ZONE 'Europe/Stockholm')::date - 1 AS weekEnd
+       FROM latest
+       WHERE latestReadingAt IS NOT NULL
+     ), readings AS (
+       SELECT sd.sensorCode, s.type, sd.recordedAt, sd.totalVolume,
+              LAG(sd.totalVolume) OVER (PARTITION BY sd.sensorCode ORDER BY sd.recordedAt) AS previousVolume
+       FROM sensor_data sd
+       JOIN sensor s ON s.sensorCode = sd.sensorCode
+       CROSS JOIN bounds b
+       WHERE s.dormID = ?
+         AND s.type IN ('Cold Water Meter', 'Warm Water Meter', 'Water Meter')
+         AND sd.recordedAt >= (b.weekEnd - 35)::timestamp AT TIME ZONE 'Europe/Stockholm'
+     ), daily AS (
+       SELECT (recordedAt AT TIME ZONE 'Europe/Stockholm')::date AS day,
+              SUM(GREATEST(totalVolume - previousVolume, 0))::real AS liters,
+              SUM(GREATEST(totalVolume - previousVolume, 0)) FILTER (WHERE type = 'Cold Water Meter')::real AS coldLiters,
+              SUM(GREATEST(totalVolume - previousVolume, 0)) FILTER (WHERE type = 'Warm Water Meter')::real AS warmLiters
+       FROM readings
+       WHERE previousVolume IS NOT NULL
+       GROUP BY 1
+     ), displayDays AS (
+       SELECT generate_series(b.weekEnd - 6, b.weekEnd, interval '1 day')::date AS day
+       FROM bounds b
+     ), historical AS (
+       SELECT EXTRACT(ISODOW FROM d.day)::int AS weekday, AVG(d.liters)::real AS historicalAverageLiters
+       FROM daily d CROSS JOIN bounds b
+       WHERE d.day BETWEEN b.weekEnd - 34 AND b.weekEnd - 7
+       GROUP BY 1
+     )
+     SELECT dd.day::text AS date,
+            COALESCE(d.liters, 0)::real AS currentLiters,
+            COALESCE(h.historicalAverageLiters, 0)::real AS historicalAverageLiters,
+            COALESCE(d.coldLiters, 0)::real AS coldLiters,
+            COALESCE(d.warmLiters, 0)::real AS warmLiters,
+            b.latestReadingAt
+     FROM displayDays dd
+     CROSS JOIN bounds b
+     LEFT JOIN daily d ON d.day = dd.day
+     LEFT JOIN historical h ON h.weekday = EXTRACT(ISODOW FROM dd.day)::int
+     ORDER BY dd.day`,
+    [dormID, dormID]
+  );
+
+  const days = (rows as any[]).map(row => ({
+    date: row.date,
+    currentLiters: Number(row.currentLiters),
+    historicalAverageLiters: Number(row.historicalAverageLiters),
+  }));
+  return {
+    available: days.length > 0,
+    latestReadingAt: rows[0]?.latestReadingAt ?? null,
+    currentWeekLiters: days.reduce((sum, day) => sum + day.currentLiters, 0),
+    historicalWeeklyAverageLiters: days.reduce((sum, day) => sum + day.historicalAverageLiters, 0),
+    coldLiters: (rows as any[]).reduce((sum, row) => sum + Number(row.coldLiters), 0),
+    warmLiters: (rows as any[]).reduce((sum, row) => sum + Number(row.warmLiters), 0),
+    days,
+  };
+}
+
+async getFloorWaterStats(dormID: number, requestedDays: number, sensorCode?: string): Promise<FloorWaterStats> {
+  const periodDays = [1, 7, 30, 90].includes(requestedDays) ? requestedDays : 30;
+  const [dormRows] = await pool.query(
+    `SELECT floor, address FROM dorms WHERE dormID = ? LIMIT 1`,
+    [dormID]
+  );
+  const dorm = (dormRows as any[])[0] ?? null;
+
+  const [rows] = await pool.query(
+    `WITH latest AS (
+       SELECT MAX(sd.recordedAt) AS latestReadingAt
+       FROM sensor_data sd
+       JOIN sensor s ON s.sensorCode = sd.sensorCode
+       WHERE s.dormID = ?
+         AND s.type IN ('Cold Water Meter', 'Warm Water Meter', 'Water Meter')
+         AND (?::text IS NULL OR s.sensorCode = ?)
+     ), readings AS (
+       SELECT sd.sensorCode, s.type, sd.recordedAt, sd.totalVolume, sd.tempMin, sd.tempMax,
+              LAG(sd.totalVolume) OVER (PARTITION BY sd.sensorCode ORDER BY sd.recordedAt) AS previousVolume
+       FROM sensor_data sd
+       JOIN sensor s ON s.sensorCode = sd.sensorCode
+       CROSS JOIN latest l
+       WHERE s.dormID = ?
+         AND s.type IN ('Cold Water Meter', 'Warm Water Meter', 'Water Meter')
+         AND (?::text IS NULL OR s.sensorCode = ?)
+         AND sd.recordedAt >= l.latestReadingAt - (? * interval '1 day') - interval '1 day'
+     ), deltas AS (
+       SELECT type, recordedAt, tempMin, tempMax,
+              GREATEST(totalVolume - previousVolume, 0)::real AS liters
+       FROM readings
+       WHERE previousVolume IS NOT NULL
+     )
+     SELECT (recordedAt AT TIME ZONE 'Europe/Stockholm')::date::text AS date,
+            SUM(liters)::real AS totalLiters,
+            COALESCE(SUM(liters) FILTER (WHERE type = 'Cold Water Meter'), 0)::real AS coldLiters,
+            COALESCE(SUM(liters) FILTER (WHERE type = 'Warm Water Meter'), 0)::real AS warmLiters,
+            AVG(NULLIF((tempMin + tempMax) / 2.0, 0))::real AS averageWaterTemp,
+            MAX(NULLIF(tempMax, 0))::real AS peakWaterTemp,
+            MAX((SELECT latestReadingAt FROM latest)) AS latestReadingAt
+     FROM deltas
+     GROUP BY 1
+     ORDER BY 1`,
+    [dormID, sensorCode ?? null, sensorCode ?? null, dormID, sensorCode ?? null, sensorCode ?? null, periodDays * 2]
+  );
+
+  const normalized = (rows as any[]).map(row => ({
+    date: String(row.date),
+    totalLiters: Number(row.totalLiters) || 0,
+    coldLiters: Number(row.coldLiters) || 0,
+    warmLiters: Number(row.warmLiters) || 0,
+    averageWaterTemp: row.averageWaterTemp == null ? null : Number(row.averageWaterTemp),
+    peakWaterTemp: row.peakWaterTemp == null ? null : Number(row.peakWaterTemp),
+  }));
+  const today = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Stockholm" }).format(new Date());
+  const days = periodDays === 1 ? normalized.filter(day => day.date === today) : normalized.slice(-periodDays);
+  const previousDays = periodDays === 1
+    ? normalized.filter(day => day.date < today).slice(-1)
+    : normalized.slice(-(periodDays * 2), -periodDays);
+  const totalLiters = days.reduce((sum, day) => sum + day.totalLiters, 0);
+
+  const [hourRows] = await pool.query(
+    `WITH latest AS (
+       SELECT MAX(sd.recordedAt) AS latestReadingAt FROM sensor_data sd
+       JOIN sensor s ON s.sensorCode = sd.sensorCode WHERE s.dormID = ? AND (?::text IS NULL OR s.sensorCode = ?)
+     ), readings AS (
+       SELECT sd.sensorCode, s.type, sd.recordedAt, sd.totalVolume, sd.tempMin, sd.tempMax,
+              LAG(sd.totalVolume) OVER (PARTITION BY sd.sensorCode ORDER BY sd.recordedAt) AS previousVolume
+       FROM sensor_data sd JOIN sensor s ON s.sensorCode = sd.sensorCode CROSS JOIN latest l
+       WHERE s.dormID = ? AND s.type IN ('Cold Water Meter', 'Warm Water Meter', 'Water Meter')
+         AND (?::text IS NULL OR s.sensorCode = ?)
+         AND sd.recordedAt >= l.latestReadingAt - (? * interval '1 day') - interval '1 hour'
+     ), hourly AS (
+       SELECT date_trunc('hour', recordedAt AT TIME ZONE 'Europe/Stockholm') AS bucket,
+              SUM(GREATEST(totalVolume - previousVolume, 0))::real AS liters,
+              COALESCE(SUM(GREATEST(totalVolume - previousVolume, 0)) FILTER (WHERE type = 'Cold Water Meter'), 0)::real AS coldLiters,
+              COALESCE(SUM(GREATEST(totalVolume - previousVolume, 0)) FILTER (WHERE type = 'Warm Water Meter'), 0)::real AS warmLiters,
+              AVG(NULLIF((tempMin + tempMax) / 2.0, 0))::real AS averageWaterTemp,
+              MAX(NULLIF(tempMax, 0))::real AS peakWaterTemp
+       FROM readings
+       WHERE previousVolume IS NOT NULL
+         AND (? <> 1 OR (recordedAt AT TIME ZONE 'Europe/Stockholm')::date = (NOW() AT TIME ZONE 'Europe/Stockholm')::date)
+       GROUP BY 1
+     )
+     SELECT EXTRACT(HOUR FROM bucket)::int AS hour,
+            AVG(liters)::real AS averageLiters,
+            AVG(coldLiters)::real AS averageColdLiters,
+            AVG(warmLiters)::real AS averageWarmLiters,
+            AVG(averageWaterTemp)::real AS averageWaterTemp,
+            AVG(peakWaterTemp)::real AS averagePeakWaterTemp
+     FROM hourly GROUP BY 1 ORDER BY 1`,
+    [dormID, sensorCode ?? null, sensorCode ?? null, dormID, sensorCode ?? null, sensorCode ?? null, periodDays, periodDays]
+  );
+
+  const [healthRows] = await pool.query(
+    `SELECT COUNT(*)::int AS activeSensors,
+            COUNT(*) FILTER (WHERE COALESCE(latest.errorCode, 0) <> 0 OR COALESCE(latest.leakStatus, FALSE))::int AS alerts,
+            MAX(latest.recordedAt) AS latestReadingAt
+     FROM sensor s
+     LEFT JOIN LATERAL (
+       SELECT recordedAt, errorCode, leakStatus FROM sensor_data sd
+       WHERE sd.sensorCode = s.sensorCode ORDER BY recordedAt DESC LIMIT 1
+     ) latest ON TRUE
+     WHERE s.dormID = ? AND s.type IN ('Cold Water Meter', 'Warm Water Meter', 'Water Meter')
+       AND (?::text IS NULL OR s.sensorCode = ?)`,
+    [dormID, sensorCode ?? null, sensorCode ?? null]
+  );
+  const health = (healthRows as any[])[0] ?? {};
+
+  return {
+    available: days.length > 0,
+    floor: dorm?.floor == null ? null : Number(dorm.floor),
+    address: dorm?.address ?? null,
+    latestReadingAt: health.latestReadingAt ?? null,
+    periodDays,
+    totalLiters,
+    previousPeriodLiters: previousDays.reduce((sum, day) => sum + day.totalLiters, 0),
+    coldLiters: days.reduce((sum, day) => sum + day.coldLiters, 0),
+    warmLiters: days.reduce((sum, day) => sum + day.warmLiters, 0),
+    averageDailyLiters: days.length ? totalLiters / days.length : 0,
+    peakDay: days.reduce<WaterStatsDay | null>((peak, day) => !peak || day.totalLiters > peak.totalLiters ? day : peak, null),
+    activeSensors: Number(health.activeSensors) || 0,
+    alerts: Number(health.alerts) || 0,
+    days,
+    hourlyProfile: (hourRows as any[]).map(row => ({
+      hour: Number(row.hour),
+      averageLiters: Number(row.averageLiters) || 0,
+      averageColdLiters: Number(row.averageColdLiters) || 0,
+      averageWarmLiters: Number(row.averageWarmLiters) || 0,
+      averageWaterTemp: row.averageWaterTemp == null ? null : Number(row.averageWaterTemp),
+      averagePeakWaterTemp: row.averagePeakWaterTemp == null ? null : Number(row.averagePeakWaterTemp),
+    })),
+  };
+}
+
 async getUsersByDorm(dormID: number): Promise<any[]> {
   try {
     const [rows] = await pool.query(
@@ -949,6 +1207,7 @@ async getUsersByDorm(dormID: number): Promise<any[]> {
        FROM users
        WHERE dormID = ?
          AND active = TRUE
+         AND UPPER(role) <> 'ADMIN'
        ORDER BY userID ASC`,
       [dormID]
     );
@@ -960,21 +1219,42 @@ async getUsersByDorm(dormID: number): Promise<any[]> {
   }
 }
 
-async getLatestCleaningWeek(dormID: number): Promise<any | null> {
+async getLatestCleaningWeekBefore(dormID: number, startDate: Date): Promise<any | null> {
   try {
     const [rows] = await pool.query(
-      `SELECT *
-       FROM cleaningWeeks
-       WHERE dormID = ?
-       ORDER BY startDate DESC
+      `SELECT cw.*
+       FROM cleaningWeeks cw
+       INNER JOIN users u
+         ON u.userID = cw.assignedUserID
+        AND u.active = TRUE
+        AND UPPER(u.role) <> 'ADMIN'
+       WHERE cw.dormID = ?
+         AND cw.startDate < ?
+       ORDER BY cw.startDate DESC
        LIMIT 1`,
-      [dormID]
+      [dormID, startDate]
     );
 
     return (rows as any[])[0] ?? null;
   } catch (err) {
     console.error("❌ Error fetching latest cleaning week:", err);
     throw new Error("Failed to fetch latest cleaning week.");
+  }
+}
+
+async getCleaningWeekByStart(dormID: number, startDate: Date): Promise<any | null> {
+  try {
+    const [rows] = await pool.query(
+      `SELECT weekID, assignedUserID
+       FROM cleaningWeeks
+       WHERE dormID = ? AND startDate = ?
+       LIMIT 1`,
+      [dormID, startDate]
+    );
+    return (rows as any[])[0] ?? null;
+  } catch (err) {
+    console.error("❌ Error fetching cleaning week by date:", err);
+    throw new Error("Failed to fetch cleaning week.");
   }
 }
 
@@ -990,7 +1270,8 @@ async createCleaningWeek(
        FROM users
        WHERE userID = ?
          AND dormID = ?
-         AND active = TRUE`,
+         AND active = TRUE
+         AND UPPER(role) <> 'ADMIN'`,
       [assignedUserID, dormID]
     );
 
@@ -1002,7 +1283,9 @@ async createCleaningWeek(
     const [result]: any = await pool.query(
       `INSERT INTO cleaningWeeks (dormID, assignedUserID, startDate, endDate)
        VALUES (?, ?, ?, ?)
-       ON CONFLICT (dormID, startDate) DO UPDATE SET weekID = cleaningWeeks.weekID
+       ON CONFLICT (dormID, startDate) DO UPDATE
+         SET assignedUserID = EXCLUDED.assignedUserID,
+             endDate = EXCLUDED.endDate
        RETURNING weekID`,
       [dormID, assignedUserID, startDate, endDate]
     );

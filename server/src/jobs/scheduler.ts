@@ -20,6 +20,7 @@
 import cron from 'node-cron';
 import "../config/env.js";
 import { Data } from "../data.js"
+import { importLatestSensorData } from "../services/sensorDataImportService.js";
 
 const data = new Data();
 let dorms: number[] = [];
@@ -44,7 +45,15 @@ export async function generateCleaningWeekForDorm(dormID: number) {
     const users = await data.getUsersByDorm(dormID);
     if (!users.length) return;
 
-    const lastWeek = await data.getLatestCleaningWeek(dormID);
+    const start = getStockholmWeekStart();
+    const existingWeek = await data.getCleaningWeekByStart(dormID, start);
+
+    // A daily rerun must leave an already valid assignment untouched.
+    if (existingWeek && users.some(user => user.userID === existingWeek.assignedUserID)) {
+      return;
+    }
+
+    const lastWeek = await data.getLatestCleaningWeekBefore(dormID, start);
 
     let nextIndex = 0;
 
@@ -55,9 +64,10 @@ export async function generateCleaningWeekForDorm(dormID: number) {
 
     const assignedUser = users[nextIndex];
 
-    const start = new Date();
-    const end = new Date();
-    end.setDate(start.getDate() + 7);
+    // Use one stable key for the whole ISO week. The job runs daily, so using
+    // the current timestamp here would otherwise create seven cleaning weeks.
+    const end = new Date(start);
+    end.setUTCDate(start.getUTCDate() + 6);
 
     const weekID = await data.createCleaningWeek(
       dormID,
@@ -87,6 +97,20 @@ export async function generateCleaningWeekForDorm(dormID: number) {
   }
 }
 
+/** Monday at 00:00, expressed as a date-safe UTC value for PostgreSQL. */
+function getStockholmWeekStart(now: Date = new Date()): Date {
+  const stockholmDate = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Stockholm',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now);
+  const date = new Date(`${stockholmDate}T00:00:00.000Z`);
+  const daysSinceMonday = (date.getUTCDay() + 6) % 7;
+  date.setUTCDate(date.getUTCDate() - daysSinceMonday);
+  return date;
+}
+
 cron.schedule('0 8 * * *', async () => {
   console.log('☀️ Daily system update (8:00 AM)');
 
@@ -101,3 +125,25 @@ cron.schedule('0 8 * * *', async () => {
   scheduled: true,
   timezone: 'Europe/Stockholm'
 });
+
+if (process.env.SENSOR_SYNC_ENABLED !== "false") {
+  const sensorSyncSchedule = process.env.SENSOR_SYNC_CRON || "*/15 * * * *";
+  const sensorSyncTimezone = process.env.SENSOR_SYNC_TIMEZONE || "Europe/Stockholm";
+
+  if (!cron.validate(sensorSyncSchedule)) {
+    throw new Error("SENSOR_SYNC_CRON is not a valid cron expression");
+  }
+
+  cron.schedule(sensorSyncSchedule, async () => {
+    try {
+      console.log("📡 Collecting latest sensor data");
+      const result = await importLatestSensorData();
+      console.log(`✅ Sensor data collected: ${result.snapshots} snapshots imported`);
+    } catch (err) {
+      console.error("❌ Scheduled sensor data collection failed:", err);
+    }
+  }, {
+    scheduled: true,
+    timezone: sensorSyncTimezone,
+  });
+}

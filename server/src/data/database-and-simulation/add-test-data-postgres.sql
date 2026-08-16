@@ -1,6 +1,7 @@
 -- PostgreSQL development-only seed data for StudentV.
 -- This deliberately removes all existing application data.
 BEGIN;
+TRUNCATE TABLE externalevents, page_visit_stats RESTART IDENTITY CASCADE;
 TRUNCATE TABLE dorms RESTART IDENTITY CASCADE;
 
 -- A room number is house + floor + room, for example 1251 means
@@ -21,13 +22,13 @@ SELECT setval(pg_get_serial_sequence('room', 'roomid'), (SELECT MAX(roomid) FROM
 
 -- All accounts use password: test123
 INSERT INTO users (email, username, passwordhash, role, roomid, dormid, active, mustchangepassword, credentialversion) VALUES
-  ('admin1@example.test', 'admin1', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'ADMIN', 1211, 1, true, false, 0),
+  ('admin1@example.test', 'admin1', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'ADMIN', NULL, NULL, true, false, 0),
   ('clara@example.test', 'clara', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 1212, 1, true, false, 0),
   ('john@example.test', 'john', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 1213, 1, true, false, 0),
-  ('admin2@example.test', 'admin2', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'ADMIN', 1221, 2, true, false, 0),
+  ('admin2@example.test', 'admin2', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'ADMIN', NULL, NULL, true, false, 0),
   ('alice@example.test', 'alice', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 1222, 2, true, false, 0),
   ('bob@example.test', 'bob', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 1223, 2, true, false, 0),
-  ('admin3@example.test', 'admin3', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'ADMIN', 1231, 3, true, false, 0),
+  ('admin3@example.test', 'admin3', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'ADMIN', NULL, NULL, true, false, 0),
   ('emma@example.test', 'emma', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 1232, 3, true, false, 0),
   ('sarah@example.test', 'sarah', '$2b$10$1cbAlcKhgYdlur29MMF8HuXjGMHiBfPttqceX7cVEvCNQ/NZHxWuy', 'STUDENT', 1233, 3, true, true, 0);
 
@@ -49,6 +50,13 @@ INSERT INTO survey (question, active, expiresat, multiplechoice) VALUES
   ('Which facility should be upgraded next?', true, now() + interval '14 days', true);
 INSERT INTO surveyanswers (eid, userid, answer) VALUES (1, 2, 'Very satisfied');
 
+-- Authentication fixtures cover unused, expired, and already-used reset tokens.
+-- The raw development-only tokens are unused-token, expired-token, and used-token.
+INSERT INTO passwordresettokens (userid, tokenhash, expiresat, usedat, createdat) VALUES
+  (2, 'c03ef7a2bf0f7cdd443dcdc2ec919f6930d02b9596db3143b4a246b684f1cb4b', now() + interval '1 hour', NULL, now() - interval '10 minutes'),
+  (3, 'b52b3ef2233858ce1156d85f235cf2c41eddfa8ca1eedc924398b9af1db303cb', now() - interval '1 hour', NULL, now() - interval '2 hours'),
+  (5, '229240ad993e5afe89360f52f424812bb0c8cc5ab5ccacb1745d444de9036b7f', now() + interval '1 hour', now() - interval '5 minutes', now() - interval '30 minutes');
+
 INSERT INTO events (title, description, startdate, enddate, active, type, dormid) VALUES
   ('Movie Night', 'Community movie screening in the common room.', now() + interval '2 days', now() + interval '2 days 3 hours', true, 'SOCIAL', 1),
   ('Fire Safety Training', 'Mandatory fire evacuation training.', now() + interval '5 days', now() + interval '5 days 2 hours', true, 'SAFETY', 1),
@@ -67,23 +75,100 @@ SELECT
 FROM dorms
 WHERE dormid > 3;
 
+-- Sensor metadata comes from installation_1634_devices (4).xlsx. The workbook's
+-- NG:<house>:<floor>:<placement>:<CW|WW> name maps to the matching house/floor
+-- dorm, a normalized placement, and cold/warm water meter type.
 INSERT INTO sensor (sensorcode, type, location, dormid) VALUES
-  ('wtr-d1-basement', 'Water Meter', 'Basement main inlet', 1),
-  ('wtr-d2-basement', 'Water Meter', 'Basement main inlet', 2),
-  ('wtr-d3-basement', 'Water Meter', 'Basement main inlet', 3);
-INSERT INTO sensor_data (sensorcode, recordedat, totalvolume, tempmin, tempmax, errorcode, battery, ambienttemp, humidity, leakstatus) VALUES
-  ('wtr-d1-basement', now(), 1230, 21.2, 24.8, 0, 95, 20.1, 45, false),
-  ('wtr-d2-basement', now(), 980, 20.8, 24.1, 0, 90, 19.8, 48, false),
-  ('wtr-d3-basement', now(), 1100, 21.0, 25.0, 0, 88, 20.5, 42, false);
+  ('8c1f64619000228d', 'Cold Water Meter', 'Left shower', 8),
+  ('8c1f6461900017e3', 'Cold Water Meter', 'Kitchen', 4),
+  ('8c1f6461900021e0', 'Cold Water Meter', 'Right shower', 2),
+  ('8c1f646190001968', 'Warm Water Meter', 'Kitchen', 5),
+  ('8c1f646190002012', 'Warm Water Meter', 'Right shower', 3),
+  ('8c1f646190002244', 'Cold Water Meter', 'Left shower', 6),
+  ('8c1f646190002222', 'Cold Water Meter', 'Kitchen', 3),
+  ('8c1f646190001833', 'Cold Water Meter', 'Left shower', 9),
+  ('8c1f6461900021c5', 'Cold Water Meter', 'Left shower', 4),
+  ('8c1f646190001729', 'Cold Water Meter', 'Left shower', 7),
+  ('8c1f6461900018ba', 'Cold Water Meter', 'Left shower', 10),
+  ('8c1f646190001bea', 'Warm Water Meter', 'Left shower', 8),
+  ('8c1f6461900015ba', 'Cold Water Meter', 'Right shower', 5),
+  ('8c1f646190001743', 'Cold Water Meter', 'Left shower', 2),
+  ('8c1f64619000177c', 'Cold Water Meter', 'Left shower', 3),
+  ('8c1f646190001af8', 'Cold Water Meter', 'Kitchen', 10),
+  ('8c1f646190002291', 'Cold Water Meter', 'Left shower', 5),
+  ('8c1f646190001ebd', 'Cold Water Meter', 'Left shower', 1),
+  ('8c1f646190001ba9', 'Warm Water Meter', 'Left shower', 4),
+  ('8c1f64619000170a', 'Warm Water Meter', 'Left shower', 7),
+  ('8c1f646190001790', 'Warm Water Meter', 'Right shower', 5),
+  ('8c1f646190001bf1', 'Warm Water Meter', 'Kitchen', 7),
+  ('8c1f6461900019cf', 'Cold Water Meter', 'Right shower', 4),
+  ('8c1f646190001963', 'Cold Water Meter', 'Right shower', 9),
+  ('8c1f64619000171c', 'Cold Water Meter', 'Kitchen', 5),
+  ('8c1f6461900021e2', 'Cold Water Meter', 'Kitchen', 1),
+  ('8c1f6461900018f5', 'Warm Water Meter', 'Left shower', 3),
+  ('8c1f6461900020a5', 'Cold Water Meter', 'Kitchen', 7),
+  ('8c1f6461900020d1', 'Warm Water Meter', 'Left shower', 2),
+  ('8c1f6461900019cb', 'Cold Water Meter', 'Right shower', 10),
+  ('8c1f646190001d93', 'Cold Water Meter', 'Kitchen', 9),
+  ('8c1f6461900015c1', 'Cold Water Meter', 'Right shower', 8),
+  ('8c1f64619000227c', 'Warm Water Meter', 'Left shower', 1),
+  ('8c1f6461900021db', 'Warm Water Meter', 'Left shower', 10),
+  ('8c1f646190001ec9', 'Warm Water Meter', 'Kitchen', 10),
+  ('8c1f646190001b91', 'Warm Water Meter', 'Kitchen', 8),
+  ('8c1f646190001b0f', 'Warm Water Meter', 'Kitchen', 6),
+  ('8c1f646190001baf', 'Warm Water Meter', 'Right shower', 7),
+  ('8c1f6461900021da', 'Warm Water Meter', 'Left shower', 9),
+  ('8c1f6461900021bd', 'Cold Water Meter', 'Right shower', 7),
+  ('8c1f6461900015ed', 'Warm Water Meter', 'Right shower', 9),
+  ('8c1f64619000160f', 'Cold Water Meter', 'Kitchen', 2),
+  ('8c1f6461900019c7', 'Warm Water Meter', 'Left shower', 6),
+  ('8c1f646190001fc1', 'Warm Water Meter', 'Right shower', 8),
+  ('8c1f646190001c9b', 'Warm Water Meter', 'Kitchen', 9),
+  ('8c1f646190001dd8', 'Warm Water Meter', 'Kitchen', 2),
+  ('8c1f646190001901', 'Cold Water Meter', 'Kitchen', 8),
+  ('8c1f6461900014f5', 'Cold Water Meter', 'Right shower', 3),
+  ('8c1f646190001c1c', 'Warm Water Meter', 'Right shower', 2),
+  ('8c1f646190001947', 'Cold Water Meter', 'Right shower', 6),
+  ('8c1f646190001c1f', 'Cold Water Meter', 'Right shower', 1),
+  ('8c1f646190002120', 'Warm Water Meter', 'Kitchen', 3),
+  ('8c1f6461900021a9', 'Warm Water Meter', 'Left shower', 5),
+  ('8c1f646190002206', 'Warm Water Meter', 'Right shower', 6),
+  ('8c1f646190001592', 'Warm Water Meter', 'Kitchen', 1),
+  ('8c1f646190001501', 'Warm Water Meter', 'Right shower', 4),
+  ('8c1f6461900021e8', 'Warm Water Meter', 'Right shower', 1),
+  ('8c1f646190001e41', 'Warm Water Meter', 'Kitchen', 4),
+  ('8c1f646190001fcb', 'Cold Water Meter', 'Kitchen', 6),
+  ('8c1f6461900021c1', 'Warm Water Meter', 'Right shower', 10);
 
-INSERT INTO sensor (sensorcode, type, location, dormid)
-SELECT 'wtr-d' || dormid || '-basement', 'Water Meter', 'Basement main inlet', dormid
-FROM dorms
-WHERE dormid > 3;
-INSERT INTO sensor_data (sensorcode, recordedat, totalvolume, tempmin, tempmax, errorcode, battery, ambienttemp, humidity, leakstatus)
-SELECT 'wtr-d' || dormid || '-basement', now(), 1000 + dormid * 25, 20.5, 24.0, 0, 90, 20.0, 45, false
-FROM dorms
-WHERE dormid > 3;
+-- Give every installation sensor recent and historical telemetry. Values are
+-- deterministic per sensor while timestamps stay useful for dashboard testing.
+INSERT INTO sensor_data
+  (sensorcode, recordedat, totalvolume, tempmin, tempmax, errorcode,
+   battery, ambienttemp, humidity, leakstatus)
+SELECT
+  s.sensorcode,
+  now() - sample.age,
+  1000 + row_number() OVER (ORDER BY s.sensorcode) * 20 + sample.litres,
+  CASE WHEN s.type = 'Cold Water Meter' THEN 7.5 ELSE 43.0 END,
+  CASE WHEN s.type = 'Cold Water Meter' THEN 12.0 ELSE 50.0 END,
+  CASE WHEN s.sensorcode = '8c1f64619000228d' AND sample.age = interval '2 hours' THEN 12 ELSE 0 END,
+  96.0 - sample.litres / 100,
+  20.5 + s.dormid / 10.0,
+  42.0 + s.dormid,
+  s.sensorcode = '8c1f646190001ebd' AND sample.age = interval '1 hour'
+FROM sensor s
+CROSS JOIN (VALUES
+  (interval '0 hours', 18.0::real),
+  (interval '1 hour', 12.0::real),
+  (interval '2 hours', 8.0::real),
+  (interval '1 day', 4.0::real),
+  (interval '7 days', 0.0::real)
+) AS sample(age, litres);
+
+INSERT INTO sensor_notes (sensorcode, note, updatedat) VALUES
+  ('8c1f64619000228d', 'Inspect error-code history during the next maintenance round.', now() - interval '1 day'),
+  ('8c1f646190001ebd', 'Test fixture: a recent reading reports a leak.', now() - interval '30 minutes'),
+  ('8c1f646190001592', 'Kitchen warm-water meter verified after installation.', now() - interval '2 days');
 
 INSERT INTO chat (name, dormid) VALUES ('Dorm 1 General', 1), ('Dorm 2 General', 2), ('Dorm 3 General', 3);
 INSERT INTO chat (name, dormid)
@@ -100,6 +185,20 @@ GROUP BY chat.chatid;
 INSERT INTO chathistory (msg, chatid, userid) VALUES
   ('Welcome everyone!', 1, 1), ('Thanks for adding me.', 1, 2), ('Hello from Dorm 2.', 2, 4),
   ('Anyone want to get coffee?', 1, 3), ('Sure, lets meet at the cafe', 1, 2), ('Count me in!', 3, 8);
+
+-- Scraper and anonymous usage-statistics fixtures cover the remaining features.
+INSERT INTO externalevents (externalurl, title, startdate, enddate, createdat, updatedat, lastseen) VALUES
+  ('https://example.test/events/welcome-fair', 'Campus welcome fair', now() + interval '4 days', now() + interval '4 days 4 hours', now() - interval '2 days', now() - interval '1 day', now()),
+  ('https://example.test/events/library-workshop', 'Library study workshop', now() + interval '8 days', now() + interval '8 days 2 hours', now() - interval '3 days', now() - interval '1 day', now());
+
+INSERT INTO page_visit_stats (visitdate, page, visits) VALUES
+  (current_date - 2, '/', 14),
+  (current_date - 1, '/', 21),
+  (current_date, '/', 8),
+  (current_date - 1, '/events', 12),
+  (current_date, '/events', 7),
+  (current_date, '/cleaning', 5),
+  (current_date, '/sensors', 9);
 
 -- Base cleaning tasks with new fields (createdByUserID NULL for base tasks, isImportant varies)
 INSERT INTO cleaningtasktemplate (taskname, description, active, createdbyuserid, isimportant) VALUES

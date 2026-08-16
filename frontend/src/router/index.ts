@@ -1,8 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import LoginView from '../views/LoginView.vue';
+import { apiUrl } from '../composables/api';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
+  scrollBehavior: () => ({ top: 0 }),
   routes: [
     {
       path: '/forgot-password',
@@ -80,7 +82,19 @@ const router = createRouter({
       path: '/admin',
       name: 'admin',
       component: () => import('../views/AdminView.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/admin/water-analytics',
+      name: 'admin-water-analytics',
+      component: () => import('../views/AdminWaterStatsView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/admin/app-usage',
+      name: 'admin-app-usage',
+      component: () => import('../views/AdminUsageView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: '/chat',
@@ -93,8 +107,21 @@ const router = createRouter({
       name: 'chatRoom',
       component: () => import('../views/ChatRoomView.vue'),
       meta: { requiresAuth: true },
-    }
+    },
+    { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
+});
+
+router.afterEach((to) => {
+  const token = sessionStorage.getItem('authToken');
+  const page = typeof to.name === 'string' ? to.name : '';
+  if (!token || !page || page === 'admin-app-usage') return;
+  void fetch(apiUrl('/api/usage/visit'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ page }),
+    keepalive: true,
+  }).catch(() => undefined);
 });
 
 // Add a global navigation guard
@@ -105,10 +132,12 @@ router.beforeEach((to, from, next) => {
 
   if (to.meta.requiresAuth && !token) {
     // If the route requires authentication and no token is found, redirect to login
-    next({ name: 'login' });
+    next({ name: 'login', query: { redirect: to.fullPath } });
+  } else if (to.name === 'login' && token) {
+    next({ name: mustChangePassword ? 'change-password' : 'home' });
   } else if (mustChangePassword && to.name !== 'change-password') {
     next({ name: 'change-password' });
-  } else if (to.name === 'admin' && userRole !== 'admin') {
+  } else if (to.meta.requiresAdmin && userRole?.toLowerCase() !== 'admin') {
     // If the user tries to access the AdminView but is not an admin, redirect to login
     next({ name: 'login' });
   } else {

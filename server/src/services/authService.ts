@@ -36,8 +36,8 @@ type RowDataPacket = Record<string, any>;
 type ResultSetHeader = { affectedRows: number; insertId?: number };
 
 export async function registerUser(
-  roomID: number,
-  dormID: number,
+  roomID: number | null,
+  dormID: number | null,
   role: string,
   email: string,
   password: string,
@@ -49,6 +49,11 @@ export async function registerUser(
   await connection.beginTransaction();
 
   try {
+    const assignedRoomID = role === "ADMIN" ? null : roomID;
+    const assignedDormID = role === "ADMIN" ? null : dormID;
+    if (role !== "ADMIN" && (assignedRoomID == null || assignedDormID == null)) {
+      throw new Error("Students must be assigned to a dorm and room.");
+    }
     const [rows]: [RowDataPacket[], any] = await connection.query(
       "SELECT userID FROM users WHERE email = ?",
       [email]
@@ -58,13 +63,12 @@ export async function registerUser(
       throw new Error("User already exists.");
     }
 
-    const [roomRows]: [RowDataPacket[], any] = await connection.query(
-      "SELECT roomID FROM room WHERE roomID = ? AND dormID = ?",
-      [roomID, dormID]
-    );
-
-    if (roomRows.length === 0) {
-      throw new Error("Room does not exist.");
+    if (assignedRoomID != null) {
+      const [roomRows]: [RowDataPacket[], any] = await connection.query(
+        "SELECT roomID FROM room WHERE roomID = ? AND dormID = ?",
+        [assignedRoomID, assignedDormID]
+      );
+      if (roomRows.length === 0) throw new Error("Room does not exist.");
     }
 
     const [activeRows]: [RowDataPacket[], any] = await connection.query(
@@ -74,7 +78,7 @@ export async function registerUser(
          AND dormID = ?
          AND active = TRUE
        ORDER BY userID ASC`,
-      [roomID, dormID]
+      [assignedRoomID, assignedDormID]
     );
 
     if (activeRows.length > 0 && !replaceExisting) {
@@ -93,17 +97,20 @@ export async function registerUser(
          WHERE roomID = ?
            AND dormID = ?
            AND active = TRUE`,
-        [roomID, dormID]
+        [assignedRoomID, assignedDormID]
       );
     }
 
-    const [result]: any = await connection.query(
+    const [insertedUsers]: [RowDataPacket[], any] = await connection.query(
       `INSERT INTO users (email, username, passwordHash, role, roomID, dormID, active, mustChangePassword)
        VALUES (?, NULL, ?, ?, ?, ?, TRUE, ?) RETURNING userID`,
-      [email, hashedPassword, role, roomID, dormID, mustChangePassword]
+      [email, hashedPassword, role, assignedRoomID, assignedDormID, mustChangePassword]
     );
 
-    const newUserID = result.insertId;
+    const newUserID = insertedUsers[0]?.userID;
+    if (typeof newUserID !== "number") {
+      throw new Error("Failed to retrieve the newly created user ID.");
+    }
 
     if (activeRows.length > 0) {
       const previousUserIDs = activeRows.map(row => row.userID);
@@ -134,8 +141,8 @@ export async function registerUser(
     return {
       message: activeRows.length > 0 ? "User replaced successfully" : "User created successfully",
       userID: newUserID,
-      dormID,
-      roomID,
+      dormID: assignedDormID,
+      roomID: assignedRoomID,
       replacedUser: activeRows[0] ?? null,
     };
   } catch (error) {
@@ -374,11 +381,12 @@ export async function listDormsForAdmin() {
      LEFT JOIN room r ON r.dormID = d.dormID
      ORDER BY d.dormID, r.roomID`
   );
-  const dorms = new Map<number, { dormID: number; dormName: string; rooms: number[] }>();
+  const dorms = new Map<number, { dormID: number; address: string; floor: number; rooms: number[] }>();
   for (const row of rows) {
-    const dorm: { dormID: number; dormName: string; rooms: number[] } = dorms.get(row.dormID) ?? {
+    const dorm: { dormID: number; address: string; floor: number; rooms: number[] } = dorms.get(row.dormID) ?? {
       dormID: row.dormID,
-      dormName: `${row.address}, floor ${row.floor}`,
+      address: row.address,
+      floor: row.floor,
       rooms: [],
     };
     if (row.roomID != null) dorm.rooms.push(row.roomID);
@@ -398,7 +406,7 @@ export async function listUsersForAdmin() {
 export async function updateUserForAdmin(
   actingAdminID: number,
   userID: number,
-  changes: { email: string; username: string | null; role: "ADMIN" | "STUDENT"; dormID: number; roomID: number; active: boolean; replaceExisting?: boolean }
+  changes: { email: string; username: string | null; role: "ADMIN" | "STUDENT"; dormID: number | null; roomID: number | null; active: boolean; replaceExisting?: boolean }
 ) {
   if (actingAdminID === userID && (!changes.active || changes.role !== "ADMIN")) {
     throw new Error("You cannot deactivate or remove your own administrator access.");
@@ -406,19 +414,26 @@ export async function updateUserForAdmin(
   const connection = await pool.getConnection();
   await connection.beginTransaction();
   try {
+    const assignedRoomID = changes.role === "ADMIN" ? null : changes.roomID;
+    const assignedDormID = changes.role === "ADMIN" ? null : changes.dormID;
+    if (changes.role !== "ADMIN" && (assignedRoomID == null || assignedDormID == null)) {
+      throw new Error("Students must be assigned to a dorm and room.");
+    }
     const [targetRows]: [RowDataPacket[], any] = await connection.query(
       "SELECT userID FROM users WHERE userID = ? FOR UPDATE", [userID]
     );
     if (!targetRows[0]) throw new Error("User not found.");
-    const [roomRows]: [RowDataPacket[], any] = await connection.query(
-      "SELECT roomID FROM room WHERE roomID = ? AND dormID = ?", [changes.roomID, changes.dormID]
-    );
-    if (!roomRows[0]) throw new Error("Room does not exist.");
+    if (assignedRoomID != null) {
+      const [roomRows]: [RowDataPacket[], any] = await connection.query(
+        "SELECT roomID FROM room WHERE roomID = ? AND dormID = ?", [assignedRoomID, assignedDormID]
+      );
+      if (!roomRows[0]) throw new Error("Room does not exist.");
+    }
 
     const [occupied]: [RowDataPacket[], any] = await connection.query(
       `SELECT userID, email, username FROM users
        WHERE roomID = ? AND dormID = ? AND active = TRUE AND userID <> ? FOR UPDATE`,
-      [changes.roomID, changes.dormID, userID]
+      [assignedRoomID, assignedDormID, userID]
     );
     if (changes.active && occupied[0] && !changes.replaceExisting) {
       const error: any = new Error("Room already has an active user.");
@@ -435,7 +450,7 @@ export async function updateUserForAdmin(
     await connection.query(
       `UPDATE users SET email = ?, username = ?, role = ?, dormID = ?, roomID = ?, active = ?,
        credentialVersion = credentialVersion + 1 WHERE userID = ?`,
-      [changes.email, changes.username, changes.role, changes.dormID, changes.roomID, changes.active, userID]
+      [changes.email, changes.username, changes.role, assignedDormID, assignedRoomID, changes.active, userID]
     );
     await connection.query(
       "UPDATE passwordResetTokens SET usedAt = NOW() WHERE userID = ? AND usedAt IS NULL",
