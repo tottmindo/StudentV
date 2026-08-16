@@ -9,8 +9,16 @@
         <section v-if="alerts.length || userSurveys.length" aria-labelledby="attention-heading">
           <div class="mb-3 flex items-end justify-between gap-4"><div><p class="text-xs font-bold uppercase tracking-[.14em] text-accent">Up next</p><h2 id="attention-heading" class="text-2xl font-bold">Needs your attention</h2></div><span class="rounded-full bg-accent/10 px-3 py-1 text-sm font-bold text-accent">{{ attentionCount }}</span></div>
           <div class="grid gap-3 md:grid-cols-2">
-            <router-link v-for="alert in alerts" :key="alert.id" :to="alert.route || '/home'" class="flex min-h-32 items-start gap-4 rounded-2xl border border-border-border bg-background p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-accent dark:bg-surface-dark"><span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-warning/15 text-xl">!</span><span><strong class="block text-lg">{{ alert.title }}</strong><span class="mt-1 block text-sm opacity-70">{{ alert.description }}</span><span class="mt-3 block text-sm font-bold text-accent">{{ alert.actionLabel || 'Open' }} →</span></span></router-link>
-            <router-link v-for="survey in userSurveys" :key="survey.eID" :to="`/answerSurvey/${survey.eID}`" class="flex min-h-32 items-start gap-4 rounded-2xl border border-border-border bg-background p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-accent dark:bg-surface-dark"><span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-accent/10 text-xl">≡</span><span><strong class="block text-lg">Resident survey</strong><span class="mt-1 block text-sm opacity-70">{{ survey.question }}</span><span class="mt-3 block text-sm font-bold text-accent">Share your answer →</span></span></router-link>
+            <article v-for="alert in alerts" :key="alert.id" class="relative flex min-h-32 items-start gap-4 rounded-2xl border border-border-border bg-background p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-accent dark:bg-surface-dark">
+              <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-warning/15 text-xl">!</span>
+              <router-link :to="alert.route || '/home'" class="min-w-0 flex-1 pr-8 after:absolute after:inset-0 after:content-['']"><strong class="block text-lg">{{ alert.title }}</strong><span class="mt-1 block text-sm opacity-70">{{ alert.description }}</span><span class="mt-3 block text-sm font-bold text-accent">{{ alert.actionLabel || 'Open' }} →</span></router-link>
+              <button v-if="alert.dismissible !== false" type="button" class="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-lg text-xl opacity-60 transition hover:bg-background-light hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-accent dark:hover:bg-background-dark" :aria-label="`Dismiss ${alert.title}`" title="Dismiss notification" @click="dismissAttentionItem(alert.id)">×</button>
+            </article>
+            <article v-for="survey in userSurveys" :key="survey.eID" class="relative flex min-h-32 items-start gap-4 rounded-2xl border border-border-border bg-background p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-accent dark:bg-surface-dark">
+              <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-accent/10 text-xl">≡</span>
+              <router-link :to="`/answerSurvey/${survey.eID}`" class="min-w-0 flex-1 pr-8 after:absolute after:inset-0 after:content-['']"><strong class="block text-lg">Resident survey</strong><span class="mt-1 block text-sm opacity-70">{{ survey.question }}</span><span class="mt-3 block text-sm font-bold text-accent">Share your answer →</span></router-link>
+              <button type="button" class="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-lg text-xl opacity-60 transition hover:bg-background-light hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-accent dark:hover:bg-background-dark" aria-label="Dismiss resident survey" title="Dismiss notification" @click="dismissAttentionItem(surveyAlertID(survey.eID))">×</button>
+            </article>
           </div>
         </section>
         <section v-else class="flex items-center gap-4 rounded-2xl border border-success/20 bg-success/10 p-5"><span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-success text-xl font-bold text-white">✓</span><div><h2 class="font-bold">You’re all caught up</h2><p class="text-sm opacity-70">No tasks or surveys need your attention right now.</p></div></section>
@@ -56,10 +64,14 @@ import type { AlertItem, DashboardPayload, FloorWaterConsumption, HomeEventItem,
 
 const socket = getSocket()
 const isLoading = ref(true), loadError = ref(false)
-const alerts = ref<AlertItem[]>([]), events = ref<HomeEventItem[]>([]), userSurveys = ref<SurveyItem[]>([])
+const dashboardAlerts = ref<AlertItem[]>([]), events = ref<HomeEventItem[]>([]), dashboardSurveys = ref<SurveyItem[]>([])
+const dashboardUserID = ref<number | null>(null)
+const dismissedAttentionIDs = ref<Set<number>>(new Set())
 const waterConsumption = ref<FloorWaterConsumption>({ available: false, latestReadingAt: null, currentWeekLiters: 0, historicalWeeklyAverageLiters: 0, coldLiters: 0, warmLiters: 0, days: [] })
 const showEventModal = ref(false), selectedEvent = ref<HomeEventItem | null>(null)
 const isAdmin = computed(() => sessionStorage.getItem('userRole')?.toLowerCase() === 'admin')
+const alerts = computed(() => dashboardAlerts.value.filter(alert => alert.dismissible === false || !dismissedAttentionIDs.value.has(alert.id)))
+const userSurveys = computed(() => dashboardSurveys.value.filter(survey => !dismissedAttentionIDs.value.has(surveyAlertID(survey.eID))))
 const attentionCount = computed(() => alerts.value.length + userSurveys.value.length)
 const currentEvents = computed(() => events.value
   .filter(event => event.active !== false && eventHasNotEnded(event))
@@ -86,8 +98,22 @@ function formatCompactDate(value?: string) { const date = parseDate(value); retu
 function formatEventDateRange(start?: string, end?: string) { const a = formatCompactDate(start), b = formatCompactDate(end); return a && b ? `${a} — ${b}` : a }
 function eventsForDay(day: Date) { return currentEvents.value.filter(event => { const date = parseDate(event.startDate); return date && date.getFullYear() === day.getFullYear() && date.getMonth() === day.getMonth() && date.getDate() === day.getDate() }) }
 function openEventDetails(event: HomeEventItem) { selectedEvent.value = event; showEventModal.value = true }
+function surveyAlertID(eventID: number) { return 700000 + Number(eventID) }
+function dismissedStorageKey(userID: number) { return `dismissed-home-attention:${userID}` }
+function loadDismissedAttention(userID: number) {
+  try { dismissedAttentionIDs.value = new Set(JSON.parse(localStorage.getItem(dismissedStorageKey(userID)) || '[]')) }
+  catch { dismissedAttentionIDs.value = new Set() }
+}
+function dismissAttentionItem(id: number) {
+  if (!dashboardUserID.value) return
+  const dismissed = new Set(dismissedAttentionIDs.value)
+  dismissed.add(id)
+  dismissedAttentionIDs.value = dismissed
+  localStorage.setItem(dismissedStorageKey(dashboardUserID.value), JSON.stringify([...dismissed].slice(-500)))
+}
 function applyDashboard(dashboard: DashboardPayload) {
-  alerts.value = dashboard.alerts || []; events.value = dashboard.events || []; userSurveys.value = dashboard.pendingSurveys || []; waterConsumption.value = dashboard.waterConsumption || waterConsumption.value
+  if (dashboardUserID.value !== dashboard.user.id) { dashboardUserID.value = dashboard.user.id; loadDismissedAttention(dashboard.user.id) }
+  dashboardAlerts.value = dashboard.alerts || []; events.value = dashboard.events || []; dashboardSurveys.value = dashboard.pendingSurveys || []; waterConsumption.value = dashboard.waterConsumption || waterConsumption.value
   sessionStorage.setItem('dashboard', JSON.stringify(dashboard)); isLoading.value = false; loadError.value = false
 }
 function receiveError() { loadError.value = true; isLoading.value = false }
@@ -97,6 +123,6 @@ function requestDashboard() {
   socket.emit('getDashboard')
 }
 function loadCache() { try { const cached = JSON.parse(sessionStorage.getItem('dashboard') || 'null') as DashboardPayload | null; if (cached) applyDashboard(cached) } catch { sessionStorage.removeItem('dashboard') } }
-onMounted(() => { loadCache(); socket.on('dashboard', applyDashboard); socket.on('error', receiveError); requestDashboard() })
-onBeforeUnmount(() => { socket.off('dashboard', applyDashboard); socket.off('error', receiveError) })
+onMounted(() => { loadCache(); socket.on('dashboard', applyDashboard); socket.on('error', receiveError); socket.on('swapRequestUpdated', requestDashboard); requestDashboard() })
+onBeforeUnmount(() => { socket.off('dashboard', applyDashboard); socket.off('error', receiveError); socket.off('swapRequestUpdated', requestDashboard) })
 </script>

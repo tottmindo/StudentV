@@ -140,31 +140,6 @@ INSERT INTO sensor (sensorcode, type, location, dormid) VALUES
   ('8c1f646190001fcb', 'Cold Water Meter', 'Kitchen', 6),
   ('8c1f6461900021c1', 'Warm Water Meter', 'Right shower', 10);
 
--- Give every installation sensor recent and historical telemetry. Values are
--- deterministic per sensor while timestamps stay useful for dashboard testing.
-INSERT INTO sensor_data
-  (sensorcode, recordedat, totalvolume, tempmin, tempmax, errorcode,
-   battery, ambienttemp, humidity, leakstatus)
-SELECT
-  s.sensorcode,
-  now() - sample.age,
-  1000 + row_number() OVER (ORDER BY s.sensorcode) * 20 + sample.litres,
-  CASE WHEN s.type = 'Cold Water Meter' THEN 7.5 ELSE 43.0 END,
-  CASE WHEN s.type = 'Cold Water Meter' THEN 12.0 ELSE 50.0 END,
-  CASE WHEN s.sensorcode = '8c1f64619000228d' AND sample.age = interval '2 hours' THEN 12 ELSE 0 END,
-  96.0 - sample.litres / 100,
-  20.5 + s.dormid / 10.0,
-  42.0 + s.dormid,
-  s.sensorcode = '8c1f646190001ebd' AND sample.age = interval '1 hour'
-FROM sensor s
-CROSS JOIN (VALUES
-  (interval '0 hours', 18.0::real),
-  (interval '1 hour', 12.0::real),
-  (interval '2 hours', 8.0::real),
-  (interval '1 day', 4.0::real),
-  (interval '7 days', 0.0::real)
-) AS sample(age, litres);
-
 INSERT INTO sensor_notes (sensorcode, note, updatedat) VALUES
   ('8c1f64619000228d', 'Inspect error-code history during the next maintenance round.', now() - interval '1 day'),
   ('8c1f646190001ebd', 'Test fixture: a recent reading reports a leak.', now() - interval '30 minutes'),

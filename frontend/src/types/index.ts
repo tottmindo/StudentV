@@ -4,6 +4,7 @@ export type AlertItem = {
   description: string
   route?: string
   actionLabel?: string
+  dismissible?: boolean
 }
 
 export type SurveyAnswer = {
@@ -90,6 +91,7 @@ export type ChallengeItem = {
 
 export type DashboardPayload = {
   user: {
+    id: number
     name: string
     room: number
     corridor: number
