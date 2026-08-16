@@ -158,11 +158,11 @@ CREATE TABLE externalevents (
     eventID INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     externalURL VARCHAR(500) UNIQUE NOT NULL,
     title VARCHAR(255),
-    startDate TIMESTAMP,
-    endDate TIMESTAMP,
-    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    lastSeen TIMESTAMP
+    startDate TIMESTAMPTZ,
+    endDate TIMESTAMPTZ,
+    createdAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    lastSeen TIMESTAMPTZ
 );
 
 -- Daily anonymous page-view counters. Deliberately has no user/device identifier.

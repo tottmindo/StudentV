@@ -320,14 +320,22 @@ const cleaningWeeks = ref<CleaningWeek[]>([])
 
 const selectedExternalEvents = ref<ExternalEvents[]>([]);
 
-const externalEventDates = computed(() =>{
+const externalEventDates = computed(() => {
   const dates = new Set<string>()
-  externalEvents.value.filter((event) => showHistoricalEvents.value || displayEventHasNotEnded(event)).forEach((event) => {
-    const d = parseEventDate(event.startDate)
-    if(d) {
-      dates.add(toDateKey(d))
-    }
-  })
+
+  externalEvents.value
+    .filter((event) => showHistoricalEvents.value || displayEventHasNotEnded(event))
+    .forEach((event) => {
+      if (!event.startDate) return
+
+      getDateKeysInRange(
+        event.startDate,
+        event.endDate || event.startDate
+      ).forEach((dateKey) => {
+        dates.add(dateKey)
+      })
+    })
+
   return Array.from(dates)
 })
 
@@ -363,11 +371,18 @@ const allEvents = computed(() => {
 
 const allEventDates = computed(() => {
   const dates = new Set<string>()
+
   allEvents.value.forEach((event) => {
-    if (event.startDate) {
-      dates.add(event.startDate.slice(0, 10))
-    }
+    if (!event.startDate) return
+
+    const start = event.startDate
+    const end = event.endDate || event.startDate
+
+    getDateKeysInRange(start, end).forEach((dateKey) => {
+      dates.add(dateKey)
+    })
   })
+
   return Array.from(dates)
 })
 
@@ -465,20 +480,29 @@ const openEventDetails = (events: CalendarEvent[], dayKey = '') => {
     ? ownCleaningWeeks.value.filter((week) => dateIsInRange(dayKey, week.startDate, week.endDate))
     : []
   selectedExternalEvents.value = (dayKey && filters.value.external)
-    ? externalEvents.value.filter((event) => {
-        const d = parseEventDate(event.startDate)
-        return d && toDateKey(d) === dayKey
-      })
-    : []
+  ? externalEvents.value.filter((event) => {
+      return dateIsInRange(
+        dayKey,
+        event.startDate,
+        event.endDate || event.startDate
+      )
+    })
+  : []
   selectedEventDay.value = dayKey
   showEventDetailsModal.value = true
 }
 
 const onCalendarDayClick = (dateKey: string) => {
   const matchingEvents = allEvents.value.filter((event) => {
-    const d = parseEventDate(event.startDate)
-    return d && toDateKey(d) === dateKey
+    if (!event.startDate) return false
+
+    return dateIsInRange(
+      dateKey,
+      event.startDate,
+      event.endDate || event.startDate
+    )
   })
+
   openEventDetails(matchingEvents, dateKey)
 }
 
@@ -641,20 +665,18 @@ const end = newEvent.value.endDateLocal
   newEvent.value.type = 'SOCIAL'
 }
 
-const formatDate = (dateString?: string) => {
+const formatDate = (dateString?: string, showTime = true) => {
   if (!dateString) return ''
-  
-  const normalized = dateString.replace(' ', 'T').replace('Z', '')
+
+  const normalized = dateString
+    .replace(' ', 'T')
+    .replace('Z', '')
+
   const dateObj = new Date(normalized)
 
   if (isNaN(dateObj.getTime())) return dateString
 
-  const isMidnight = 
-    dateObj.getHours() === 0 && 
-    dateObj.getMinutes() === 0 && 
-    dateObj.getSeconds() === 0
-
-  if (isMidnight) {
+  if (!showTime) {
     return dateObj.toLocaleDateString(undefined, {
       year: 'numeric',
       month: 'long',
@@ -673,10 +695,55 @@ const formatDate = (dateString?: string) => {
 
 const formatDateRange = (start?: string, end?: string) => {
   if (!start) return ''
-  if (!end || start === end) return formatDate(start)
-  return `${formatDate(start)} — ${formatDate(end)}`
-}
 
+  const normalizedStart = start
+    .replace(' ', 'T')
+    .replace('Z', '')
+
+  const startDate = new Date(normalizedStart)
+
+  if (isNaN(startDate.getTime())) {
+    return start
+  }
+
+  // No end date
+  if (!end) {
+    const startIsMidnight =
+      startDate.getHours() === 0 &&
+      startDate.getMinutes() === 0 &&
+      startDate.getSeconds() === 0
+
+    return formatDate(start, !startIsMidnight)
+  }
+
+  const normalizedEnd = end
+    .replace(' ', 'T')
+    .replace('Z', '')
+
+  const endDate = new Date(normalizedEnd)
+
+  if (isNaN(endDate.getTime())) {
+    return `${formatDate(start)} — ${formatDate(end)}`
+  }
+
+  // Same exact datetime
+  if (startDate.getTime() === endDate.getTime()) {
+    return formatDate(start, false)
+  }
+
+  const sameDate =
+    startDate.getFullYear() === endDate.getFullYear() &&
+    startDate.getMonth() === endDate.getMonth() &&
+    startDate.getDate() === endDate.getDate()
+
+  // Same date, different times
+  if (sameDate) {
+    return `${formatDate(start, true)} — ${formatDate(end, true)}`
+  }
+
+  // Different dates
+  return `${formatDate(start, true)} — ${formatDate(end, true)}`
+}
 const toDateKey = (date: Date) => {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
