@@ -92,7 +92,7 @@ const residentShortcuts = [
 const adminShortcuts = [{ label: 'Users & sensors', to: '/admin', icon: '⚙' }, { label: 'Water analytics', to: '/admin/water-analytics', icon: '▥' }, { label: 'Manage surveys', to: '/survey', icon: '≡' }]
 
 function formatLiters(value: number) { return `${Math.round(value).toLocaleString()} L` }
-function parseDate(value?: string) { if (!value) return null; const date = new Date(value.replace(' ', 'T')); return Number.isNaN(date.getTime()) ? null : date }
+function parseDate(value?: string) { if (!value) return null; const date = new Date(value.replace(' ', 'T').replace('Z', '')); return Number.isNaN(date.getTime()) ? null : date }
 function eventHasNotEnded(event: HomeEventItem) { const end = parseDate(event.endDate || event.startDate); return Boolean(end && end.getTime() >= Date.now()) }
 function formatCompactDate(value?: string) { const date = parseDate(value); return date ? new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(date) : value || '' }
 function formatEventDateRange(start?: string, end?: string) { const a = formatCompactDate(start), b = formatCompactDate(end); return a && b ? `${a} — ${b}` : a }
