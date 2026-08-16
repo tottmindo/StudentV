@@ -85,11 +85,21 @@
       <div class="space-y-4">
         <h3 class="text-xl font-semibold">{{ eventModalTitle }}</h3>
         <template v-if="selectedEvents.length || selectedCleaningWeeks.length || selectedExternalEvents.length">
-          <div v-for="event in selectedEvents" :key="event.id" class="space-y-2 rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-surface dark:bg-surface-dark">
+          <div
+            v-for="event in selectedEvents"
+            :key="event.id"
+            class="space-y-2 rounded-lg border border-gray-200 bg-white p-4 text-gray-900
+                  dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+          >
             <div class="flex items-start justify-between gap-4">
               <div>
                 <p class="text-lg font-semibold">{{ event.title }}</p>
-                <p class="text-sm opacity-70">{{ event.type }} <span v-if="!event.active" class="text-red-500">(inactive)</span></p>
+                <p class="text-sm text-gray-600 dark:text-gray-400">
+                  {{ event.type }}
+                  <span v-if="!event.active" class="text-red-600 dark:text-red-400">
+                    (inactive)
+                  </span>
+                </p>
               </div>
               <div class="text-sm opacity-70 text-right">
                 <div>{{ formatDateRange(event.startDate, event.endDate) }}</div>
@@ -98,14 +108,20 @@
             <p class="text-sm opacity-80">{{ event.description }}</p>
           </div>
           <div
-            v-for="week in selectedCleaningWeeks"
-            :key="week.weekID"
-            class="space-y-2 rounded-lg border border-emerald-500 p-4 bg-emerald-50 text-emerald-950 dark:bg-emerald-950/30 dark:text-emerald-100"
-          >
+              v-for="week in selectedCleaningWeeks"
+              :key="week.weekID"
+              class="space-y-2 rounded-lg border border-emerald-300
+                    bg-emerald-50 p-4 text-emerald-950
+                    dark:border-emerald-700
+                    dark:bg-emerald-950/50
+                    dark:text-emerald-100"
+            >
             <div class="flex items-start justify-between gap-4">
               <div>
                 <p class="text-lg font-semibold">Cleaning week</p>
-                <p class="text-sm opacity-80">Assigned to {{ week.assignedUsername }}</p>
+                <p class="text-sm text-emerald-800 dark:text-emerald-300">
+                  Assigned to {{ week.assignedUsername }}
+                </p>
               </div>
               <div class="text-sm opacity-80 text-right">
                 <div>{{ formatDateRange(week.startDate, week.endDate) }}</div>
@@ -118,19 +134,31 @@
           <div
             v-for="event in selectedExternalEvents"
             :key="event.eventID"
-            class="space-y-2 rounded-lg border border-blue-400 p-4 bg-blue-50 text-blue-950 dark:bg-blue-900/30 dark:text-blue-100 dark:border-blue-700"
+            class="space-y-2 rounded-lg border border-blue-300
+                  bg-blue-50 p-4 text-blue-950
+                  dark:border-blue-700
+                  dark:bg-blue-950/50
+                  dark:text-blue-100"
           >
             <div class="flex items-start justify-between gap-4">
             <div>
               <p class="text-lg font-semibold">{{ event.title }}</p>
-              <p class="text-sm opacity-80 uppercase">External Event</p>
+              <p class="text-sm font-medium uppercase text-blue-700 dark:text-blue-300">
+                External Event
+              </p>
             </div>
             <div class="text-sm opacity-80 text-right">
               <div>{{ formatDateRange(event.startDate, event.endDate) }}</div>
             </div>
           </div>
-          <a :href="event.externalurl" target="_blank" rel="noopener noreferrer" class="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline">
-            View Event Page &rarr;
+          <a
+            :href="event.externalurl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-sm font-semibold text-blue-600 hover:underline
+                  dark:text-blue-400"
+          >
+            View Event Page →
           </a>
         </div>
         </template>
@@ -561,7 +589,7 @@ const bindSocket = () => {
 }
 
 const fetchCalendarData = () => {
-  socket.emit('getEvents', { active: true })
+  socket.emit('getEvents', { active: true, dormID: sessionStorage.getItem('dormID') })
   socket.emit('getCleaningWeeks')
   socket.emit('getExternalEvents')
 }

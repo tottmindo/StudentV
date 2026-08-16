@@ -1592,7 +1592,7 @@ async getExternalEvents(): Promise<ExternalEvents[]>{
   try {
     const query = "SELECT * FROM externalevents WHERE endDate >= NOW()"
     const [rows] = await pool.query(query);
-    console.log("RAW DB EXTERNAL EVENTS:", rows)
+    
       return rows as ExternalEvents[];
     }catch (err){
       console.error(`Error fetching external events`);
