@@ -29,27 +29,74 @@
         </p>
       </div>
       <!-- Answer -->
-      <div class="space-y-3">
+      <!-- Multiple choice -->
+      <div
+        v-if="survey.multipleChoice"
+        class="space-y-4"
+      >
         <label
           class="block text-sm font-semibold
-                 text-text dark:text-text-dark"
+                text-text dark:text-text-dark"
+        >
+          Choose your answers
+        </label>
+
+        <div class="space-y-3">
+
+          <label
+            v-for="option in survey.options"
+            :key="option.eID"
+            class="flex items-center gap-3
+                  rounded-lg
+                  bg-secondary
+                  dark:bg-secondary-dark
+                  p-4
+                  cursor-pointer
+                  hover:opacity-90"
+          >
+
+            <input
+              type="checkbox"
+              :value="option.eID"
+              v-model="selectedOptions"
+              class="h-5 w-5"
+            />
+
+            <span>
+              {{ option.optiontext }}
+            </span>
+
+          </label>
+
+        </div>
+      </div>
+
+      <!-- Free text -->
+      <div
+        v-else
+        class="space-y-3"
+      >
+        <label
+          class="block text-sm font-semibold
+                text-text dark:text-text-dark"
         >
           Your answer
         </label>
+
         <textarea
           v-model="answer"
           rows="6"
           placeholder="Write your answer..."
           class="w-full rounded-lg
-                 border border-gray-300
-                 dark:border-gray-700
-                 bg-white
-                 dark:bg-background-dark
-                 px-4 py-3
-                 resize-none
-                 focus:outline-none
-                 focus:ring-2
-                 focus:ring-accent"
+                border border-gray-300
+                dark:border-gray-700
+                bg-white
+                dark:bg-background-dark
+                px-4 py-3
+                resize-none
+                focus:outline-none
+                focus:ring-2
+                focus:ring-accent"
         />
       </div>
       <!-- Submit -->
@@ -113,6 +160,7 @@ const route = useRoute()
 
 const survey = ref<any>(null)
 const answer = ref("")
+const selectedOptions = ref<number[]>([])
 const submitted = ref(false)
 const loading = ref(true)
 
@@ -127,6 +175,34 @@ function handleSurvey(data: any) {
 
 function submitAnswer() {
 
+  // Multiple choice
+  if (survey.value.multipleChoice) {
+
+    if (selectedOptions.value.length === 0) {
+      alert("Please select at least one answer")
+      return
+    }
+
+    socket.emit(
+      "submitAnswer",
+      survey.value.eID,
+      null,
+      selectedOptions.value,
+      (response: any) => {
+
+        if (response?.error) {
+          alert(response.error)
+          return
+        }
+
+        submitted.value = true
+      }
+    )
+
+    return
+  }
+
+  // Free text
   if (!answer.value.trim()) {
     alert("Please enter an answer")
     return
@@ -136,6 +212,7 @@ function submitAnswer() {
     "submitAnswer",
     survey.value.eID,
     answer.value,
+    [],
     (response: any) => {
 
       if (response?.error) {

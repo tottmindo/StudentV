@@ -1462,26 +1462,69 @@ async createCleaningWeekTasks(tasks: any[]): Promise<void> {
 async reassignCleaningWeekTasks(weekID: number, assignedUserID: number): Promise<void> {
   await pool.query(`UPDATE cleaningAssignments SET assignedUserID = ? WHERE weekID = ?`, [assignedUserID, weekID]);
 }
- async createSurvey(survey: any) {
+
+async createSurvey(survey: any) {
   const connection = await pool.getConnection();
   await connection.beginTransaction();
-  
+
   try {
-    // 1. Capture the result array from the query
+    // Create survey
     const [result] = await connection.query(
-      `INSERT INTO survey (question, active, expiresAt, multipleChoice)
-      VALUES (?, ?, ?, ?) RETURNING eID`,
-      [survey.question, survey.active, new Date(survey.expiresAt), survey.multipleChoice]
-    );
+    `
+      INSERT INTO survey
+        (question, active, expiresat, multiplechoice, dormid)
+      VALUES
+        (?, ?, ?, ?, ?)
+      RETURNING eid
+    `,
+    [
+      survey.question,
+      survey.active,
+      new Date(survey.expiresAt),
+      survey.multipleChoice,
+      survey.dormID
+    ]
+  );
+
+    console.log("RESULT:", result);
+
+    const newSurveyID = result[0].eID;
+
+    const options = [];
+
+    // Create options
+    if (
+      survey.multipleChoice &&
+      Array.isArray(survey.options)
+    ) {
+      for (const option of survey.options) {
+        console.log("OPTION", option)
+        console.log("NEWSURVEY", newSurveyID);
+        const [optionResult] = await connection.query(
+          `
+            INSERT INTO surveyoptions
+              (surveyid, optiontext)
+            VALUES
+              (?, ?)
+            RETURNING *
+          `,
+          [
+            newSurveyID,
+            option.optiontext
+          ]
+        );
+
+        options.push(optionResult[0]);
+      }
+    }
 
     await connection.commit();
 
-    const newlyCreatedSurvey = {
+    return {
       ...survey,
-      eID: (result as any).insertId 
+      eID: newSurveyID,
+      options
     };
-
-    return newlyCreatedSurvey; 
 
   } catch (error) {
     await connection.rollback();
@@ -1492,29 +1535,29 @@ async reassignCleaningWeekTasks(weekID: number, assignedUserID: number): Promise
   }
 }
 
-  async  updateSurvey(survey: any) {
-    const connection = await pool.getConnection();
-    await connection.beginTransaction();
-    
-    try {
-      await connection.query(
-        `UPDATE survey 
-        SET question = ?, active = ?, expiresAt = ?, multipleChoice = ?
-        WHERE eID = ?`,
-        [survey.question, survey.active, new Date(survey.expiresAt), survey.multipleChoice, survey.eID]
-      );
+  async updateSurvey(survey: any) {
+  const connection = await pool.getConnection();
 
-      await connection.commit();
+  try {
+    const [result] = await connection.query(
+      `
+        UPDATE survey
+        SET active = ?
+        WHERE eID = ?
+        RETURNING *
+      `,
+      [
+        survey.active,
+        survey.eID
+      ]
+    );
 
-      return survey; 
-    } catch (error) {
-      await connection.rollback();
-      console.error("Transaction rolled back:", error);
-      throw error;
-    } finally {
-      connection.release();
-    }
+    return result[0];
+
+  } finally {
+    connection.release();
   }
+}
 
   async getSurveyAll(){
     try {
@@ -1529,18 +1572,45 @@ async reassignCleaningWeekTasks(weekID: number, assignedUserID: number): Promise
     }
   }
 
-  async getSurvey(eID: number){
+  async getSurvey(eID: number) {
     try {
-      const query = 'SELECT * FROM survey WHERE eID = ?';
 
-      const [rows] = await pool.query(query, [eID]);
+      // Get the survey
+      const [surveyRows] = await pool.query(
+        'SELECT * FROM survey WHERE eID = ?',
+        [eID]
+      );
 
-      const survey =  rows as any[];
-      return survey[0]
-    }catch(err){
+      const surveys = surveyRows as any[];
+
+      if (surveys.length === 0) {
+        return null;
+      }
+
+      const survey = surveys[0];
+
+      // Get options belonging to this survey
+      const [optionRows] = await pool.query(
+        `
+          SELECT *
+          FROM surveyoptions
+          WHERE surveyid = ?
+          ORDER BY eID
+        `,
+        [eID]
+      );
+
+      const options = optionRows as any[];
+
+      return {
+        ...survey,
+        options
+      };
+
+    } catch (err) {
 
       console.error("Error fetching survey", err);
-      throw new Error("Failed to fetch surveys from db");
+      throw new Error("Failed to fetch survey from db");
     }
   }
 
@@ -1562,68 +1632,173 @@ async reassignCleaningWeekTasks(weekID: number, assignedUserID: number): Promise
     }
   }
 
-  async getAnswers(eID: number){
-    try{
-      const query = 'SELECT * FROM surveyAnswers WHERE eID = ?';
-      const [rows] = await pool.query(query, [eID]);
-      return rows as any[];
+  async getAnswers(eID: number) {
+    try {
 
-    }catch(err){
+      const [rows] = await pool.query(
+        `
+          SELECT
+            sa.answerid,
+            sa.eid,
+            sa.userid,
+            sa.answer,
+            sa.answeredat,
+            sao.optionid,
+            so.optiontext
+          FROM surveyanswers sa
+          LEFT JOIN surveyansweroptions sao
+            ON sa.answerid = sao.answerid
+          LEFT JOIN surveyoptions so
+            ON sao.optionid = so.eid
+          WHERE sa.eid = ?
+          ORDER BY sa.answerid
+        `,
+        [eID]
+      );
+
+      const answers = rows as any[];
+
+      // Group options belonging to the same answer
+      const grouped = new Map<number, any>();
+
+      for (const row of answers) {
+
+        if (!grouped.has(row.answerid)) {
+          grouped.set(row.answerid, {
+            answerid: row.answerid,
+            eid: row.eid,
+            userid: row.userid,
+            answer: row.answer,
+            answeredat: row.answeredat,
+            options: []
+          });
+        }
+
+        // Add option if this answer selected one
+        if (row.optionid !== null) {
+          grouped.get(row.answerid).options.push({
+            optionid: row.optionid,
+            optiontext: row.optiontext
+          });
+        }
+      }
+
+      return Array.from(grouped.values());
+
+    } catch (err) {
+
       console.error("Error fetching survey answers", err);
-      throw new Error("Failed to fetch survey answeres from db");
+      throw new Error("Failed to fetch survey answers from db");
+
     }
   }
 
-  async getUserSurvey(userID: number){
-    try{
+  async getUserSurvey(userID: number) {
+    try {
+
       const query = `
-      SELECT *
-      FROM survey s
-      WHERE s.active = TRUE
-      AND s.expiresAt > NOW()
-      AND NOT EXISTS (
-        SELECT 1
-        FROM surveyAnswers sa
-        WHERE sa.eID = s.eID
-        AND sa.userID = ?
-      )
-    `;
+        SELECT s.*
+        FROM survey s
+        JOIN users u
+          ON u.userID = ?
+        WHERE s.active = TRUE
+          AND s.expiresAt > NOW()
+          AND (
+            s.dormid IS NULL
+            OR s.dormid = u.dormid
+          )
+          AND NOT EXISTS (
+            SELECT 1
+            FROM surveyAnswers sa
+            WHERE sa.eID = s.eID
+              AND sa.userID = ?
+          )
+      `;
 
-    const [rows] = await pool.query(query, [userID]);
-    return rows;
+      const [rows] = await pool.query(
+        query,
+        [userID, userID]
+      );
 
-    }catch(err){
-      console.error(`Error fetching surveys for user ${userID}`, err);
+      return rows;
+
+    } catch (err) {
+
+      console.error(
+        `Error fetching surveys for user ${userID}`,
+        err
+      );
+
       throw new Error("Failed fetching surveys");
     }
   }
 
-  async saveSurveyAnswer(userID: number, eID: number, answer: string){
+  async saveSurveyAnswer(
+  userID: number,
+  eID: number,
+  answer: string | null,
+  optionIDs: number[]
+) {
   const connection = await pool.getConnection();
-    await connection.beginTransaction();
-    
-    try {
+  await connection.beginTransaction();
 
-      await connection.query(
-        `INSERT INTO surveyAnswers (eID, userID, answer, answeredAt)
-        VALUES (?, ?, ?, NOW())`,
-        [eID, userID, answer]
-      );
+  try {
 
-      await connection.commit();
+    // 1. Create the answer
+    const [result] = await connection.query(
+      `
+        INSERT INTO surveyAnswers
+          (eID, userID, answer, answeredAt)
+        VALUES
+          (?, ?, ?, NOW())
+        RETURNING answerid
+      `,
+      [eID, userID, answer]
+    );
 
-      return { msg: `Answered logged for survey ${eID}`};
-    } catch (err:any) {
-      await connection.rollback();
-      if(err.code === "23505"){
-        throw new Error("Survey already answered")
+    const answerID = result[0].answerid;
+
+    // 2. If multiple choice, save selected options
+    if (Array.isArray(optionIDs) && optionIDs.length > 0) {
+
+      for (const optionID of optionIDs) {
+
+        await connection.query(
+          `
+            INSERT INTO surveyansweroptions
+              (answerid, optionid)
+            VALUES
+              (?, ?)
+          `,
+          [answerID, optionID]
+        );
+
       }
-      console.error("Transaction rolled back:", err);
-      throw err;
-    } finally {
-          connection.release();
     }
+
+    // 3. Everything succeeded
+    await connection.commit();
+
+    return {
+      msg: `Answer logged for survey ${eID}`,
+      answerID
+    };
+
+  } catch (err: any) {
+
+    await connection.rollback();
+
+    if (err.code === "23505") {
+      throw new Error("Survey already answered");
+    }
+
+    console.error("Transaction rolled back:", err);
+    throw err;
+
+  } finally {
+    connection.release();
   }
+}
 
   async getChatRooms(dormID: number){
     try {

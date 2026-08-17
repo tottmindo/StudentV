@@ -46,9 +46,48 @@ WHERE roomid % 10 <> 8
   AND NOT EXISTS (SELECT 1 FROM users WHERE users.roomid = room.roomid AND users.dormid = room.dormid);
 
 INSERT INTO survey (question, active, expiresat, multiplechoice) VALUES
-  ('How satisfied are you with the dorm facilities?', true, now() + interval '30 days', false),
-  ('Which facility should be upgraded next?', true, now() + interval '14 days', true);
-INSERT INTO surveyanswers (eid, userid, answer) VALUES (1, 2, 'Very satisfied');
+  (
+    'How satisfied are you with the dorm facilities?',
+    true,
+    now() + interval '30 days',
+    false
+  ),
+  (
+    'Which facility should be upgraded next?',
+    true,
+    now() + interval '14 days',
+    true
+  );
+
+-- Multiple choice options for survey 2
+INSERT INTO surveyoptions (surveyid, optiontext) VALUES
+  (2, 'Kitchen'),
+  (2, 'Bathrooms'),
+  (2, 'Laundry room'),
+  (2, 'Study rooms'),
+  (2, 'Common areas');
+
+-- Free-text answer for survey 1
+INSERT INTO surveyanswers (eid, userid, answer)
+VALUES
+  (1, 2, 'Very satisfied');
+
+  -- User 3 answers survey 2
+INSERT INTO surveyanswers (eid, userid, answer)
+VALUES
+  (2, 3, NULL);
+
+-- User 3 selected Kitchen and Laundry room
+INSERT INTO surveyansweroptions (answerid, optionid)
+SELECT
+  sa.answerid,
+  so.eid
+FROM surveyanswers sa
+JOIN surveyoptions so
+  ON so.surveyid = sa.eid
+WHERE sa.eid = 2
+  AND sa.userid = 3
+  AND so.optiontext IN ('Kitchen', 'Laundry room');
 
 -- Authentication fixtures cover unused, expired, and already-used reset tokens.
 -- The raw development-only tokens are unused-token, expired-token, and used-token.
