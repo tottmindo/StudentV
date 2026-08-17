@@ -958,6 +958,26 @@ class Data {
         }
       }
 
+      const [taskVoteRows] = await pool.query(
+        `SELECT p.proposalID, p.proposalType, p.proposedTitle, target.taskName AS targetTitle,
+                creator.username AS creatorUsername
+         FROM cleaningTaskProposals p
+         JOIN users creator ON creator.userID = p.creatorUserID
+         LEFT JOIN cleaningTaskTemplate target ON target.templateID = p.targetTemplateID
+         LEFT JOIN cleaningTaskProposalVotes mine ON mine.proposalID = p.proposalID AND mine.userID = ?
+         WHERE p.dormID = ? AND p.status = 'open' AND mine.userID IS NULL
+         ORDER BY p.createdAt DESC`,
+        [userID, dormID]
+      );
+      for (const vote of taskVoteRows as any[]) {
+        const action = vote.proposalType === "add" ? `add “${vote.proposedTitle}”` : vote.proposalType === "change" ? `change “${vote.targetTitle}”` : `remove “${vote.targetTitle}”`;
+        alerts.push({
+          id: 800000 + Number(vote.proposalID), title: "Cleaning task vote open",
+          description: `${vote.creatorUsername} proposed to ${action}. Your vote can help the dorm reach a majority.`,
+          route: "/community#task-votes", actionLabel: "Vote now",
+        });
+      }
+
       const [eventRows] = await pool.query(
         `SELECT
            e.eventID,
@@ -1024,9 +1044,10 @@ class Data {
 
 async getDashboard(userID: number, dormID: number): Promise<any> {
   try {
-    const [user, events, activatedEvents, userSurveys, alerts, waterConsumption] = await Promise.all([
+    const [user, events, externalEvents, activatedEvents, userSurveys, alerts, waterConsumption] = await Promise.all([
       this.getUser(userID),
       this.getEvents({ dormID, active: true }),
+      this.getExternalEvents(),
       this.getActivatedEvents(userID),
       this.getUserSurvey(userID),
       this.getDashboardAlerts(userID, dormID),
@@ -1050,7 +1071,16 @@ async getDashboard(userID: number, dormID: number): Promise<any> {
       alerts,
       news: [],   // later: real mapping layer
 
-      events,
+      events: [
+        ...(events as any[]).filter((event) => String(event.type || "").toUpperCase() !== "CLEANING"),
+        ...externalEvents.map((event) => ({
+          ...event,
+          id: `external-${event.eventID}`,
+          type: "EXTERNAL",
+          active: true,
+          externalUrl: event.externalURL,
+        })),
+      ],
       activatedEvents,
 
       pendingSurveys: userSurveys,
@@ -1271,12 +1301,12 @@ async getFloorWaterStats(dormID: number, requestedDays: number, sensorCode?: str
 async getUsersByDorm(dormID: number): Promise<any[]> {
   try {
     const [rows] = await pool.query(
-      `SELECT userID
+      `SELECT userID, roomID
        FROM users
        WHERE dormID = ?
          AND active = TRUE
          AND UPPER(role) <> 'ADMIN'
-       ORDER BY userID ASC`,
+       ORDER BY roomID ASC, userID ASC`,
       [dormID]
     );
 
@@ -1285,6 +1315,11 @@ async getUsersByDorm(dormID: number): Promise<any[]> {
     console.error("❌ Error fetching dorm users:", err);
     throw new Error("Failed to fetch dorm users.");
   }
+}
+
+async getCleaningWeeksForGeneration(dormID: number, startDate: Date, endDate: Date): Promise<any[]> {
+  const [rows] = await pool.query(`SELECT weekID, assignedUserID, startDate FROM cleaningWeeks WHERE dormID = ? AND startDate >= ? AND startDate < ? ORDER BY startDate ASC`, [dormID, startDate, endDate]);
+  return rows as any[];
 }
 
 async getLatestCleaningWeekBefore(dormID: number, startDate: Date): Promise<any | null> {
@@ -1348,7 +1383,7 @@ async createCleaningWeek(
       throw new Error(`User ${assignedUserID} was not found in dorm ${dormID}`);
     }
 
-    const [result]: any = await pool.query(
+    const [rows] = await pool.query(
       `INSERT INTO cleaningWeeks (dormID, assignedUserID, startDate, endDate)
        VALUES (?, ?, ?, ?)
        ON CONFLICT (dormID, startDate) DO UPDATE
@@ -1358,7 +1393,9 @@ async createCleaningWeek(
       [dormID, assignedUserID, startDate, endDate]
     );
 
-    return result.insertId;
+    const weekID = (rows as any[])[0]?.weekID;
+    if (typeof weekID !== "number") throw new Error("Database did not return the cleaning week ID");
+    return weekID;
   } catch (err) {
     console.error("❌ Error creating cleaning week:", err);
     throw new Error("Failed to create cleaning week.");
@@ -1374,8 +1411,9 @@ async getCleaningBaseTasks(dormID: number): Promise<any[]> {
          description,
          FALSE AS isImportant
        FROM cleaningTaskTemplate
-       WHERE active = TRUE
+       WHERE active = TRUE AND (dormID IS NULL OR dormID = ?)
        ORDER BY templateID ASC`
+      , [dormID]
     );
 
     return rows as any[];
@@ -1396,7 +1434,7 @@ async createCleaningWeekTasks(tasks: any[]): Promise<void> {
         INSERT INTO cleaningAssignments
         (weekID, templateID, completed, assignedUserID)
         VALUES (?, ?, FALSE, ?)
-        ON CONFLICT (weekID, templateID) DO UPDATE SET assignedUserID = EXCLUDED.assignedUserID
+        ON CONFLICT (weekID, templateID) DO NOTHING
       `;
 
       for (const t of tasks) {
@@ -1419,6 +1457,10 @@ async createCleaningWeekTasks(tasks: any[]): Promise<void> {
     console.error("❌ Error creating week tasks:", err);
     throw new Error("Failed to create cleaning week tasks.");
   }
+}
+
+async reassignCleaningWeekTasks(weekID: number, assignedUserID: number): Promise<void> {
+  await pool.query(`UPDATE cleaningAssignments SET assignedUserID = ? WHERE weekID = ?`, [assignedUserID, weekID]);
 }
  async createSurvey(survey: any) {
   const connection = await pool.getConnection();

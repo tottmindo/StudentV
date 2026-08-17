@@ -33,7 +33,13 @@ const camelCaseColumns: Record<string, string> = {
   isdeleted: "isDeleted", activateduserid: "activatedUserID", taskname: "taskName",
   weektaskid: "weekTaskID", totaltasks: "totalTasks", completedtasks: "completedTasks",
   pendingtasks: "pendingTasks",
+  proposalid: "proposalID", proposaltype: "proposalType", targettemplateid: "targetTemplateID",
+  proposedtitle: "proposedTitle", proposeddescription: "proposedDescription",
+  proposedisimportant: "proposedIsImportant", creatoruserid: "creatorUserID",
+  creatorusername: "creatorUsername", resolvedat: "resolvedAt", eligiblevoters: "eligibleVoters",
+  approvecount: "approveCount", rejectcount: "rejectCount", currentuservote: "currentUserVote",
   adminnote: "adminNote", noteupdatedat: "noteUpdatedAt",
+  bio: "bio",
 };
 
 function camelCaseRow<T extends QueryResultRow>(row: T): T {

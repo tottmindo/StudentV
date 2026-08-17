@@ -58,6 +58,9 @@ Use the root `.env` for local development. The most important values are:
   normal dual-stack resolution, for example on an IPv6-only deployment)
 - `CORS_ORIGINS` (comma-separated frontend origins; defaults to `http://localhost:5173`)
 - `TRUST_PROXY=true` when the API is behind one trusted reverse proxy, so rate limits use the real client IP
+- `CLEANING_GENERATION_MONTHS` (defaults to `6`) controls how far ahead cleaning weeks are populated
+- `CLEANING_SCHEDULE_CRON` (defaults to `0 8 * * *`) and `CLEANING_SCHEDULE_TIMEZONE` (defaults to `Europe/Stockholm`) control the periodic idempotent schedule check
+- `CLEANING_SCHEDULE_ENABLED=false` disables the automatic check (the admin button remains available)
 
 ## Database setup
 

@@ -35,6 +35,7 @@ import express from "express";
 import authRoutes from "./routes/authRoutes.js";
 import sensorDataRoutes from "./routes/sensorDataRoutes.js";
 import usageRoutes from "./routes/usageRoutes.js";
+import communityRoutes from "./routes/communityRoutes.js";
 import { Data } from "./data.js";
 import { Socket } from "socket.io";
 import { sockets } from "./sockets.js";
@@ -43,9 +44,11 @@ import jwt from "jsonwebtoken";
 import "./config/env.js";
 import { setIO } from "./routes/socketManager.js";
 import { getJwtSecret } from "./config/jwt.js";
+import { ensureCommunityGovernanceSchema } from "./services/communityService.js";
 console.log('Scoring scheduler started...');
 
 const app = express();
+await ensureCommunityGovernanceSchema();
 if (process.env.TRUST_PROXY === "true") app.set("trust proxy", 1);
 const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173")
   .split(",").map(origin => origin.trim()).filter(Boolean);
@@ -71,6 +74,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/auth", authRoutes);
 app.use("/api/sensor-data", sensorDataRoutes);
 app.use("/api/usage", usageRoutes);
+app.use("/api/community", communityRoutes);
 
 const data = new Data();
 

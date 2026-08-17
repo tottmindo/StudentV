@@ -27,8 +27,9 @@ export type NewsItem = {
 }
 
 export type HomeEventItem = {
-  id?: number
+  id?: number | string
   eventID?: number
+  externalUrl?: string
   icon?: string
   title: string
   time?: string

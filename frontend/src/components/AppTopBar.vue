@@ -69,7 +69,7 @@
         <span aria-hidden="true">{{ page.action.icon }}</span>{{ page.action.label }}
       </router-link>
       <p class="mb-2 px-3 text-xs font-bold uppercase tracking-wider opacity-45">Your residence</p>
-      <router-link v-for="item in residentLinks" :key="item.to" :to="item.to" class="nav-link" active-class="nav-link-active" @click="closeMenu">
+      <router-link v-for="item in visibleResidentLinks" :key="item.to" :to="item.to" class="nav-link" active-class="nav-link-active" @click="closeMenu">
         <span class="w-6 text-center" aria-hidden="true">{{ item.icon }}</span><span>{{ item.label }}</span>
       </router-link>
 
@@ -152,9 +152,11 @@ const residentLinks = [
   { label: 'Home', to: '/home', icon: '⌂' },
   { label: 'Water insights', to: '/stats', icon: '◒' },
   { label: 'Events', to: '/events', icon: '◇' },
+  { label: 'Community', to: '/community', icon: '◎' },
   { label: 'Cleaning', to: '/cleaning', icon: '✓' },
   { label: 'Chats', to: '/chat', icon: '○' },
 ]
+const visibleResidentLinks = computed(() => isAdmin.value ? residentLinks.filter(item => item.to !== '/community') : residentLinks)
 const adminLinks = [
   { label: 'Administration', to: '/admin', icon: '⚙' },
   { label: 'Water analytics', to: '/admin/water-analytics', icon: '▥' },
@@ -164,6 +166,7 @@ const adminLinks = [
 const pages: Record<string, PageInfo> = {
   stats: { title: 'Water insights', eyebrow: 'Your floor', description: 'Usage, patterns and comparisons', action: { label: 'Home', to: '/home', icon: '⌂' } },
   events: { title: 'Events', eyebrow: 'Community', description: 'Calendar and upcoming activities', action: { label: 'Cleaning', to: '/cleaning', icon: '✓' } },
+  community: { title: 'Community', eyebrow: 'Your residence', description: 'People, shared tasks and community decisions', action: { label: 'Chats', to: '/chat', icon: '○' } },
   cleaning: { title: 'Cleaning', eyebrow: 'Shared spaces', description: 'Schedule, tasks and swaps', action: { label: 'Events', to: '/events', icon: '◇' } },
   chat: { title: 'Chats', eyebrow: 'Community', description: 'Conversations in your residence' },
   chatRoom: { title: 'Conversation', eyebrow: 'Chats', description: 'Messages from your residence', action: { label: 'All chats', to: '/chat', icon: '←' } },
@@ -259,6 +262,7 @@ onMounted(() => {
   socket.on('dashboard', receiveDashboard)
   socket.on('connect', requestDashboard)
   socket.on('swapRequestUpdated', requestDashboard)
+  socket.on('cleaningTaskProposalsUpdated', requestDashboard)
   requestDashboard()
   window.addEventListener('keydown', handleKeydown)
 })
@@ -266,6 +270,7 @@ onBeforeUnmount(() => {
   socket.off('dashboard', receiveDashboard)
   socket.off('connect', requestDashboard)
   socket.off('swapRequestUpdated', requestDashboard)
+  socket.off('cleaningTaskProposalsUpdated', requestDashboard)
   if (bellTimer) clearTimeout(bellTimer)
   window.removeEventListener('keydown', handleKeydown)
   document.body.style.overflow = ''

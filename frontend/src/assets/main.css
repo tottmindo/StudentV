@@ -3,6 +3,106 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  color-scheme: light;
+  --field-background: #ffffff;
+  --field-background-muted: #f2f2f0;
+  --field-border: #c9c9c7;
+  --field-border-hover: #9f9f9c;
+  --field-text: #1b1c1c;
+  --field-placeholder: #737373;
+  --field-focus: #cf2e2e;
+  --field-focus-ring: rgb(207 46 46 / 0.18);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --field-background: #1f1f1f;
+    --field-background-muted: #191919;
+    --field-border: #4b4b4b;
+    --field-border-hover: #737373;
+    --field-text: #f5f2ee;
+    --field-placeholder: #aaa7a2;
+    --field-focus: #e05252;
+    --field-focus-ring: rgb(224 82 82 / 0.24);
+  }
+}
+
+/*
+ * Shared form-control treatment. Keeping this after Tailwind's layers makes
+ * legacy controls and newly added fields consistent without requiring every
+ * view to duplicate the complete light/dark state matrix.
+ */
+:is(
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='hidden']):not([type='button']):not([type='submit']):not([type='reset']),
+  select,
+  textarea
+) {
+  border: 1px solid var(--field-border);
+  border-radius: 0.75rem;
+  background-color: var(--field-background);
+  color: var(--field-text);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+
+:is(
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='hidden']):not([type='button']):not([type='submit']):not([type='reset']),
+  select,
+  textarea
+)::placeholder {
+  color: var(--field-placeholder);
+  opacity: 1;
+}
+
+:is(
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='hidden']):not([type='button']):not([type='submit']):not([type='reset']),
+  select,
+  textarea
+):hover:not(:disabled):not([readonly]) {
+  border-color: var(--field-border-hover);
+}
+
+:is(
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='hidden']):not([type='button']):not([type='submit']):not([type='reset']),
+  select,
+  textarea
+):focus {
+  border-color: var(--field-focus);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--field-focus-ring);
+}
+
+:is(input, select, textarea):disabled,
+:is(input, select, textarea)[readonly] {
+  cursor: not-allowed;
+  background-color: var(--field-background-muted);
+  color: var(--field-text);
+  opacity: 0.7;
+}
+
+:is(input[type='checkbox'], input[type='radio']) {
+  accent-color: var(--field-focus);
+}
+
+select {
+  cursor: pointer;
+}
+
+textarea {
+  resize: vertical;
+}
+
+/* Prevent saved credentials from introducing a bright browser background. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--field-text);
+  box-shadow: 0 0 0 1000px var(--field-background) inset, 0 0 0 3px var(--field-focus-ring);
+  caret-color: var(--field-text);
+}
+
 
 #app {
   margin: 0;

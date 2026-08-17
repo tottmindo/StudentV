@@ -28,6 +28,7 @@ import { adminResetPasswordSchema, adminUpdateUserSchema, changePasswordSchema, 
 import { validate } from "../middleware/validate.js";
 import { authenticate, AuthenticatedRequest, requireAdmin, requireCompletedAccount } from "../middleware/authenticate.js";
 import { sendResidentWelcomeEmail } from "../services/emailService.js";
+import { generateCleaningWeeks } from "../jobs/scheduler.js";
 
 const router = express.Router();
 
@@ -103,6 +104,11 @@ router.get("/admin/dorms", authenticate, requireCompletedAccount, requireAdmin, 
 router.get("/admin/users", authenticate, requireCompletedAccount, requireAdmin, async (_req, res) => {
   try { res.json(await listUsersForAdmin()); }
   catch { res.status(500).json({ error: "Could not load users." }); }
+});
+
+router.post("/admin/cleaning-weeks/generate", authenticate, requireCompletedAccount, requireAdmin, async (_req, res) => {
+  try { res.json({ message: "Cleaning schedule check completed.", summary: await generateCleaningWeeks() }); }
+  catch (error) { console.error("Manual cleaning schedule check failed:", error); res.status(500).json({ error: "Could not generate cleaning weeks." }); }
 });
 
 router.patch("/admin/users/:userID", authenticate, requireCompletedAccount, requireAdmin, validate(adminUpdateUserSchema), async (req: AuthenticatedRequest, res) => {

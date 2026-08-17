@@ -184,30 +184,7 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
       },
       callback?: Function
     ) => {
-      try {
-        await data.addCustomCleaningTask(
-          payload.weekID,
-          userID,
-          payload.title,
-          payload.description || "",
-          payload.isImportant || false
-        );
-
-        const tasks = await data.getCleaningWeekTasks(userID, payload.weekID);
-        socket.emit("cleaningWeekTasks", tasks);
-
-        if (typeof callback === "function") {
-          callback({ success: true });
-        }
-      } catch (error: any) {
-        console.error("Error adding task:", error);
-
-        if (typeof callback === "function") {
-          callback({ error: error.message });
-        }
-
-        socket.emit("error", { message: "Failed to add task." });
-      }
+      if (typeof callback === "function") callback({ error: "Recurring tasks must be proposed and approved on the Community page." });
     }
   );
 
@@ -216,29 +193,7 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
    */
   socket.on("deleteCleaningTask",
     async (payload: { weekTaskID: number }, callback?: Function) => {
-      try {
-        await data.deleteCustomCleaningTask(payload.weekTaskID, userID);
-
-        socket.emit("cleaningTaskDeleted", {
-          weekTaskID: payload.weekTaskID,
-        });
-
-        socket.to(`dorm-${dormID}`).emit("cleaningTaskDeleted", {
-          weekTaskID: payload.weekTaskID,
-        });
-
-        if (typeof callback === "function") {
-          callback({ success: true });
-        }
-      } catch (error: any) {
-        console.error("Error deleting task:", error);
-
-        if (typeof callback === "function") {
-          callback({ error: error.message });
-        }
-
-        socket.emit("error", { message: "Failed to delete task." });
-      }
+      if (typeof callback === "function") callback({ error: "Tasks can only be removed by a majority vote on the Community page." });
     }
   );
 

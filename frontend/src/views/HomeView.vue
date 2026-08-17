@@ -40,7 +40,7 @@
                 <span v-else class="mx-auto mt-1 block h-1.5 w-1.5"></span>
               </div>
             </div>
-            <div v-if="upcomingEvents.length" class="mt-4 divide-y divide-border-border"><button v-for="event in upcomingEvents" :key="event.eventID ?? event.id" class="w-full py-4 text-left first:pt-1" @click="openEventDetails(event)"><span class="flex items-start gap-3"><span class="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/10">{{ event.icon || '◇' }}</span><span class="min-w-0"><strong class="block truncate">{{ event.title }}</strong><span class="mt-0.5 block text-sm opacity-60">{{ formatCompactDate(event.startDate) || event.time || 'Date to be announced' }}</span></span></span></button></div>
+            <div v-if="upcomingEvents.length" class="mt-4 divide-y divide-border-border"><button v-for="event in upcomingEvents" :key="event.id ?? event.eventID" class="w-full py-4 text-left first:pt-1" @click="openEventDetails(event)"><span class="flex items-start gap-3"><span class="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/10">{{ event.icon || '◇' }}</span><span class="min-w-0"><strong class="block truncate">{{ event.title }}</strong><span class="mt-0.5 block text-sm opacity-60">{{ formatCompactDate(event.startDate) || event.time || 'Date to be announced' }}</span></span></span></button></div>
             <div v-else class="mt-5 rounded-2xl bg-background-light p-6 text-center dark:bg-background-dark"><p class="font-bold">No upcoming events</p><p class="mt-1 text-sm opacity-60">New activities will show up here.</p></div>
           </section>
         </div>
@@ -51,7 +51,7 @@
       </template>
     </div>
 
-    <ModalComponent v-model="showEventModal"><div v-if="selectedEvent" class="space-y-4 p-4"><div><p v-if="selectedEvent.type" class="text-xs font-bold uppercase tracking-wider text-accent">{{ selectedEvent.type }}</p><h2 class="mt-1 text-2xl font-bold">{{ selectedEvent.title }}</h2></div><p class="font-semibold">{{ formatEventDateRange(selectedEvent.startDate, selectedEvent.endDate) || selectedEvent.time || 'Date to be announced' }}</p><p class="whitespace-pre-line opacity-75">{{ selectedEvent.description || 'No additional information is available for this event.' }}</p><router-link to="/events" class="inline-flex rounded-xl bg-accent px-4 py-2.5 font-bold text-white" @click="showEventModal = false">Open event calendar</router-link></div></ModalComponent>
+    <ModalComponent v-model="showEventModal"><div v-if="selectedEvent" class="space-y-4 p-4"><div><p v-if="selectedEvent.type" class="text-xs font-bold uppercase tracking-wider text-accent">{{ selectedEvent.type }}</p><h2 class="mt-1 text-2xl font-bold">{{ selectedEvent.title }}</h2></div><p class="font-semibold">{{ formatEventDateRange(selectedEvent.startDate, selectedEvent.endDate) || selectedEvent.time || 'Date to be announced' }}</p><p class="whitespace-pre-line opacity-75">{{ selectedEvent.description || 'No additional information is available for this event.' }}</p><a v-if="selectedEvent.externalUrl" :href="selectedEvent.externalUrl" target="_blank" rel="noopener noreferrer" class="inline-flex rounded-xl bg-accent px-4 py-2.5 font-bold text-white">Open event page</a><router-link v-else to="/events" class="inline-flex rounded-xl bg-accent px-4 py-2.5 font-bold text-white" @click="showEventModal = false">Open event calendar</router-link></div></ModalComponent>
   </main>
 </template>
 
@@ -74,7 +74,7 @@ const alerts = computed(() => dashboardAlerts.value.filter(alert => alert.dismis
 const userSurveys = computed(() => dashboardSurveys.value.filter(survey => !dismissedAttentionIDs.value.has(surveyAlertID(survey.eID))))
 const attentionCount = computed(() => alerts.value.length + userSurveys.value.length)
 const currentEvents = computed(() => events.value
-  .filter(event => event.active !== false && eventHasNotEnded(event))
+  .filter(event => event.active !== false && !isCleaningEvent(event) && eventHasNotEnded(event))
   .sort((a, b) => (parseDate(a.startDate)?.getTime() || 0) - (parseDate(b.startDate)?.getTime() || 0)))
 const upcomingEvents = computed(() => currentEvents.value.slice(0, 4))
 const weekDays = computed(() => Array.from({ length: 7 }, (_, index) => {
@@ -93,6 +93,7 @@ const adminShortcuts = [{ label: 'Users & sensors', to: '/admin', icon: '⚙' },
 
 function formatLiters(value: number) { return `${Math.round(value).toLocaleString()} L` }
 function parseDate(value?: string) { if (!value) return null; const date = new Date(value.replace(' ', 'T').replace('Z', '')); return Number.isNaN(date.getTime()) ? null : date }
+function isCleaningEvent(event: HomeEventItem) { return event.type?.trim().toUpperCase() === 'CLEANING' }
 function eventHasNotEnded(event: HomeEventItem) { const end = parseDate(event.endDate || event.startDate); return Boolean(end && end.getTime() >= Date.now()) }
 function formatCompactDate(value?: string) { const date = parseDate(value); return date ? new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(date) : value || '' }
 function formatEventDateRange(start?: string, end?: string) { const a = formatCompactDate(start), b = formatCompactDate(end); return a && b ? `${a} — ${b}` : a }

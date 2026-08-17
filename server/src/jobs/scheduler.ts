@@ -1,149 +1,89 @@
-/**
- * Schedules and manages periodic tasks using node-cron.
- * 
- * This module initializes three daily cron jobs that run at 8:00 AM (Stockholm time):
- * 1. Updates experience points (XP) for dorms
- * 2. Updates consumption feedback for dorms
- * 3. Updates statistics for dorms
- * 
- * @requires node-cron
- * @requires dotenv
- * @requires ../services/xpUpdateHandler
- * @requires ../services/feedbackUpdateHandler
- * @requires ../services/statsUpdater
- * @requires ../data
- * 
- * @remarks
- * All scheduled tasks are configured to run in the Europe/Stockholm timezone.
- * The dorms data is loaded at initialization and passed to each update handler.
- */
-import cron from 'node-cron';
+import cron from "node-cron";
 import "../config/env.js";
-import { Data } from "../data.js"
+import { Data } from "../data.js";
 import { importLatestSensorData } from "../services/sensorDataImportService.js";
 
 const data = new Data();
-let dorms: number[] = [];
 
-async function refreshDorms(): Promise<void> {
-  try {
-    dorms = await data.getDorms();
-    console.log("Dorms: ", dorms);
-    console.log('Scheduler initialized. Dorms data loaded.');
-  } catch (err) {
-    dorms = [];
-    console.error("❌ Scheduler could not load dorms. Cleaning rotation will retry on the next run.", err);
-  }
+export interface CleaningGenerationSummary { dormsChecked: number; weeksCreated: number; weeksReassigned: number; weeksUnchanged: number; dormsWithoutResidents: number }
+
+function positiveInteger(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (raw == null || raw.trim() === "") return fallback;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value <= 0) throw new Error(`${name} must be a positive integer`);
+  return value;
 }
 
-void refreshDorms();
+const cleaningMonthsAhead = positiveInteger("CLEANING_GENERATION_MONTHS", 6);
+const cleaningSchedule = process.env.CLEANING_SCHEDULE_CRON || "0 8 * * *";
+const cleaningTimezone = process.env.CLEANING_SCHEDULE_TIMEZONE || "Europe/Stockholm";
 
-export async function generateCleaningWeekForDorm(dormID: number) {
-  try {
-    console.log(`🧹 Generating cleaning week for dorm ${dormID}`);
-
-    const users = await data.getUsersByDorm(dormID);
-    if (!users.length) return;
-
-    const start = getStockholmWeekStart();
-    const existingWeek = await data.getCleaningWeekByStart(dormID, start);
-
-    // A daily rerun must leave an already valid assignment untouched.
-    if (existingWeek && users.some(user => user.userID === existingWeek.assignedUserID)) {
-      return;
-    }
-
-    const lastWeek = await data.getLatestCleaningWeekBefore(dormID, start);
-
-    let nextIndex = 0;
-
-    if (lastWeek) {
-      const lastIndex = users.findIndex(u => u.userID === lastWeek.assignedUserID);
-      nextIndex = (lastIndex + 1) % users.length;
-    }
-
-    const assignedUser = users[nextIndex];
-
-    // Use one stable key for the whole ISO week. The job runs daily, so using
-    // the current timestamp here would otherwise create seven cleaning weeks.
-    const end = new Date(start);
-    end.setUTCDate(start.getUTCDate() + 6);
-
-    const weekID = await data.createCleaningWeek(
-      dormID,
-      start,
-      end,
-      assignedUser.userID
-    );
-
-    const baseTasks = await data.getCleaningBaseTasks(dormID);
-
-    const weekTasks = baseTasks.map(task => ({
-      weekID,
-      assignedUserID: assignedUser.userID,
-      baseTaskID: task.baseTaskID,
-      title: task.title,
-      description: task.description,
-      isImportant: task.isImportant,
-      isBaseTask: true
-    }));
-
-    await data.createCleaningWeekTasks(weekTasks);
-
-    console.log(`✅ Cleaning week created for dorm ${dormID}`);
-
-  } catch (err) {
-    console.error("❌ Error generating cleaning week:", err);
-  }
-}
-
-/** Monday at 00:00, expressed as a date-safe UTC value for PostgreSQL. */
-function getStockholmWeekStart(now: Date = new Date()): Date {
-  const stockholmDate = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Stockholm',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(now);
-  const date = new Date(`${stockholmDate}T00:00:00.000Z`);
-  const daysSinceMonday = (date.getUTCDay() + 6) % 7;
-  date.setUTCDate(date.getUTCDate() - daysSinceMonday);
+export function getCleaningWeekStart(now: Date = new Date()): Date {
+  const localDate = new Intl.DateTimeFormat("en-CA", { timeZone: cleaningTimezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+  const date = new Date(`${localDate}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7));
   return date;
 }
 
-cron.schedule('0 8 * * *', async () => {
-  console.log('☀️ Daily system update (8:00 AM)');
+function addMonths(date: Date, months: number): Date { const result = new Date(date); result.setUTCMonth(result.getUTCMonth() + months); return result }
 
-  await refreshDorms();
-
-  // 🧹 CLEANING WEEK ROTATION (daily check safe)
-  for (const dormID of dorms) {
-    await generateCleaningWeekForDorm(dormID);
+/** Fill the configured horizon while preserving every still-valid assignment. */
+export async function generateCleaningWeeksForDorm(dormID: number, now: Date = new Date()) {
+  const residents = await data.getUsersByDorm(dormID);
+  if (!residents.length) return { created: 0, reassigned: 0, unchanged: 0, noResidents: true };
+  const start = getCleaningWeekStart(now);
+  const horizon = addMonths(start, cleaningMonthsAhead);
+  const existingWeeks = await data.getCleaningWeeksForGeneration(dormID, start, horizon);
+  const baseTasks = await data.getCleaningBaseTasks(dormID);
+  const weeksByStart = new Map(existingWeeks.map(week => [week.startDate, week]));
+  const residentIndex = new Map(residents.map((resident, index) => [resident.userID, index]));
+  const assignmentCounts = new Map<number, number>(residents.map(resident => [resident.userID, 0]));
+  for (const week of existingWeeks) {
+    if (residentIndex.has(week.assignedUserID)) assignmentCounts.set(week.assignedUserID, (assignmentCounts.get(week.assignedUserID) ?? 0) + 1);
   }
+  const previousWeek = await data.getLatestCleaningWeekBefore(dormID, start);
+  let previousResidentID = previousWeek?.assignedUserID as number | undefined;
+  let created = 0, reassigned = 0, unchanged = 0;
+  for (const weekStart = new Date(start); weekStart < horizon; weekStart.setUTCDate(weekStart.getUTCDate() + 7)) {
+    const existing = weeksByStart.get(weekStart.toISOString().slice(0, 10));
+    if (existing && residentIndex.has(existing.assignedUserID)) {
+      await data.createCleaningWeekTasks(baseTasks.map(task => ({ weekID: existing.weekID, assignedUserID: existing.assignedUserID, baseTaskID: task.baseTaskID })));
+      previousResidentID = existing.assignedUserID;
+      unchanged += 1;
+      continue;
+    }
+    const fewestAssignments = Math.min(...assignmentCounts.values());
+    const previousIndex = previousResidentID == null ? -1 : residentIndex.get(previousResidentID) ?? -1;
+    const assignedResident = Array.from({ length: residents.length }, (_, offset) => residents[(previousIndex + 1 + offset) % residents.length])
+      .find(resident => assignmentCounts.get(resident.userID) === fewestAssignments)!;
+    const weekEnd = new Date(weekStart); weekEnd.setUTCDate(weekEnd.getUTCDate() + 6);
+    const weekID = await data.createCleaningWeek(dormID, new Date(weekStart), weekEnd, assignedResident.userID);
+    await data.createCleaningWeekTasks(baseTasks.map(task => ({ weekID, assignedUserID: assignedResident.userID, baseTaskID: task.baseTaskID })));
+    await data.reassignCleaningWeekTasks(weekID, assignedResident.userID);
+    assignmentCounts.set(assignedResident.userID, (assignmentCounts.get(assignedResident.userID) ?? 0) + 1);
+    previousResidentID = assignedResident.userID;
+    if (existing) reassigned += 1; else created += 1;
+  }
+  return { created, reassigned, unchanged, noResidents: false };
+}
 
-}, {
-  scheduled: true,
-  timezone: 'Europe/Stockholm'
-});
+export async function generateCleaningWeeks(dormIDs?: number[]): Promise<CleaningGenerationSummary> {
+  const ids = dormIDs ?? await data.getDorms();
+  const summary: CleaningGenerationSummary = { dormsChecked: ids.length, weeksCreated: 0, weeksReassigned: 0, weeksUnchanged: 0, dormsWithoutResidents: 0 };
+  for (const dormID of ids) { const result = await generateCleaningWeeksForDorm(dormID); summary.weeksCreated += result.created; summary.weeksReassigned += result.reassigned; summary.weeksUnchanged += result.unchanged; if (result.noResidents) summary.dormsWithoutResidents += 1 }
+  return summary;
+}
+
+export const generateCleaningWeekForDorm = generateCleaningWeeksForDorm;
+
+if (process.env.CLEANING_SCHEDULE_ENABLED !== "false") {
+  if (!cron.validate(cleaningSchedule)) throw new Error("CLEANING_SCHEDULE_CRON is not a valid cron expression");
+  cron.schedule(cleaningSchedule, async () => { try { console.log("Cleaning schedule check complete", await generateCleaningWeeks()) } catch (error) { console.error("Cleaning schedule check failed", error) } }, { scheduled: true, timezone: cleaningTimezone });
+}
 
 if (process.env.SENSOR_SYNC_ENABLED !== "false") {
-  const sensorSyncSchedule = process.env.SENSOR_SYNC_CRON || "*/15 * * * *";
-  const sensorSyncTimezone = process.env.SENSOR_SYNC_TIMEZONE || "Europe/Stockholm";
-
-  if (!cron.validate(sensorSyncSchedule)) {
-    throw new Error("SENSOR_SYNC_CRON is not a valid cron expression");
-  }
-
-  cron.schedule(sensorSyncSchedule, async () => {
-    try {
-      console.log("📡 Collecting latest sensor data");
-      const result = await importLatestSensorData();
-      console.log(`✅ Sensor data collected: ${result.snapshots} snapshots imported`);
-    } catch (err) {
-      console.error("❌ Scheduled sensor data collection failed:", err);
-    }
-  }, {
-    scheduled: true,
-    timezone: sensorSyncTimezone,
-  });
+  const schedule = process.env.SENSOR_SYNC_CRON || "*/15 * * * *", timezone = process.env.SENSOR_SYNC_TIMEZONE || "Europe/Stockholm";
+  if (!cron.validate(schedule)) throw new Error("SENSOR_SYNC_CRON is not a valid cron expression");
+  cron.schedule(schedule, async () => { try { const result = await importLatestSensorData(); console.log(`Sensor data collected: ${result.snapshots} snapshots imported`) } catch (error) { console.error("Scheduled sensor data collection failed", error) } }, { scheduled: true, timezone });
 }

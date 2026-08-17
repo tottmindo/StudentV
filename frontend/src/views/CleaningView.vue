@@ -11,18 +11,19 @@
     {{ notification.message }}
   </div>
 
-  <div class="min-h-screen p-6 bg-background dark:bg-background-dark">
-    <div class="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+  <main class="h-[calc(100dvh-4rem-env(safe-area-inset-top))] overflow-hidden bg-background p-3 dark:bg-background-dark sm:p-6">
+    <div class="grid h-full min-h-0 grid-rows-2 gap-3 sm:gap-6 lg:grid-cols-[1.4fr_1fr] lg:grid-rows-1">
 
       <!-- =====================================================
            WEEKS LIST
       ====================================================== -->
-      <section class="bg-surface dark:bg-surface-dark rounded-lg p-5 border border-gray-200 dark:border-gray-700">
-        <div class="mb-4">
+      <section class="flex min-h-0 flex-col overflow-hidden rounded-lg border border-gray-200 bg-surface p-3 dark:border-gray-700 dark:bg-surface-dark sm:p-5">
+        <div class="mb-3 shrink-0 sm:mb-4">
           <h2 class="text-2xl font-bold">Cleaning weeks</h2>
           <p class="text-sm opacity-70">Select a week to view your tasks.</p>
         </div>
 
+        <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable]">
         <button
           type="button"
           class="mb-4 rounded-lg border border-gray-200 px-3 py-2 text-sm transition hover:border-accent hover:bg-accent/10 dark:border-gray-700"
@@ -144,20 +145,23 @@
           </div>
         </div>
 
+        </div>
+
       </section>
 
       <!-- =====================================================
            TASKS
       ====================================================== -->
-      <section class="bg-surface dark:bg-surface-dark rounded-lg p-5 border border-gray-200 dark:border-gray-700">
+      <section class="flex min-h-0 flex-col overflow-hidden rounded-lg border border-gray-200 bg-surface p-3 dark:border-gray-700 dark:bg-surface-dark sm:p-5">
 
-        <div class="mb-4">
+        <div class="mb-3 shrink-0 sm:mb-4">
           <h2 class="text-2xl font-bold">Cleaning tasks</h2>
           <p class="text-sm opacity-70">
             Checklist for the selected week.
           </p>
         </div>
 
+        <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable]">
         <div v-if="selectedWeek">
 
           <!-- Week header -->
@@ -208,14 +212,6 @@
                   </span>
                 </label>
 
-                <button
-                  v-if="isUserCreatedTask(task) && isAssignedToCurrentUser(task)"
-                  @click="deleteTask(task)"
-                  class="text-sm text-red-500 hover:underline"
-                >
-                  Delete
-                </button>
-
               </div>
 
               <p v-if="task.description" class="text-xs opacity-70 mt-1">
@@ -243,33 +239,7 @@
             Tasks can only be checked off during this cleaning week.
           </p>
 
-          <form
-            v-if="isSelectedWeekAssignedToCurrentUser()"
-            class="mt-4 space-y-3 rounded-lg border border-gray-200 dark:border-gray-700 p-4"
-            @submit.prevent="addTask"
-          >
-            <input
-              v-model.trim="newTaskTitle"
-              class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-background-dark dark:text-text-dark"
-              placeholder="Task title"
-            />
-            <textarea
-              v-model.trim="newTaskDescription"
-              class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-background-dark dark:text-text-dark"
-              rows="2"
-              placeholder="Description"
-            />
-            <button
-              type="submit"
-              class="px-4 py-2 rounded-lg bg-accent text-white hover:opacity-90 disabled:opacity-50"
-              :disabled="!newTaskTitle || isSavingTask"
-            >
-              Add task
-            </button>
-          </form>
-          <p v-else class="mt-4 text-sm opacity-70">
-            Only {{ selectedWeek.assignedUsername }} can add tasks for this week.
-          </p>
+          <router-link to="/community#task-votes" class="mt-4 inline-flex rounded-lg border border-accent px-4 py-2 text-sm font-bold text-accent hover:bg-accent/10">Suggest or vote on rotation tasks in Community →</router-link>
 
         </div>
 
@@ -280,6 +250,7 @@
         <p v-if="tasksError" class="mt-4 text-sm text-red-500">
           {{ tasksError }}
         </p>
+        </div>
 
       </section>
 
@@ -290,10 +261,10 @@
     ====================================================== -->
     <div
       v-if="showSwapModal && selectedSwapTargetWeek"
-      class="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50"
+      class="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50 p-3"
       @click.self="showSwapModal = false"
     >
-      <div class="bg-surface dark:bg-surface-dark rounded-lg p-6 max-w-md w-full mx-4 border border-gray-200 dark:border-gray-700">
+      <div class="max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto overscroll-contain rounded-lg border border-gray-200 bg-surface p-5 dark:border-gray-700 dark:bg-surface-dark sm:p-6">
         <h3 class="text-xl font-bold mb-4">Request cleaning week swap</h3>
 
         <p class="text-sm mb-4">
@@ -353,7 +324,7 @@
         </div>
       </div>
     </div>
-  </div>
+  </main>
 </template>
 
 <script setup lang="ts">
@@ -412,9 +383,6 @@ const swapRequests = ref<CleaningWeekSwapRequest[]>([])
 
 const scheduleError = ref('')
 const tasksError = ref('')
-const newTaskTitle = ref('')
-const newTaskDescription = ref('')
-const isSavingTask = ref(false)
 const showHistoricalWeeks = ref(false)
 const showSwapModal = ref(false)
 const selectedSwapTargetWeek = ref<CleaningWeek | null>(null)
@@ -513,10 +481,6 @@ const bindSocket = () => {
 /* -------------------------
    FETCH DATA
 --------------------------*/
-const generateCleaningSchedule = () => {
-  console.log('generateCleaningSchedule')
-  socket.emit('rungenerateCleaningWeekForDorm')
-}
 const fetchWeeks = () => {
   if (!dormID) {
     scheduleError.value = 'Missing dormID'
@@ -559,44 +523,6 @@ const toggleTask = (task: CleaningWeekTask) => {
   }, (response: { success?: boolean; error?: string }) => {
     if (response?.error) {
       task.isCompleted = !nextValue
-      tasksError.value = response.error
-    }
-  })
-}
-
-const addTask = () => {
-  if (!selectedWeek.value || !isSelectedWeekAssignedToCurrentUser() || !newTaskTitle.value || isSavingTask.value) return
-
-  isSavingTask.value = true
-  socket.emit('addCleaningTask', {
-    weekID: selectedWeek.value.weekID,
-    title: newTaskTitle.value,
-    description: newTaskDescription.value,
-    isImportant: false
-  }, (response: { success?: boolean; error?: string }) => {
-    isSavingTask.value = false
-    if (response?.error) {
-      tasksError.value = response.error
-      return
-    }
-
-    newTaskTitle.value = ''
-    newTaskDescription.value = ''
-    fetchWeeks()
-  })
-}
-
-const deleteTask = (task: CleaningWeekTask) => {
-  // Only allow deletion of user-created tasks (createdByUserID is set and matches current user)
-  if (!isUserCreatedTask(task) || !isAssignedToCurrentUser(task)) {
-    tasksError.value = 'You can only delete custom tasks you created.'
-    return
-  }
-
-  socket.emit('deleteCleaningTask', {
-    weekTaskID: task.weekTaskID
-  }, (response: { success?: boolean; error?: string }) => {
-    if (response?.error) {
       tasksError.value = response.error
     }
   })
@@ -705,10 +631,6 @@ const isCurrentWeek = (week: CleaningWeek) => {
 
 const canUpdateTask = (task: CleaningWeekTask) => {
   return isAssignedToCurrentUser(task) && Boolean(selectedWeek.value && isCurrentWeek(selectedWeek.value))
-}
-
-const isSelectedWeekAssignedToCurrentUser = () => {
-  return selectedWeek.value?.assignedUserID === userID
 }
 
 const getPendingIncomingSwapRequests = () => {
