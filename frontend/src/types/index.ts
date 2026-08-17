@@ -8,9 +8,17 @@ export type AlertItem = {
 }
 
 export type SurveyAnswer = {
-  id: number
-  eID: number
-  answer: string
+  answerid: number
+  eid: number
+  userid: number
+  answer: string | null
+  answeredat: string
+  options: SurveyAnswerOption[]
+}
+
+export type SurveyAnswerOption = {
+  optionid: number
+  optiontext: string
 }
 
 export type SurveyItem = {

@@ -73,7 +73,7 @@
 
       <button
         @click="nextPage"
-        v-if="page * limit < surveys.length"
+        v-if="(page + 1) * limit < surveys.length"
         class="px-4 py-2 rounded-lg bg-secondary dark:bg-secondary-dark hover:opacity-90"
       >
         Next
@@ -171,10 +171,10 @@ getSurveys();
 
 onUnmounted(() => {
     socket.off("allSurveys", handleSurveys);
-  socket.off("surveyCreated");
-  
-  socket.off("surveyUpdated", handleSurveyUpdate);
-  socket.off("surveyDeleted", handleSurveyDelete);
+    socket.off("surveyCreated");
+    
+    socket.off("surveyUpdated", handleSurveyUpdate);
+    socket.off("surveyDeleted", handleSurveyDelete);
 });
 
 </script>

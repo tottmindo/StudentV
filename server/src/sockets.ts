@@ -347,39 +347,49 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
     }
   });
 
-  socket.on("getAnswers", async (eID: number, callback) => {
-    if (role !== "ADMIN") {
-      callback({ error: "unauthorized" });
-      return;
-    }
-
+  socket.on("submitAnswer", async (eID: number, answer: string | null, optionIDs: number[], callback: any ) => {
     try {
-      const answers = await data.getAnswers(eID);
-      callback({ answers });
-    } catch (error) {
-      callback({ error: "Failed to fetch survey answers" });
+
+      await data.saveSurveyAnswer(
+        userID,
+        eID,
+        answer,
+        optionIDs
+      );
+
+      if (typeof callback === "function") {
+        callback({
+          success: true,
+          message: "Answer saved"
+        });
+      }
+
+    } catch (err: any) {
+
+      if (typeof callback === "function") {
+        callback({
+          error: err.message
+        });
+      }
+
     }
   });
 
-  socket.on("submitAnswer",async(eID: number, answer: string, callback:any)=> {
-  try{
-    await data.saveSurveyAnswer(userID, eID, answer)
-    if(typeof callback === "function"){
-      callback({
-        success:true,
-        message:"Answer saved"
-      })
-    }
-
-  }catch(err:any){
-    if(typeof callback === "function"){
-      callback({
-        error:err.message
-      })
-    }
+  socket.on("getAnswers", async (eID: number, callback) => {
+  if (role !== "ADMIN") {
+    callback({ error: "unauthorized" });
+    return;
+  }
+  try {
+    const answers = await data.getAnswers(eID);
+    callback({ answers });
+  } catch (error) {
+    console.error("getAnswers error:", error);
+    callback({
+      error: "Failed to fetch survey answers"
+    });
   }
 });
-
 
 //----------------CHAT---------------
 
