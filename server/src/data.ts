@@ -1482,7 +1482,7 @@ async createSurvey(survey: any) {
       survey.active,
       new Date(survey.expiresAt),
       survey.multipleChoice,
-      survey.dormid
+      survey.dormID
     ]
   );
 

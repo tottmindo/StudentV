@@ -424,7 +424,6 @@ const headers = () => ({ 'Content-Type': 'application/json', Authorization: `Bea
       : "createSurvey"
 
     try {
-
       socket.emit(event, surveyData, (response: any) => {
 
         console.log("server response:", response)
