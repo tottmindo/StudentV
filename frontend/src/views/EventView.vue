@@ -3,13 +3,13 @@
     <div class="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
       <section class="bg-surface dark:bg-surface-dark rounded-lg p-5 border border-gray-200 dark:border-gray-700">
         <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 class="text-2xl font-bold">Calendar</h2>
+          <h2 class="text-2xl font-bold">{{ t('eventsView.calendar') }}</h2>
           <button type="button" class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold transition hover:border-accent hover:text-accent dark:border-gray-600" :aria-pressed="showHistoricalEvents" @click="showHistoricalEvents = !showHistoricalEvents">
-            {{ showHistoricalEvents ? 'Hide event history' : 'Show event history' }}
+            {{ t(showHistoricalEvents ? 'eventsView.hideHistory' : 'eventsView.showHistory') }}
           </button>
         </div>
         <div class="mb-4 flex flex-wrap items-center gap-3">
-          <span class="text-sm font-semibold opacity-80">Filter View:</span>
+          <span class="text-sm font-semibold opacity-80">{{ t('eventsView.filter') }}</span>
 
           <button
             type="button"
@@ -17,7 +17,7 @@
             class="px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
             :class="filters.events ? 'bg-accent text-white' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 opacity-50'"
           >
-            Internal Events
+            {{ t('eventsView.internal') }}
           </button>
 
           <button
@@ -26,7 +26,7 @@
             class="px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
             :class="filters.cleaning ? 'bg-emerald-600 text-white' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 opacity-50'"
           >
-            Cleaning Weeks
+            {{ t('eventsView.cleaningWeeks') }}
           </button>
 
           <button
@@ -35,7 +35,7 @@
             class="px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
             :class="filters.external ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 opacity-50'"
           >
-            External Events
+            {{ t('eventsView.external') }}
           </button>
         </div>
         <div class="w-full max-w-full">
@@ -50,8 +50,8 @@
       </section>
 
       <section class="bg-surface dark:bg-surface-dark rounded-lg p-5 border border-gray-200 dark:border-gray-700">
-        <h2 class="text-xl font-semibold" :class="showHistoricalEvents ? 'mb-1' : 'mb-4'">{{ showHistoricalEvents ? 'All Events' : 'Upcoming Events' }}</h2>
-        <p v-if="showHistoricalEvents" class="mb-4 text-sm opacity-65">Past events are shown together with upcoming events.</p>
+        <h2 class="text-xl font-semibold" :class="showHistoricalEvents ? 'mb-1' : 'mb-4'">{{ t(showHistoricalEvents ? 'eventsView.all' : 'eventsView.upcoming') }}</h2>
+        <p v-if="showHistoricalEvents" class="mb-4 text-sm opacity-65">{{ t('eventsView.historyHelp') }}</p>
         <ul v-if="filteredEvents.length" class="list-none">
           <li
             v-for="event in filteredEvents"
@@ -71,13 +71,13 @@
                   <span :class="event.isExternal ? 'text-blue-600 dark:text-blue-400 font-semibold' : ''">
                     {{ event.type }}
                   </span>
-                  <span v-if="!event.isExternal && !event.active" class="text-red-500"> (inactive)</span>
+                  <span v-if="!event.isExternal && !event.active" class="text-red-500"> ({{ t('eventsView.inactive') }})</span>
                 </div>
               </div>
             </div>
           </li>
         </ul>
-        <p v-else class="text-sm opacity-70">{{ showHistoricalEvents ? 'No events.' : 'No upcoming events.' }}</p>
+        <p v-else class="text-sm opacity-70">{{ t(showHistoricalEvents ? 'eventsView.none' : 'eventsView.noneUpcoming') }}</p>
       </section>
     </div>
 
@@ -97,7 +97,7 @@
                 <p class="text-sm text-gray-600 dark:text-gray-400">
                   {{ event.type }}
                   <span v-if="!event.active" class="text-red-600 dark:text-red-400">
-                    (inactive)
+                    ({{ t('eventsView.inactive') }})
                   </span>
                 </p>
               </div>
@@ -118,9 +118,9 @@
             >
             <div class="flex items-start justify-between gap-4">
               <div>
-                <p class="text-lg font-semibold">Cleaning week</p>
+                <p class="text-lg font-semibold">{{ t('calendar.cleaning') }}</p>
                 <p class="text-sm text-emerald-800 dark:text-emerald-300">
-                  Assigned to {{ week.assignedUsername }}
+                  {{ t('eventsView.assignedTo', { name: week.assignedUsername }) }}
                 </p>
               </div>
               <div class="text-sm opacity-80 text-right">
@@ -128,7 +128,7 @@
               </div>
             </div>
             <p class="text-sm opacity-80">
-              {{ week.completedTasks }} of {{ week.totalTasks }} tasks completed.
+              {{ t('eventsView.tasksCompleted', { completed: week.completedTasks, total: week.totalTasks }) }}
             </p>
           </div>
           <div
@@ -144,7 +144,7 @@
             <div>
               <p class="text-lg font-semibold">{{ event.title }}</p>
               <p class="text-sm font-medium uppercase text-blue-700 dark:text-blue-300">
-                External Event
+                {{ t('eventsView.externalEvent') }}
               </p>
             </div>
             <div class="text-sm opacity-80 text-right">
@@ -158,25 +158,25 @@
             class="text-sm font-semibold text-blue-600 hover:underline
                   dark:text-blue-400"
           >
-            View Event Page →
+            {{ t('eventsView.viewPage') }} →
           </a>
         </div>
         </template>
-        <p v-else class="text-sm opacity-70">No events or cleaning weeks found for this day.</p>
+        <p v-else class="text-sm opacity-70">{{ t('eventsView.noneDay') }}</p>
       </div>
     </ModalComponent>
 
     <section class="bg-surface dark:bg-surface-dark rounded-lg p-5 border border-gray-200 dark:border-gray-700 mt-6">
-      <h2 class="text-xl font-semibold mb-4">Create New Event</h2>
+      <h2 class="text-xl font-semibold mb-4">{{ t('eventsView.create') }}</h2>
       <form @submit.prevent="addEvent" class="grid gap-4">
         <label class="grid gap-1">
-          <span class="font-semibold">Title</span>
-          <input v-model="newEvent.title" type="text" placeholder="Event title" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded" />
+          <span class="font-semibold">{{ t('eventsView.title') }}</span>
+          <input v-model="newEvent.title" type="text" :placeholder="t('eventsView.titlePlaceholder')" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded" />
         </label>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <label class="grid gap-1">
-            <span class="font-semibold">Start date</span>
+            <span class="font-semibold">{{ t('eventsView.startDate') }}</span>
             <input
               v-model="newEvent.startDateLocal"
               type="date"
@@ -186,7 +186,7 @@
           </label>
 
           <label class="grid gap-1">
-            <span class="font-semibold">End date</span>
+            <span class="font-semibold">{{ t('eventsView.endDate') }}</span>
             <input
               v-model="newEvent.endDateLocal"
               type="date"
@@ -201,12 +201,12 @@
             type="checkbox"
             class="w-4 h-4"
           />
-          <span class="text-sm font-semibold">Specify time</span>
+          <span class="text-sm font-semibold">{{ t('eventsView.specifyTime') }}</span>
         </label>
 
         <div v-if="newEvent.hasTime" class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <label class="grid gap-1">
-            <span class="font-semibold">Start time</span>
+            <span class="font-semibold">{{ t('eventsView.startTime') }}</span>
             <input
               v-model="newEvent.startTime"
               type="time"
@@ -215,7 +215,7 @@
           </label>
 
           <label class="grid gap-1">
-            <span class="font-semibold">End time</span>
+            <span class="font-semibold">{{ t('eventsView.endTime') }}</span>
             <input
               v-model="newEvent.endTime"
               type="time"
@@ -225,27 +225,27 @@
         </div>
 
         <label class="grid gap-1">
-          <span class="font-semibold">Description</span>
-          <textarea v-model="newEvent.description" placeholder="Description" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded"></textarea>
+          <span class="font-semibold">{{ t('eventsView.description') }}</span>
+          <textarea v-model="newEvent.description" :placeholder="t('eventsView.description')" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded"></textarea>
         </label>
 
         <div class="flex items-center gap-4">
           <label class="flex items-center gap-2">
             <input type="checkbox" v-model="newEvent.active" class="w-4 h-4" />
-            <span class="text-sm">Active</span>
+            <span class="text-sm">{{ t('common.active') }}</span>
           </label>
 
           <label class="flex items-center gap-2">
-            <span class="text-sm font-semibold">Type</span>
+            <span class="text-sm font-semibold">{{ t('eventsView.type') }}</span>
             <select v-model="newEvent.type" class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded">
-              <option value="SOCIAL">SOCIAL</option>
-              <option value="MEETING">MEETING</option>
-              <option value="OTHER">OTHER</option>
+              <option value="SOCIAL">{{ t('eventsView.social') }}</option>
+              <option value="MEETING">{{ t('eventsView.meeting') }}</option>
+              <option value="OTHER">{{ t('eventsView.other') }}</option>
             </select>
           </label>
         </div>
 
-        <button type="submit" class="w-fit px-4 py-2 bg-accent text-background-light rounded cursor-pointer hover:opacity-90">Add Event</button>
+        <button type="submit" class="w-fit px-4 py-2 bg-accent text-background-light rounded cursor-pointer hover:opacity-90">{{ t('eventsView.add') }}</button>
       </form>
     </section>
   </div>
@@ -258,9 +258,11 @@ import ModalComponent from '@/components/ModalComponent.vue'
 import { getSocket } from '@/composables/socket'
 import { useRoute } from 'vue-router'
 import type { CalendarEvent } from '@/types'
+import { useI18n } from 'vue-i18n'
 
 const socket = getSocket()
 const route = useRoute()
+const { t, locale } = useI18n()
 const userID = Number(sessionStorage.getItem('userID') || 0)
 
 //Variable deiding how many upcoming events to show
@@ -311,8 +313,8 @@ const externalEvents = ref<ExternalEvents[]>([]);
 const defaultEvents: CalendarEvent[] = [
   {
     id: 1,
-    title: 'Movie Night',
-    description: 'Community movie screening in common room.',
+    title: t('eventSamples.movie'),
+    description: t('eventSamples.movieHelp'),
     startDate: '2026-07-05 19:00:00',
     endDate: '2026-07-05 22:00:00',
     active: true,
@@ -320,8 +322,8 @@ const defaultEvents: CalendarEvent[] = [
   },
   {
     id: 2,
-    title: 'Yoga Class',
-    description: 'Morning yoga session in the gym.',
+    title: t('eventSamples.yoga'),
+    description: t('eventSamples.yogaHelp'),
     startDate: '2026-07-10 08:00:00',
     endDate: '2026-07-10 09:00:00',
     active: true,
@@ -464,7 +466,7 @@ const filteredEvents = computed<DisplayEvent[]>(() => {
           list.push({
             id: `external-${event.eventID !== undefined ? event.eventID : index}`,
             title: event.title,
-            description: 'External Event',
+            description: t('eventsView.externalEvent'),
             startDate: event.startDate,
             endDate: event.endDate,
             type: 'EXTERNAL',
@@ -494,12 +496,12 @@ const selectedEventDay = ref('')
 
 const eventModalTitle = computed(() => {
   if (selectedEventDay.value) {
-    return `Events on ${new Date(selectedEventDay.value).toLocaleDateString()}`
+    return t('eventsView.onDate', { date: new Date(`${selectedEventDay.value}T12:00:00`).toLocaleDateString(locale.value) })
   }
   if (selectedEvents.value.length === 1) {
     return selectedEvents.value[0].title
   }
-  return 'Event details'
+  return t('eventsView.details')
 })
 
 const openEventDetails = (events: CalendarEvent[], dayKey = '') => {
@@ -705,14 +707,14 @@ const formatDate = (dateString?: string, showTime = true) => {
   if (isNaN(dateObj.getTime())) return dateString
 
   if (!showTime) {
-    return dateObj.toLocaleDateString(undefined, {
+    return dateObj.toLocaleDateString(locale.value, {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
     })
   }
 
-  return dateObj.toLocaleString(undefined, {
+  return dateObj.toLocaleString(locale.value, {
     year: 'numeric',
     month: 'long',
     day: 'numeric',

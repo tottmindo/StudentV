@@ -9,7 +9,7 @@
 
       <div class="flex items-center justify-between mb-6">
         <h2 class="text-2xl font-bold text-headline dark:text-text-dark">
-          {{ props.survey ? "Edit Survey" : "Create Survey" }}
+          {{ t(props.survey ? 'surveyBuilder.edit' : 'surveyBuilder.create') }}
         </h2>
 
         <span
@@ -34,13 +34,13 @@
           <label
             class="block text-sm font-semibold mb-2 text-text dark:text-text-dark"
           >
-            Survey Question
+            {{ t('surveyBuilder.question') }}
           </label>
 
           <input
             type="text"
             v-model="question"
-            placeholder="Enter survey question..."
+            :placeholder="t('surveyBuilder.questionPlaceholder')"
             :disabled="!!props.survey"
             class="w-full rounded-lg border border-gray-300 dark:border-gray-700
                   bg-white dark:bg-background-dark
@@ -56,7 +56,7 @@
           <label
             class="block text-sm font-semibold mb-2 text-text dark:text-text-dark"
           >
-            Expiration Date
+            {{ t('surveyBuilder.expiration') }}
           </label>
 
           <input
@@ -76,7 +76,7 @@
           <label
             class="block text-sm font-semibold mb-2 text-text dark:text-text-dark"
           >
-            Survey Audience
+            {{ t('surveyBuilder.audience') }}
           </label>
 
           <select
@@ -91,7 +91,7 @@
                   focus:outline-none focus:ring-2 focus:ring-accent"
           >
             <option :value="null">
-              All corridors
+              {{ t('survey.allCorridors') }}
             </option>
 
             <option
@@ -99,12 +99,12 @@
               :key="dorm.dormID"
               :value="dorm.dormID"
             >
-              {{ dorm.address }} — Floor {{ dorm.floor }}
+              {{ dorm.address }} — {{ t('survey.floor', { floor: dorm.floor }) }}
             </option>
           </select>
 
           <p class="text-sm opacity-60 mt-2">
-            Choose which corridor should receive this survey.
+            {{ t('surveyBuilder.audienceHelp') }}
           </p>
         </div>
         <!-- Settings -->
@@ -117,11 +117,11 @@
           >
             <div>
               <p class="font-semibold">
-                Active
+                {{ t('common.active') }}
               </p>
 
               <p class="text-sm opacity-70">
-                Visible to students
+                {{ t('surveyBuilder.visible') }}
               </p>
             </div>
 
@@ -139,11 +139,11 @@
           >
             <div>
               <p class="font-semibold">
-                Multiple Choice
+                {{ t('surveyBuilder.multipleChoice') }}
               </p>
 
               <p class="text-sm opacity-70">
-                Enable predefined answer options
+                {{ t('surveyBuilder.multipleChoiceHelp') }}
               </p>
             </div>
 
@@ -164,11 +164,11 @@
           <div class="flex items-center justify-between">
             <div>
               <h3 class="font-semibold">
-                Answer Options
+                {{ t('surveyBuilder.answerOptions') }}
               </h3>
 
               <p class="text-sm opacity-70">
-                Add the options users can choose from.
+                {{ t('surveyBuilder.answerOptionsHelp') }}
               </p>
             </div>
 
@@ -180,7 +180,7 @@
                     bg-secondary dark:bg-secondary-dark
                     hover:opacity-90"
             >
-              + Add Option
+              + {{ t('surveyBuilder.addOption') }}
             </button>
           </div>
 
@@ -192,7 +192,7 @@
             <input
               v-model="option.optiontext"
               type="text"
-              placeholder="Answer option..."
+              :placeholder="t('surveyBuilder.optionPlaceholder')"
               :disabled="!!props.survey"
               class="flex-1 rounded-lg
                     border border-gray-300 dark:border-gray-700
@@ -211,7 +211,7 @@
                     bg-red-100 text-red-700
                     hover:bg-red-200"
             >
-              Remove
+              {{ t('surveyBuilder.remove') }}
             </button>
           </div>
         </div>
@@ -228,7 +228,7 @@
                    hover:bg-red-700
                    transition-colors"
           >
-            Delete Survey
+            {{ t('surveyBuilder.delete') }}
           </button>
 
           <button
@@ -237,7 +237,7 @@
                    bg-accent text-white font-semibold
                    hover:opacity-90 transition-opacity"
           >
-            {{ props.survey ? "Save Changes" : "Create Survey" }}
+            {{ t(props.survey ? 'surveyBuilder.saveChanges' : 'surveyBuilder.create') }}
           </button>
 
         </div>
@@ -254,7 +254,7 @@
       <!-- Header -->
       <div class="flex justify-between items-center mb-6">
         <h3 class="text-xl font-semibold">
-          Survey Results
+          {{ t('surveyBuilder.results') }}
         </h3>
 
         <span
@@ -262,7 +262,7 @@
                 bg-secondary dark:bg-secondary-dark
                 text-sm"
         >
-          {{ answers.length }} answers
+          {{ t('surveyBuilder.answerCount', { count: answers.length }) }}
         </span>
       </div>
 
@@ -271,7 +271,7 @@
         v-if="answers.length === 0"
         class="text-center py-10 opacity-60"
       >
-        No answers have been submitted yet.
+        {{ t('surveyBuilder.noAnswers') }}
       </div>
 
       <!-- Multiple choice results -->
@@ -339,8 +339,10 @@ import { getSocket } from '@/composables/socket'
 import type { SurveyAnswer } from '@/types';
 import { ref, watch, computed, onMounted } from 'vue';
 import { useRouter } from "vue-router";
+import { useI18n } from 'vue-i18n'
 
 const router = useRouter();
+const { t } = useI18n()
 const socket = getSocket();
 const headers = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${sessionStorage.getItem('authToken')}` })
 
@@ -430,13 +432,13 @@ const headers = () => ({ 'Content-Type': 'application/json', Authorization: `Bea
 
         if (response?.error) {
           console.error("Survey error:", response.error)
-          alert(response.error)
+          alert(t('surveyBuilder.saveError'))
           return
         }
 
         message.value = props.survey
-          ? "Survey updated!"
-          : "Survey created!"
+          ? t('surveyBuilder.updated')
+          : t('surveyBuilder.created')
 
         if (!props.survey) {
           question.value = ""
@@ -449,21 +451,21 @@ const headers = () => ({ 'Content-Type': 'application/json', Authorization: `Bea
     } catch (err) {
 
       console.error("Failed to emit survey:", err)
-      alert("Survey could not be created or edited")
+      alert(t('surveyBuilder.saveError'))
 
     }
   }
 
   const deleteSurvey = () =>{
       
-      if(!confirm("Delete this survey")){
+      if(!confirm(t('surveyBuilder.deleteConfirm'))){
         return;
       }
 
       socket.emit("deleteSurvey", props.survey?.eID, (response:any) =>{
 
         if (response.error){
-          alert(response.error)
+          alert(t('surveyBuilder.deleteError'))
           return
         }
 
@@ -527,7 +529,7 @@ async function loadDorms() {
     headers: headers()
   });
 
-  if (!response.ok) throw new Error('Could not load dorms.');
+  if (!response.ok) throw new Error(t('survey.loadDormsError'));
 
   dorms.value = await response.json();
 }

@@ -6,7 +6,7 @@
         type="button"
         :aria-expanded="menuOpen"
         aria-controls="app-navigation"
-        aria-label="Open navigation"
+        :aria-label="t('nav.open')"
         @click="menuOpen = !menuOpen"
       >
         <span class="space-y-1.5" aria-hidden="true">
@@ -31,11 +31,12 @@
       >
         <span aria-hidden="true">{{ page.action.icon }}</span>{{ page.action.label }}
       </router-link>
+      <LanguageSelector class="hidden sm:inline-flex" />
       <button
         class="relative grid h-11 w-11 shrink-0 place-items-center rounded-xl transition hover:bg-surface focus:outline-none focus:ring-2 focus:ring-accent dark:hover:bg-surface-dark"
         :class="[notifications.length ? 'text-accent' : 'opacity-65', { 'bell-ring': bellRinging }]"
         type="button"
-        :aria-label="notifications.length ? `${notifications.length} notifications` : 'No notifications'"
+        :aria-label="notifications.length ? t('notifications.countLabel', { count: notifications.length }) : t('notifications.noneLabel')"
         @click="openNotifications"
       >
         <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
@@ -45,7 +46,7 @@
           {{ notifications.length > 99 ? '99+' : notifications.length }}
         </span>
       </button>
-      <router-link to="/account" class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent font-bold text-white" :title="userLabel" aria-label="Account settings">
+      <router-link to="/account" class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent font-bold text-white" :title="userLabel" :aria-label="t('nav.account')">
         {{ initials }}
       </router-link>
     </div>
@@ -61,20 +62,20 @@
   >
     <div class="flex h-16 items-center justify-between border-b border-border-border px-5">
       <router-link to="/home" class="text-xl font-extrabold tracking-tight" @click="closeMenu">DORMS</router-link>
-      <button ref="closeButton" class="grid h-11 w-11 place-items-center rounded-xl text-2xl hover:bg-surface dark:hover:bg-surface-dark" aria-label="Close navigation" @click="closeMenu">×</button>
+      <button ref="closeButton" class="grid h-11 w-11 place-items-center rounded-xl text-2xl hover:bg-surface dark:hover:bg-surface-dark" :aria-label="t('nav.close')" @click="closeMenu">×</button>
     </div>
 
-    <nav class="flex-1 overflow-y-auto p-4" aria-label="Main navigation">
+    <nav class="flex-1 overflow-y-auto p-4" :aria-label="t('nav.main')">
       <router-link v-if="page.action" :to="page.action.to" class="mb-4 flex min-h-11 items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 font-bold text-white sm:hidden" @click="closeMenu">
         <span aria-hidden="true">{{ page.action.icon }}</span>{{ page.action.label }}
       </router-link>
-      <p class="mb-2 px-3 text-xs font-bold uppercase tracking-wider opacity-45">Your residence</p>
+      <p class="mb-2 px-3 text-xs font-bold uppercase tracking-wider opacity-45">{{ t('nav.residence') }}</p>
       <router-link v-for="item in visibleResidentLinks" :key="item.to" :to="item.to" class="nav-link" active-class="nav-link-active" @click="closeMenu">
         <span class="w-6 text-center" aria-hidden="true">{{ item.icon }}</span><span>{{ item.label }}</span>
       </router-link>
 
       <template v-if="isAdmin">
-        <p class="mb-2 mt-6 px-3 text-xs font-bold uppercase tracking-wider opacity-45">Administration</p>
+        <p class="mb-2 mt-6 px-3 text-xs font-bold uppercase tracking-wider opacity-45">{{ t('nav.administration') }}</p>
         <router-link v-for="item in adminLinks" :key="item.to" :to="item.to" class="nav-link" active-class="nav-link-active" @click="closeMenu">
           <span class="w-6 text-center" aria-hidden="true">{{ item.icon }}</span><span>{{ item.label }}</span>
         </router-link>
@@ -84,9 +85,10 @@
     <div class="drawer-footer border-t border-border-border p-4">
       <router-link to="/account" class="mb-2 flex items-center gap-3 rounded-xl p-3 hover:bg-surface dark:hover:bg-surface-dark" @click="closeMenu">
         <span class="grid h-9 w-9 place-items-center rounded-full bg-accent font-bold text-white">{{ initials }}</span>
-        <span class="min-w-0"><strong class="block truncate text-sm">{{ userLabel }}</strong><span class="text-xs opacity-55">Account settings</span></span>
+        <span class="min-w-0"><strong class="block truncate text-sm">{{ userLabel }}</strong><span class="text-xs opacity-55">{{ t('nav.account') }}</span></span>
       </router-link>
-      <button class="w-full rounded-xl px-4 py-2.5 text-left text-sm font-bold text-error hover:bg-error/10" @click="logout">Sign out</button>
+      <div class="mb-2 sm:hidden"><LanguageSelector /></div>
+      <button class="w-full rounded-xl px-4 py-2.5 text-left text-sm font-bold text-error hover:bg-error/10" @click="logout">{{ t('auth.signOut') }}</button>
     </div>
   </aside>
 
@@ -94,11 +96,11 @@
     <section class="notification-panel flex max-h-[min(80dvh,42rem)] w-full flex-col rounded-t-3xl bg-background text-text shadow-2xl dark:bg-background-dark dark:text-text-dark sm:max-w-lg sm:rounded-3xl" role="dialog" aria-modal="true" aria-labelledby="notifications-title">
       <header class="flex items-start justify-between gap-4 border-b border-border-border p-5">
         <div>
-          <p class="text-xs font-bold uppercase tracking-[.14em] text-accent">Attention required</p>
-          <h2 id="notifications-title" class="mt-1 text-2xl font-bold">Notifications</h2>
+          <p class="text-xs font-bold uppercase tracking-[.14em] text-accent">{{ t('notifications.attention') }}</p>
+          <h2 id="notifications-title" class="mt-1 text-2xl font-bold">{{ t('notifications.title') }}</h2>
           <p class="mt-1 text-sm opacity-60">{{ notificationSummary }}</p>
         </div>
-        <button ref="notificationCloseButton" class="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-2xl hover:bg-surface dark:hover:bg-surface-dark" aria-label="Close notifications" @click="closeNotifications">×</button>
+        <button ref="notificationCloseButton" class="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-2xl hover:bg-surface dark:hover:bg-surface-dark" :aria-label="t('notifications.close')" @click="closeNotifications">×</button>
       </header>
 
       <div class="overflow-y-auto p-4 sm:p-5">
@@ -109,12 +111,12 @@
           @click="openNotification(notification)"
         >
           <span class="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-error/10 text-error" aria-hidden="true">!</span>
-          <span class="min-w-0 flex-1"><strong class="block">{{ notification.title }}</strong><span class="mt-1 block text-sm opacity-70">{{ notification.description }}</span><span class="mt-2 block text-sm font-bold text-accent">{{ notification.actionLabel || 'View details' }} →</span></span>
+          <span class="min-w-0 flex-1"><strong class="block">{{ notification.title }}</strong><span class="mt-1 block text-sm opacity-70">{{ notification.description }}</span><span class="mt-2 block text-sm font-bold text-accent">{{ notification.actionLabel || t('common.viewDetails') }} →</span></span>
         </button>
         <div v-if="!displayedNotifications.length" class="px-4 py-12 text-center">
           <span class="mx-auto grid h-12 w-12 place-items-center rounded-full bg-success/10 text-2xl text-success" aria-hidden="true">✓</span>
-          <h3 class="mt-4 font-bold">You’re all caught up</h3>
-          <p class="mt-1 text-sm opacity-60">Nothing needs your attention right now.</p>
+          <h3 class="mt-4 font-bold">{{ t('notifications.caughtUp') }}</h3>
+          <p class="mt-1 text-sm opacity-60">{{ t('notifications.nothingPending') }}</p>
         </div>
       </div>
     </section>
@@ -127,11 +129,14 @@ import { useRoute, useRouter } from 'vue-router'
 import { disconnectSocket, getSocket } from '@/composables/socket'
 import { clearSession } from '@/composables/session'
 import type { AlertItem, DashboardPayload } from '@/types'
+import LanguageSelector from '@/components/LanguageSelector.vue'
+import { useI18n } from 'vue-i18n'
 
 type PageInfo = { title: string; eyebrow: string; description: string; action?: { label: string; to: string; icon: string } }
 
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 const socket = getSocket()
 const menuOpen = ref(false)
 const notificationsOpen = ref(false)
@@ -144,48 +149,48 @@ const dashboardUser = ref<DashboardPayload['user'] | null>(null)
 const closeButton = ref<HTMLButtonElement | null>(null)
 const notificationCloseButton = ref<HTMLButtonElement | null>(null)
 const isAdmin = computed(() => sessionStorage.getItem('userRole')?.toLowerCase() === 'admin')
-const userLabel = computed(() => dashboardUser.value?.name || sessionStorage.getItem('username') || sessionStorage.getItem('email') || (isAdmin.value ? 'Administrator' : 'Resident'))
+const userLabel = computed(() => dashboardUser.value?.name || sessionStorage.getItem('username') || sessionStorage.getItem('email') || t(isAdmin.value ? 'topbar.administrator' : 'topbar.resident'))
 const initials = computed(() => userLabel.value.split(/[\s@._-]+/).filter(Boolean).slice(0, 2).map(word => word[0]).join('').toUpperCase() || 'U')
-const notificationSummary = computed(() => displayedNotifications.value.length === 1 ? '1 new item' : `${displayedNotifications.value.length} new items`)
+const notificationSummary = computed(() => displayedNotifications.value.length === 1 ? t('notifications.oneNew') : t('notifications.manyNew', { count: displayedNotifications.value.length }))
 
-const residentLinks = [
-  { label: 'Home', to: '/home', icon: '⌂' },
-  { label: 'Water insights', to: '/stats', icon: '◒' },
-  { label: 'Events', to: '/events', icon: '◇' },
-  { label: 'Community', to: '/community', icon: '◎' },
-  { label: 'Cleaning', to: '/cleaning', icon: '✓' },
-  { label: 'Chats', to: '/chat', icon: '○' },
-]
-const visibleResidentLinks = computed(() => isAdmin.value ? residentLinks.filter(item => item.to !== '/community') : residentLinks)
-const adminLinks = [
-  { label: 'Administration', to: '/admin', icon: '⚙' },
-  { label: 'Water analytics', to: '/admin/water-analytics', icon: '▥' },
-  { label: 'Surveys', to: '/survey', icon: '≡' },
-]
+const residentLinks = computed(() => [
+  { label: t('nav.home'), to: '/home', icon: '⌂' },
+  { label: t('nav.waterInsights'), to: '/stats', icon: '◒' },
+  { label: t('nav.events'), to: '/events', icon: '◇' },
+  { label: t('nav.community'), to: '/community', icon: '◎' },
+  { label: t('nav.cleaning'), to: '/cleaning', icon: '✓' },
+  { label: t('nav.chats'), to: '/chat', icon: '○' },
+])
+const visibleResidentLinks = computed(() => isAdmin.value ? residentLinks.value.filter(item => item.to !== '/community') : residentLinks.value)
+const adminLinks = computed(() => [
+  { label: t('nav.administration'), to: '/admin', icon: '⚙' },
+  { label: t('nav.waterAnalytics'), to: '/admin/water-analytics', icon: '▥' },
+  { label: t('nav.surveys'), to: '/survey', icon: '≡' },
+])
 
-const pages: Record<string, PageInfo> = {
-  stats: { title: 'Water insights', eyebrow: 'Your floor', description: 'Usage, patterns and comparisons', action: { label: 'Home', to: '/home', icon: '⌂' } },
-  events: { title: 'Events', eyebrow: 'Community', description: 'Calendar and upcoming activities', action: { label: 'Cleaning', to: '/cleaning', icon: '✓' } },
-  community: { title: 'Community', eyebrow: 'Your residence', description: 'People, shared tasks and community decisions', action: { label: 'Chats', to: '/chat', icon: '○' } },
-  cleaning: { title: 'Cleaning', eyebrow: 'Shared spaces', description: 'Schedule, tasks and swaps', action: { label: 'Events', to: '/events', icon: '◇' } },
-  chat: { title: 'Chats', eyebrow: 'Community', description: 'Conversations in your residence' },
-  chatRoom: { title: 'Conversation', eyebrow: 'Chats', description: 'Messages from your residence', action: { label: 'All chats', to: '/chat', icon: '←' } },
-  account: { title: 'Account settings', eyebrow: 'Your profile', description: 'Profile and login security', action: { label: 'Home', to: '/home', icon: '⌂' } },
-  admin: { title: 'Administration', eyebrow: 'Management', description: 'Residents, sensors and services' },
-  'admin-water-analytics': { title: 'Water analytics', eyebrow: 'Administration', description: 'Floor comparisons and meter health', action: { label: 'Admin', to: '/admin', icon: '←' } },
-  survey: { title: 'Surveys', eyebrow: 'Administration', description: 'Create and manage resident surveys', action: { label: 'New survey', to: '/createSurvey', icon: '+' } },
-  createSurvey: { title: route.params.id ? 'Edit survey' : 'Create survey', eyebrow: 'Surveys', description: 'Build questions for residents', action: { label: 'All surveys', to: '/survey', icon: '←' } },
-  answerSurvey: { title: 'Survey', eyebrow: 'Your feedback', description: 'Share your experience', action: { label: 'Back', to: '/home', icon: '←' } },
-  'change-password': { title: 'Finish account setup', eyebrow: 'Security', description: 'Choose your profile and password' },
-}
+const pages = computed<Record<string, PageInfo>>(() => ({
+  stats: { title: t('nav.waterInsights'), eyebrow: t('topbar.yourFloor'), description: t('topbar.usageDescription'), action: { label: t('nav.home'), to: '/home', icon: '⌂' } },
+  events: { title: t('nav.events'), eyebrow: t('nav.community'), description: t('topbar.calendarDescription'), action: { label: t('nav.cleaning'), to: '/cleaning', icon: '✓' } },
+  community: { title: t('nav.community'), eyebrow: t('nav.residence'), description: t('topbar.calendarDescription'), action: { label: t('nav.chats'), to: '/chat', icon: '○' } },
+  cleaning: { title: t('nav.cleaning'), eyebrow: t('topbar.sharedSpaces'), description: t('topbar.cleaningDescription'), action: { label: t('nav.events'), to: '/events', icon: '◇' } },
+  chat: { title: t('nav.chats'), eyebrow: t('nav.community'), description: t('topbar.chatDescription') },
+  chatRoom: { title: t('topbar.conversation'), eyebrow: t('nav.chats'), description: t('topbar.chatDescription'), action: { label: t('topbar.allChats'), to: '/chat', icon: '←' } },
+  account: { title: t('nav.account'), eyebrow: t('topbar.yourProfile'), description: t('topbar.accountDescription'), action: { label: t('nav.home'), to: '/home', icon: '⌂' } },
+  admin: { title: t('nav.administration'), eyebrow: t('topbar.management'), description: t('topbar.adminDescription') },
+  'admin-water-analytics': { title: t('nav.waterAnalytics'), eyebrow: t('nav.administration'), description: t('topbar.waterDescription'), action: { label: t('nav.administration'), to: '/admin', icon: '←' } },
+  survey: { title: t('nav.surveys'), eyebrow: t('nav.administration'), description: t('topbar.surveyDescription'), action: { label: t('topbar.newSurvey'), to: '/createSurvey', icon: '+' } },
+  createSurvey: { title: t(route.params.id ? 'topbar.editSurvey' : 'topbar.createSurvey'), eyebrow: t('nav.surveys'), description: t('topbar.buildQuestions'), action: { label: t('topbar.allSurveys'), to: '/survey', icon: '←' } },
+  answerSurvey: { title: t('topbar.survey'), eyebrow: t('topbar.yourFeedback'), description: t('topbar.shareExperience'), action: { label: t('common.back'), to: '/home', icon: '←' } },
+  'change-password': { title: t('topbar.finishSetup'), eyebrow: t('topbar.security'), description: t('topbar.setupDescription') },
+}))
 const homePage = computed<PageInfo>(() => {
   const user = dashboardUser.value
   const hour = new Date().getHours()
-  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
-  const location = user ? `${user.house} · Floor ${user.floor} · Room ${user.room}` : 'Your residence at a glance'
-  return { title: userLabel.value, eyebrow: greeting, description: location, action: { label: 'View water use', to: '/stats', icon: '◒' } }
+  const greeting = t(hour < 12 ? 'topbar.morning' : hour < 18 ? 'topbar.afternoon' : 'topbar.evening')
+  const location = user ? t('topbar.location', { house: user.house, floor: user.floor, room: user.room }) : t('topbar.glance')
+  return { title: userLabel.value, eyebrow: greeting, description: location, action: { label: t('topbar.viewWater'), to: '/stats', icon: '◒' } }
 })
-const page = computed(() => route.name === 'home' ? homePage.value : pages[String(route.name)] || { title: 'DORMS', eyebrow: 'Residence', description: 'Student living, made simpler' })
+const page = computed(() => route.name === 'home' ? homePage.value : pages.value[String(route.name)] || { title: 'DORMS', eyebrow: t('topbar.residence'), description: t('topbar.fallbackDescription') })
 
 function closeMenu() { menuOpen.value = false }
 function closeNotifications() { notificationsOpen.value = false }
@@ -211,10 +216,10 @@ function logout() { disconnectSocket(); clearSession(); closeMenu(); router.repl
 function dashboardNotifications(dashboard: DashboardPayload) {
   const surveyAlerts: AlertItem[] = (dashboard.pendingSurveys || []).map(survey => ({
     id: 700000 + Number(survey.eID),
-    title: 'Resident survey',
+    title: t('notifications.residentSurvey'),
     description: survey.question,
     route: `/answerSurvey/${survey.eID}`,
-    actionLabel: 'Share your answer',
+    actionLabel: t('notifications.shareAnswer'),
   }))
   return [...(dashboard.alerts || []), ...surveyAlerts]
 }

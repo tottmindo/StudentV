@@ -19,8 +19,8 @@
       ====================================================== -->
       <section class="flex min-h-0 flex-col overflow-hidden rounded-lg border border-gray-200 bg-surface p-3 dark:border-gray-700 dark:bg-surface-dark sm:p-5">
         <div class="mb-3 shrink-0 sm:mb-4">
-          <h2 class="text-2xl font-bold">Cleaning weeks</h2>
-          <p class="text-sm opacity-70">Select a week to view your tasks.</p>
+          <h2 class="text-2xl font-bold">{{ t('cleaningView.weeks') }}</h2>
+          <p class="text-sm opacity-70">{{ t('cleaningView.selectHelp') }}</p>
         </div>
 
         <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable]">
@@ -29,7 +29,7 @@
           class="mb-4 rounded-lg border border-gray-200 px-3 py-2 text-sm transition hover:border-accent hover:bg-accent/10 dark:border-gray-700"
           @click="showHistoricalWeeks = !showHistoricalWeeks"
         >
-          {{ showHistoricalWeeks ? 'Hide historical weeks' : 'Show historical weeks' }}
+          {{ t(showHistoricalWeeks ? 'cleaningView.hideHistory' : 'cleaningView.showHistory') }}
         </button>
 
         <div v-if="visibleWeeks.length" class="space-y-3">
@@ -47,19 +47,19 @@
             <div class="flex items-center justify-between gap-4">
               <div class="flex-1">
                 <p class="font-semibold">
-                  Week {{ getWeekLabel(week.startDate) }}
+                  {{ t('cleaningView.week', { week: getWeekLabel(week.startDate) }) }}
                 </p>
                 <p class="text-sm opacity-70">
-                  {{ new Date(week.startDate).toLocaleDateString() }}
+                  {{ formatDate(week.startDate) }}
                   —
-                  {{ new Date(week.endDate).toLocaleDateString() }}
+                  {{ formatDate(week.endDate) }}
                 </p>
               </div>
 
               <div class="text-right">
                 <div class="text-sm opacity-80">
                   <p>{{ week.assignedUsername }}</p>
-                  <p>{{ week.completedTasks }} / {{ week.totalTasks }} done</p>
+                  <p>{{ t('cleaningView.done', { completed: week.completedTasks, total: week.totalTasks }) }}</p>
                 </div>
                 
                 <!-- Swap button for future weeks assigned to OTHER users -->
@@ -68,20 +68,20 @@
                   @click.stop="selectedSwapTargetWeek = week; showSwapModal = true"
                   class="mt-2 text-xs px-2 py-1 rounded bg-blue-500 text-white hover:bg-blue-600 transition"
                 >
-                  Swap
+                  {{ t('cleaningView.swap') }}
                 </button>
                 <div
                   v-else-if="hasPendingSwapForWeek(week.weekID)"
                   class="mt-2 text-xs px-2 py-1 rounded bg-gray-400 text-white opacity-60 cursor-not-allowed"
                 >
-                  Pending
+                  {{ t('cleaningView.pending') }}
                 </div>              </div>
             </div>
           </button>
         </div>
 
         <p v-else class="text-sm opacity-70">
-          {{ weeks.length ? 'No current or upcoming cleaning weeks.' : 'Loading cleaning weeks...' }}
+          {{ t(weeks.length ? 'cleaningView.noneWeeks' : 'cleaningView.loadingWeeks') }}
         </p>
         <p v-if="scheduleError" class="mt-4 text-sm text-red-500">
           {{ scheduleError }}
@@ -89,31 +89,26 @@
 
         <!-- Pending Incoming Swap Requests -->
         <div v-if="getPendingIncomingSwapRequests().length" class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-          <h3 class="text-lg font-semibold mb-3">Pending swap requests</h3>
+          <h3 class="text-lg font-semibold mb-3">{{ t('cleaningView.incoming') }}</h3>
           <div class="space-y-3">
             <div
               v-for="request in getPendingIncomingSwapRequests()"
               :key="request.requestID"
               class="rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-background-light dark:bg-background-dark"
             >
-              <p class="text-sm mb-2">
-                <strong>{{ request.requesterUsername }}</strong> wants to swap their
-                <strong>Week {{ getWeekLabel(weeks.find(w => w.weekID === request.sourceWeekID)?.startDate || '') }}</strong>
-                for your
-                <strong>Week {{ getWeekLabel(weeks.find(w => w.weekID === request.targetWeekID)?.startDate || '') }}</strong>
-              </p>
+              <p class="text-sm mb-2">{{ t('cleaningView.incomingText', { name: request.requesterUsername, source: getWeekLabel(weeks.find(w => w.weekID === request.sourceWeekID)?.startDate || ''), target: getWeekLabel(weeks.find(w => w.weekID === request.targetWeekID)?.startDate || '') }) }}</p>
               <div class="flex gap-2">
                 <button
                   @click="respondToSwap(request, true)"
                   class="flex-1 px-3 py-2 rounded-lg bg-green-500 text-white text-sm hover:bg-green-600 transition"
                 >
-                  Accept
+                  {{ t('cleaningView.accept') }}
                 </button>
                 <button
                   @click="respondToSwap(request, false)"
                   class="flex-1 px-3 py-2 rounded-lg bg-red-500 text-white text-sm hover:bg-red-600 transition"
                 >
-                  Reject
+                  {{ t('cleaningView.reject') }}
                 </button>
               </div>
             </div>
@@ -122,7 +117,7 @@
 
         <!-- Pending Outgoing Swap Requests -->
         <div v-if="getPendingOutgoingSwapRequests().length" class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-          <h3 class="text-lg font-semibold mb-3">Your pending swap requests</h3>
+          <h3 class="text-lg font-semibold mb-3">{{ t('cleaningView.outgoing') }}</h3>
           <div class="space-y-3">
             <div
               v-for="request in getPendingOutgoingSwapRequests()"
@@ -130,16 +125,16 @@
               class="rounded-lg border border-yellow-300 dark:border-yellow-700 p-4 bg-yellow-50 dark:bg-yellow-900/20"
             >
               <p class="text-sm mb-2">
-                Waiting for <strong>{{ request.targetUsername }}</strong> to respond to your swap request
+                {{ t('cleaningView.waiting', { name: request.targetUsername }) }}
               </p>
               <p class="text-xs opacity-70 mb-2">
-                You offered: Week {{ getWeekLabel(weeks.find(w => w.weekID === request.sourceWeekID)?.startDate || '') }}
+                {{ t('cleaningView.offered', { week: getWeekLabel(weeks.find(w => w.weekID === request.sourceWeekID)?.startDate || '') }) }}
                 <br />
-                Requesting: Week {{ getWeekLabel(weeks.find(w => w.weekID === request.targetWeekID)?.startDate || '') }}
+                {{ t('cleaningView.requesting', { week: getWeekLabel(weeks.find(w => w.weekID === request.targetWeekID)?.startDate || '') }) }}
               </p>
               <div class="flex items-center gap-2 text-xs">
                 <span class="inline-block h-2 w-2 rounded-full bg-yellow-500 animate-pulse"></span>
-                <span class="opacity-70">Pending response</span>
+                <span class="opacity-70">{{ t('cleaningView.pendingResponse') }}</span>
               </div>
             </div>
           </div>
@@ -155,9 +150,9 @@
       <section class="flex min-h-0 flex-col overflow-hidden rounded-lg border border-gray-200 bg-surface p-3 dark:border-gray-700 dark:bg-surface-dark sm:p-5">
 
         <div class="mb-3 shrink-0 sm:mb-4">
-          <h2 class="text-2xl font-bold">Cleaning tasks</h2>
+          <h2 class="text-2xl font-bold">{{ t('cleaningView.tasks') }}</h2>
           <p class="text-sm opacity-70">
-            Checklist for the selected week.
+            {{ t('cleaningView.checklist') }}
           </p>
         </div>
 
@@ -167,18 +162,18 @@
           <!-- Week header -->
           <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-background-light dark:bg-background-dark p-4 mb-4">
             <p class="font-semibold">
-              Week {{ getWeekLabel(selectedWeek.startDate) }}
+              {{ t('cleaningView.week', { week: getWeekLabel(selectedWeek.startDate) }) }}
             </p>
             <p class="text-sm opacity-70">
-              {{ new Date(selectedWeek.startDate).toLocaleDateString() }}
+              {{ formatDate(selectedWeek.startDate) }}
               —
-              {{ new Date(selectedWeek.endDate).toLocaleDateString() }}
+              {{ formatDate(selectedWeek.endDate) }}
             </p>
             <p class="text-sm opacity-70">
-              Assigned: {{ selectedWeek.assignedUsername }}
+              {{ t('cleaningView.assigned', { name: selectedWeek.assignedUsername }) }}
             </p>
             <p class="text-sm opacity-70">
-              {{ selectedWeek.completedTasks }} of {{ selectedWeek.totalTasks }} tasks completed
+              {{ t('cleaningView.completed', { completed: selectedWeek.completedTasks, total: selectedWeek.totalTasks }) }}
             </p>
           </div>
 
@@ -207,7 +202,7 @@
                       {{ task.title }}
                     </span>
                     <span class="block text-xs opacity-60">
-                      {{ task.assignedUsername ? `Assigned to ${task.assignedUsername}` : 'Unassigned' }}
+                      {{ task.assignedUsername ? t('cleaningView.assignedTo', { name: task.assignedUsername }) : t('cleaningView.unassigned') }}
                     </span>
                   </span>
                 </label>
@@ -220,10 +215,10 @@
 
               <div class="flex gap-2 mt-1">
                 <p v-if="task.isImportant" class="text-xs text-red-500">
-                  Important
+                  {{ t('cleaningView.important') }}
                 </p>
                 <p v-if="isUserCreatedTask(task)" class="text-xs text-blue-500">
-                  Custom task
+                  {{ t('cleaningView.custom') }}
                 </p>
               </div>
 
@@ -232,19 +227,19 @@
           </ol>
 
           <p v-if="!tasks.length" class="mt-4 text-sm opacity-70">
-            No tasks for this week.
+            {{ t('cleaningView.noneTasks') }}
           </p>
 
           <p v-if="selectedWeek && !isCurrentWeek(selectedWeek)" class="mt-4 text-sm opacity-70">
-            Tasks can only be checked off during this cleaning week.
+            {{ t('cleaningView.currentOnly') }}
           </p>
 
-          <router-link to="/community#task-votes" class="mt-4 inline-flex rounded-lg border border-accent px-4 py-2 text-sm font-bold text-accent hover:bg-accent/10">Suggest or vote on rotation tasks in Community →</router-link>
+          <router-link to="/community#task-votes" class="mt-4 inline-flex rounded-lg border border-accent px-4 py-2 text-sm font-bold text-accent hover:bg-accent/10">{{ t('cleaningView.communityTasks') }} →</router-link>
 
         </div>
 
         <p v-else class="text-sm opacity-70">
-          Select a week to load tasks.
+          {{ t('cleaningView.selectWeek') }}
         </p>
 
         <p v-if="tasksError" class="mt-4 text-sm text-red-500">
@@ -265,22 +260,22 @@
       @click.self="showSwapModal = false"
     >
       <div class="max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto overscroll-contain rounded-lg border border-gray-200 bg-surface p-5 dark:border-gray-700 dark:bg-surface-dark sm:p-6">
-        <h3 class="text-xl font-bold mb-4">Request cleaning week swap</h3>
+        <h3 class="text-xl font-bold mb-4">{{ t('cleaningView.swapTitle') }}</h3>
 
         <p class="text-sm mb-4">
-          You're about to request a swap between:
+          {{ t('cleaningView.swapIntro') }}
         </p>
 
         <div class="space-y-3 mb-4">
           <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-3 bg-background-light dark:bg-background-dark">
-            <p class="text-xs opacity-70">Your week (offering)</p>
+            <p class="text-xs opacity-70">{{ t('cleaningView.yourWeek') }}</p>
             <p class="font-semibold">
-              Week {{ selectedWeek ? getWeekLabel(selectedWeek.startDate) : '' }}
+              {{ t('cleaningView.week', { week: selectedWeek ? getWeekLabel(selectedWeek.startDate) : '' }) }}
             </p>
             <p class="text-xs opacity-70">
-              {{ selectedWeek ? new Date(selectedWeek.startDate).toLocaleDateString() : '' }}
+              {{ selectedWeek ? formatDate(selectedWeek.startDate) : '' }}
               —
-              {{ selectedWeek ? new Date(selectedWeek.endDate).toLocaleDateString() : '' }}
+              {{ selectedWeek ? formatDate(selectedWeek.endDate) : '' }}
             </p>
           </div>
 
@@ -289,14 +284,14 @@
           </div>
 
           <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-3 bg-background-light dark:bg-background-dark">
-            <p class="text-xs opacity-70">Their week (requesting)</p>
+            <p class="text-xs opacity-70">{{ t('cleaningView.theirWeek') }}</p>
             <p class="font-semibold">
-              Week {{ selectedSwapTargetWeek ? getWeekLabel(selectedSwapTargetWeek.startDate) : '' }}
+              {{ t('cleaningView.week', { week: selectedSwapTargetWeek ? getWeekLabel(selectedSwapTargetWeek.startDate) : '' }) }}
             </p>
             <p class="text-xs opacity-70">
-              {{ selectedSwapTargetWeek ? new Date(selectedSwapTargetWeek.startDate).toLocaleDateString() : '' }}
+              {{ selectedSwapTargetWeek ? formatDate(selectedSwapTargetWeek.startDate) : '' }}
               —
-              {{ selectedSwapTargetWeek ? new Date(selectedSwapTargetWeek.endDate).toLocaleDateString() : '' }}
+              {{ selectedSwapTargetWeek ? formatDate(selectedSwapTargetWeek.endDate) : '' }}
             </p>
             <p class="text-sm font-semibold mt-2">
               {{ selectedSwapTargetWeek?.assignedUsername }}
@@ -313,13 +308,13 @@
             @click="showSwapModal = false"
             class="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition"
           >
-            Cancel
+            {{ t('cleaningView.cancel') }}
           </button>
           <button
             @click="requestSwap(selectedSwapTargetWeek)"
             class="flex-1 px-4 py-2 rounded-lg bg-accent text-white text-sm hover:opacity-90 transition"
           >
-            Request swap
+            {{ t('cleaningView.requestSwap') }}
           </button>
         </div>
       </div>
@@ -331,9 +326,11 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { getSocket } from '@/composables/socket'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 
 const socket = getSocket()
 const route = useRoute()
+const { t, locale } = useI18n()
 const userID = Number(sessionStorage.getItem('userID') || 0)
 const dormID = Number(sessionStorage.getItem('dormID') || 0)
 
@@ -458,7 +455,7 @@ const bindSocket = () => {
 
   socket.on('cleaningWeekSwapAccepted', (data: { requesterUsername: string; sourceWeekLabel: string; targetWeekLabel: string }) => {
     notification.value = {
-      message: `Your swap request was accepted! ${data.requesterUsername} swapped with you.`,
+      message: t('cleaningView.swapAccepted', { name: data.requesterUsername }),
       type: 'success'
     }
     setTimeout(() => {
@@ -472,7 +469,7 @@ const bindSocket = () => {
   })
 
   socket.on('error', (error: { message?: string }) => {
-    const message = error?.message || 'Something went wrong.'
+    const message = error?.message || t('cleaningView.genericError')
     scheduleError.value = message
     tasksError.value = message
   })
@@ -483,7 +480,7 @@ const bindSocket = () => {
 --------------------------*/
 const fetchWeeks = () => {
   if (!dormID) {
-    scheduleError.value = 'Missing dormID'
+    scheduleError.value = t('cleaningView.missingDorm')
     return
   }
   socket.emit('getCleaningWeeks')
@@ -506,11 +503,11 @@ const fetchSwapRequests = () => {
 
 const toggleTask = (task: CleaningWeekTask) => {
   if (!isAssignedToCurrentUser(task)) {
-    tasksError.value = 'Only the assigned user can update this task.'
+    tasksError.value = t('cleaningView.assignedOnly')
     return
   }
   if (!selectedWeek.value || !isCurrentWeek(selectedWeek.value)) {
-    tasksError.value = 'Cleaning tasks can only be updated during their assigned week.'
+    tasksError.value = t('cleaningView.weekOnly')
     return
   }
 
@@ -523,7 +520,7 @@ const toggleTask = (task: CleaningWeekTask) => {
   }, (response: { success?: boolean; error?: string }) => {
     if (response?.error) {
       task.isCompleted = !nextValue
-      tasksError.value = response.error
+      tasksError.value = t('cleaningView.genericError')
     }
   })
 }
@@ -532,7 +529,7 @@ const requestSwap = (targetWeek: CleaningWeek) => {
   if (!selectedWeek.value || !canRequestSwapWith(targetWeek)) return
   
   if (hasOutgoingPendingSwapForWeek(selectedWeek.value.weekID)) {
-    swapError.value = 'You already have a pending swap request for this week.'
+    swapError.value = t('cleaningView.alreadyPending')
     return
   }
   
@@ -542,7 +539,7 @@ const requestSwap = (targetWeek: CleaningWeek) => {
     targetWeekID: targetWeek.weekID
   }, (response: { success?: boolean; error?: string }) => {
     if (response?.error) {
-      swapError.value = response.error
+      swapError.value = t('cleaningView.genericError')
     } else {
       showSwapModal.value = false
       selectedSwapTargetWeek.value = null
@@ -558,7 +555,7 @@ const respondToSwap = (request: CleaningWeekSwapRequest, accepted: boolean) => {
     accepted
   }, (response: { success?: boolean; error?: string }) => {
     if (response?.error) {
-      swapError.value = response.error
+      swapError.value = t('cleaningView.genericError')
     } else {
       fetchSwapRequests()
       fetchWeeks()
@@ -613,6 +610,8 @@ const getWeekLabel = (dateValue: string) => {
   const week = 1 + Math.round((thursday.getTime() - firstThursday.getTime()) / 604800000)
   return `${week}, ${thursday.getFullYear()}`
 }
+
+const formatDate = (dateValue: string) => new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium' }).format(new Date(dateValue))
 
 const isAssignedToCurrentUser = (task: CleaningWeekTask) => {
   return task.assignedUserID === userID

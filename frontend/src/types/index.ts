@@ -104,7 +104,7 @@ export type DashboardPayload = {
     name: string
     room: number
     corridor: number
-    house: string
+    house: number
     floor: number
   }
   alerts: AlertItem[]

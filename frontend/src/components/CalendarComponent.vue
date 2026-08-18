@@ -6,7 +6,7 @@
         type="button"
         @click="goToPrevMonth"
         class="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-300 dark:hover:bg-gray-700 cursor-pointer"
-        aria-label="Previous month"
+        :aria-label="t('calendar.previous')"
       >
         &lsaquo;
       </button>
@@ -19,7 +19,7 @@
         type="button"
         @click="goToNextMonth"
         class="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-300 dark:hover:bg-gray-700 cursor-pointer"
-        aria-label="Next month"
+        :aria-label="t('calendar.next')"
       >
         &rsaquo;
       </button>
@@ -52,19 +52,19 @@
     <div class="flex flex-wrap items-center gap-4 text-xs opacity-70">
       <span class="inline-flex items-center gap-2">
         <span class="w-3 h-3 rounded bg-gray-800 inline-block"></span>
-        Today
+        {{ t('calendar.today') }}
       </span>
       <span class="inline-flex items-center gap-2">
         <span class="h-2 w-2 rounded-full bg-accent inline-block"></span>
-        Event
+        {{ t('calendar.event') }}
       </span>
       <span class="inline-flex items-center gap-2">
         <span class="h-2 w-2 rounded-full bg-emerald-500 inline-block"></span>
-        Cleaning week
+        {{ t('calendar.cleaning') }}
       </span>
       <span class="inline-flex items-center gap-2">
       <span class="h-2 w-2 rounded-full bg-blue-500 inline-block"></span>
-        External event
+        {{ t('calendar.external') }}
       </span>
     </div>
   </div>
@@ -72,6 +72,9 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t, locale } = useI18n()
 
 const props = defineProps({
   // Optional: pass in event dates (YYYY-MM-DD strings) to mark on the calendar
@@ -94,14 +97,10 @@ const emit = defineEmits(['day-click'])
 const today = new Date()
 const viewDate = ref(new Date(today.getFullYear(), today.getMonth(), 1))
 
-const weekdayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-const monthNames = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
-]
+const weekdayLabels = computed(() => Array.from({ length: 7 }, (_, day) => new Intl.DateTimeFormat(locale.value, { weekday: 'short' }).format(new Date(2024, 0, 7 + day))))
 
 const currentYear = computed(() => viewDate.value.getFullYear())
-const monthLabel = computed(() => monthNames[viewDate.value.getMonth()])
+const monthLabel = computed(() => new Intl.DateTimeFormat(locale.value, { month: 'long' }).format(viewDate.value))
 
 const markedSet = computed(() => new Set(props.markedDates))
 const cleaningSet = computed(() => new Set(props.cleaningDates))

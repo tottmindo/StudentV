@@ -20,17 +20,6 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
     return;
   }
 
-  socket.on("getMenuData", (lang: string) => {
-    console.log(`Request for menu data in language: ${lang}`);
-    try {
-      const labels = data.getMenuData(lang);
-      socket.emit("menuData", labels);
-    } catch (error) {
-      console.error("Error fetching menu data:", error);
-      socket.emit("error", { message: "Failed to fetch menu data." });
-    }
-  });
-
   socket.on("getWaterData", async ()=>{
     console.log('Request for water data');
     try {

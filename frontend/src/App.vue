@@ -4,9 +4,11 @@ import { RouterView, useRoute, useRouter } from 'vue-router'
 import AppTopBar from '@/components/AppTopBar.vue'
 import '@fontsource/nunito-sans';
 import '@fontsource/fredoka';
+import { useI18n } from 'vue-i18n'
 
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 const isAuthenticated = ref(Boolean(sessionStorage.getItem('authToken')))
 const isOffline = ref(!navigator.onLine)
 const connectionLost = ref(false)
@@ -42,7 +44,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div v-if="isOffline || (isAuthenticated && connectionLost)" class="connection-banner" role="status">
-    {{ isOffline ? 'You’re offline. Changes may not be saved.' : 'Reconnecting…' }}
+    {{ isOffline ? t('connection.offline') : t('connection.reconnecting') }}
   </div>
   <AppTopBar v-if="showTopBar" />
   <div :class="showTopBar ? 'app-with-top-bar' : ''">

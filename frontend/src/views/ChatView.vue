@@ -5,7 +5,7 @@
       v-if="chatRooms.length === 0"
       class="text-center opacity-60"
     >
-      No chat rooms found.
+      {{ t('chat.none') }}
     </div>
 
     <div
@@ -21,7 +21,7 @@
       </h2>
 
       <p class="text-sm opacity-60">
-        Chat #{{ room.chatID }}
+        {{ t('chat.roomNumber', { id: room.chatID }) }}
       </p>
     </div>
 
@@ -32,14 +32,14 @@
 import { ref, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import { getSocket } from "@/composables/socket";
+import { useI18n } from 'vue-i18n'
 
 const socket = getSocket();
 const router = useRouter();
+const { t } = useI18n()
 
 
 const chatRooms = ref<any[]>([]);
-
-const dormID = Number(sessionStorage.getItem("dormID"));
 
 function getRooms() {
   socket.emit("getChatRooms");

@@ -7,7 +7,7 @@
       v-if="loading"
       class="text-center py-10 opacity-60"
     >
-      Loading survey...
+      {{ t('survey.loading') }}
     </div>
     <!-- Survey -->
     <div
@@ -25,7 +25,7 @@
           {{ survey.question }}
         </h1>
         <p class="text-sm opacity-60 mt-2">
-          Survey #{{ survey.eID }}
+          {{ t('survey.number', { id: survey.eID }) }}
         </p>
       </div>
       <!-- Answer -->
@@ -38,7 +38,7 @@
           class="block text-sm font-semibold
                 text-text dark:text-text-dark"
         >
-          Choose your answers
+          {{ t('survey.chooseAnswers') }}
         </label>
 
         <div class="space-y-3">
@@ -80,13 +80,13 @@
           class="block text-sm font-semibold
                 text-text dark:text-text-dark"
         >
-          Your answer
+          {{ t('survey.yourAnswer') }}
         </label>
 
         <textarea
           v-model="answer"
           rows="6"
-          placeholder="Write your answer..."
+          :placeholder="t('survey.answerPlaceholder')"
           class="w-full rounded-lg
                 border border-gray-300
                 dark:border-gray-700
@@ -112,7 +112,7 @@
                  hover:opacity-90
                  transition"
         >
-          Submit Answer
+          {{ t('survey.submit') }}
         </button>
       </div>
     </div>
@@ -133,10 +133,10 @@
                dark:text-text-dark
                mb-3"
       >
-        Thank you!
+        {{ t('survey.thanks') }}
       </h2>
       <p class="opacity-70">
-        Your answer has been submitted successfully.
+        {{ t('survey.submitted') }}
       </p>
     </div>
     <!-- Error -->
@@ -144,7 +144,7 @@
       v-else
       class="text-center py-10 opacity-60"
     >
-      Survey not found.
+      {{ t('survey.notFound') }}
     </div>
   </div>
 </template>
@@ -154,9 +154,11 @@
 import { ref, onMounted, onUnmounted } from "vue"
 import { useRoute } from "vue-router"
 import { getSocket } from "@/composables/socket"
+import { useI18n } from 'vue-i18n'
 
 const socket = getSocket()
 const route = useRoute()
+const { t } = useI18n()
 
 const survey = ref<any>(null)
 const answer = ref("")
@@ -179,7 +181,7 @@ function submitAnswer() {
   if (survey.value.multipleChoice) {
 
     if (selectedOptions.value.length === 0) {
-      alert("Please select at least one answer")
+      alert(t('survey.selectOne'))
       return
     }
 
@@ -191,7 +193,7 @@ function submitAnswer() {
       (response: any) => {
 
         if (response?.error) {
-          alert(response.error)
+          alert(t('survey.submitError'))
           return
         }
 
@@ -204,7 +206,7 @@ function submitAnswer() {
 
   // Free text
   if (!answer.value.trim()) {
-    alert("Please enter an answer")
+    alert(t('survey.enterAnswer'))
     return
   }
 
@@ -216,7 +218,7 @@ function submitAnswer() {
     (response: any) => {
 
       if (response?.error) {
-        alert(response.error)
+        alert(t('survey.submitError'))
         return
       }
 
@@ -253,4 +255,3 @@ onUnmounted(() => {
 })
 
 </script>
-

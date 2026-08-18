@@ -24,6 +24,7 @@
     "swiper": "^11.2.6",
     "tailwindcss": "^3.4.17",
     "vue": "^3.5.13",
+    "vue-i18n": "^11.4.8",
     "vue-router": "^4.5.0"
   },
   "devDependencies": {

@@ -36,10 +36,10 @@
         class="w-full p-3 rounded font-semibold text-background-light bg-accent hover:bg-accent-dark transition-colors disabled:cursor-wait disabled:opacity-60
                dark:bg-accent-dark dark:hover:bg-accent"
       >
-        {{ isSubmitting ? 'Signing in…' : 'Login' }}
+        {{ isSubmitting ? t('auth.signingIn') : t('auth.login') }}
       </button>
       <router-link to="/forgot-password" class="block text-center text-sm text-accent hover:underline">
-        Forgot your password?
+        {{ t('auth.forgotPassword') }}
       </router-link>
     </form>
   </div>
@@ -52,6 +52,7 @@
   import { useRoute } from 'vue-router';
   import { apiUrl } from '@/composables/api';
   import { connectSocket } from '@/composables/socket';
+  import { useI18n } from 'vue-i18n'
 
   const props = defineProps<{
       usernameID: string;
@@ -65,6 +66,7 @@
   const router = useRouter();
   const route = useRoute();
   const isSubmitting = ref(false);
+  const { t } = useI18n()
 
   const login = async () => {
     if (isSubmitting.value) return;
@@ -82,11 +84,7 @@
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        const errorMessage = typeof errorData.error === 'string' 
-          ? errorData.error 
-          : JSON.stringify(errorData.error || 'Login failed');
-        throw new Error(errorMessage);
+        throw new Error(t('auth.loginFailed'));
       }
 
       const data = await response.json();
@@ -98,7 +96,7 @@
       const isAdmin = role === 'ADMIN';
 
       if (!token || !userID || !role || (!isAdmin && !dormID)) {
-        throw new Error('Login response is missing required fields.');
+        throw new Error(t('auth.loginFailed'));
       }
 
       // Save the token in sessionStorage
@@ -141,7 +139,7 @@
         : (isAdmin ? '/admin' : '/home');
       await router.replace(data.mustChangePassword ? '/change-password' : requestedPath);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Login failed. Please try again.';
+      const errorMessage = error instanceof Error ? error.message : t('auth.loginFailed');
       alert(errorMessage);
     } finally {
       isSubmitting.value = false;

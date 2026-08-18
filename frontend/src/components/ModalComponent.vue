@@ -16,7 +16,7 @@
                text-gray-500 transition-colors
                hover:text-gray-900
                dark:text-gray-400 dark:hover:text-white"
-        aria-label="Close modal"
+        :aria-label="$t('charts.closeModal')"
       >
         &times;
       </button>

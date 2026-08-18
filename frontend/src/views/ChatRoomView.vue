@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="mb-4">
       <h1 class="text-2xl font-bold">
-        {{ chatName !== '' ? chatName : `chat room ${chatID}` }}
+        {{ chatName !== '' ? chatName : t('chat.roomFallback', { id: chatID }) }}
       </h1>
     </div>
 
@@ -27,7 +27,7 @@
         >
           <div class="flex justify-between items-center mb-1">
             <p class="text-xs font-semibold opacity-70">
-              {{ msg.userID === currentUserID ? 'You' : msg.username }}
+              {{ msg.userID === currentUserID ? t('chat.you') : msg.username }}
             </p>
             <p class="text-xs opacity-40 ml-4">
               {{ formatTime(msg.sentAt) }}
@@ -44,7 +44,7 @@
         v-if="messages.length === 0"
         class="text-center opacity-60"
       >
-        No messages yet.
+        {{ t('chat.noMessages') }}
       </div>
     </div>
 
@@ -53,7 +53,7 @@
       <input
         v-model="newMessage"
         type="text"
-        placeholder="Type a message..."
+        :placeholder="t('chat.placeholder')"
         class="flex-1 px-4 py-2 rounded-lg border
                bg-white dark:bg-background-dark
                focus:outline-none focus:ring-2 focus:ring-accent"
@@ -63,7 +63,7 @@
         @click="sendMessage"
         class="px-4 py-2 rounded-lg bg-accent text-white font-semibold"
       >
-        Send
+        {{ t('chat.send') }}
       </button>
     </div>
   </div>
@@ -73,9 +73,11 @@
 import { ref, onMounted, onUnmounted, nextTick } from "vue"
 import { useRoute } from "vue-router"
 import { getSocket } from "@/composables/socket"
+import { useI18n } from 'vue-i18n'
 
 const socket = getSocket()
 const route = useRoute()
+const { t, locale } = useI18n()
 
 
 const currentUserID = Number(sessionStorage.getItem('userID') || 0);
@@ -133,28 +135,28 @@ function formatTime(date: string) {
     d.getFullYear() === now.getFullYear();
 
   if (isToday) {
-    return d.toLocaleTimeString([], {
+    return d.toLocaleTimeString(locale.value, {
       hour: "2-digit",
       minute: "2-digit"
     });
   } else {
     // IF FROM EARLIER YEAR
     if (d.getFullYear() !== now.getFullYear()){
-      return d.toLocaleDateString([], { 
+      return d.toLocaleDateString(locale.value, {
         year: 'numeric',
         month: 'short', 
         day: 'numeric' 
-        }) + ', ' + d.toLocaleTimeString([], {
+        }) + ', ' + d.toLocaleTimeString(locale.value, {
         hour: "2-digit",
         minute: "2-digit"
         });
     }
 
     // IF FROM THIS YEAR BUT NOT TODAY
-    return d.toLocaleDateString([], { 
+    return d.toLocaleDateString(locale.value, {
       month: 'short', 
       day: 'numeric' 
-    }) + ', ' + d.toLocaleTimeString([], {
+    }) + ', ' + d.toLocaleTimeString(locale.value, {
       hour: "2-digit",
       minute: "2-digit"
     });

@@ -180,19 +180,6 @@ interface ExternalEvents {
 
 class Data {
 
-  getMenuData(lang: string = "en"): any {
-    if (!["en", "sv"].some( el => el === lang))
-      lang = "en";
-    try {
-      return readJsonFile("menu-" + lang + ".json");
-    } catch (error) {
-      if (lang !== "en") {
-        return this.getMenuData("en");
-      }
-      throw new Error("Failed to load menu labels. Please check the file path and content.");
-    }
-  }
-
   getWaterData(): any {
     try {
       return readJsonFile("testData.json");
@@ -1058,13 +1045,18 @@ async getDashboard(userID: number, dormID: number): Promise<any> {
       throw new Error("USER_NOT_FOUND");
     }
 
+    const houseNumber = Number.parseInt(String(user.dormAddress).match(/\d+/)?.[0] ?? "", 10);
+    if (!Number.isInteger(houseNumber)) {
+      throw new Error("INVALID_DORM_ADDRESS");
+    }
+
     return {
       user: {
         id: user.userID,
         name: user.username,
         room: user.roomID,
         corridor: user.dormID,
-        house: user.dormAddress,
+        house: houseNumber,
         floor: user.dormFloor,
       },
 

@@ -4,10 +4,12 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
 import { restoreSocket } from './composables/socket'
+import { i18n } from './i18n'
 
 const app = createApp(App)
 
 app.use(router)
+app.use(i18n)
 
 // Recreate the authenticated real-time connection after a full page reload.
 restoreSocket()

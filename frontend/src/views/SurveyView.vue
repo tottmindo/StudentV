@@ -13,7 +13,7 @@
       <!-- Status -->
       <div class="flex-1">
         <label class="block text-sm font-semibold mb-2">
-          Status
+          {{ t('survey.status') }}
         </label>
 
         <select
@@ -24,15 +24,15 @@
                 px-4 py-2"
         >
           <option value="all">
-            All
+            {{ t('survey.all') }}
           </option>
 
           <option value="active">
-            Active
+            {{ t('common.active') }}
           </option>
 
           <option value="inactive">
-            Inactive
+            {{ t('common.inactive') }}
           </option>
         </select>
       </div>
@@ -40,7 +40,7 @@
       <!-- Corridor -->
       <div class="flex-1">
         <label class="block text-sm font-semibold mb-2">
-          Corridor
+          {{ t('survey.corridor') }}
         </label>
 
         <select
@@ -51,7 +51,7 @@
                 px-4 py-2"
         >
           <option :value="null">
-            All corridors
+            {{ t('survey.allCorridors') }}
           </option>
 
           <option
@@ -59,7 +59,7 @@
             :key="dorm.dormID"
             :value="dorm.dormID"
           >
-            {{ dorm.address }} — Floor {{ dorm.floor }}
+            {{ dorm.address }} — {{ t('survey.floor', { floor: dorm.floor }) }}
           </option>
         </select>
       </div>
@@ -89,13 +89,13 @@
           </h3>
 
           <p class="text-sm opacity-70">
-            ID: {{ survey.eID }}
+            {{ t('survey.id', { id: survey.eID }) }}
           </p>
 
           <p class="text-sm opacity-70">
             {{
               survey.dormID === null
-                ? "All corridors"
+                ? t('survey.allCorridors')
                 : getDormName(survey.dormID)
             }}
           </p>
@@ -109,7 +109,7 @@
               ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
               : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'"
           >
-            {{ survey.active ? 'Active' : 'Inactive' }}
+            {{ t(survey.active ? 'common.active' : 'common.inactive') }}
           </div>
 
         </div>
@@ -121,7 +121,7 @@
         v-if="visibleSurveys.length === 0"
         class="text-center py-10 opacity-60"
       >
-        No surveys found.
+        {{ t('survey.none') }}
       </div>
 
     </section>
@@ -134,11 +134,11 @@
         v-if="page > 0"
         class="px-4 py-2 rounded-lg bg-secondary dark:bg-secondary-dark hover:opacity-90"
       >
-        Previous
+        {{ t('survey.previous') }}
       </button>
 
       <span class="text-sm opacity-70">
-        Page {{ page + 1 }}
+        {{ t('survey.page', { page: page + 1 }) }}
       </span>
 
       <button
@@ -146,7 +146,7 @@
         v-if="(page + 1) * limit < filteredSurveys.length"
         class="px-4 py-2 rounded-lg bg-secondary dark:bg-secondary-dark hover:opacity-90"
       >
-        Next
+        {{ t('survey.next') }}
       </button>
 
     </section>
@@ -160,9 +160,11 @@ import { ref, computed, onMounted, onUnmounted, watch } from "vue"
 import { getSocket } from "@/composables/socket"
 import { useRouter } from "vue-router"
 import { apiUrl } from "@/composables/api";
+import { useI18n } from 'vue-i18n'
 
 const socket = getSocket();
 const router = useRouter();
+const { t } = useI18n()
 const headers = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${sessionStorage.getItem('authToken')}` })
 
 const surveys = ref<any[]>([]);
@@ -179,10 +181,10 @@ function getDormName(dormID: number) {
   );
 
   if (!dorm) {
-    return "Unknown corridor";
+    return t('survey.unknownCorridor');
   }
 
-  return `${dorm.address} — Floor ${dorm.floor}`;
+  return `${dorm.address} — ${t('survey.floor', { floor: dorm.floor })}`;
 }
 
 watch(
@@ -270,7 +272,7 @@ async function loadDorms() {
   });
 
   if (!response.ok) {
-    throw new Error("Could not load dorms.");
+    throw new Error(t('survey.loadDormsError'));
   }
 
   dorms.value = await response.json();
