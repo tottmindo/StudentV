@@ -455,7 +455,8 @@
     "other": "Annat",
     "add": "Lägg till evenemang",
     "details": "Evenemangsdetaljer",
-    "onDate": "Evenemang den {date}"
+    "onDate": "Evenemang den {date}",
+    "nationEvent": "Nations evenemang"
   },
   "eventSamples": {
     "movie": "Filmkväll",
@@ -676,7 +677,8 @@
     "today": "I dag",
     "event": "Evenemang",
     "cleaning": "Städvecka",
-    "external": "Externt evenemang"
+    "external": "Externt evenemang",
+    "nation": "Event på nation"
   },
   "account": {
     "profile": "Profil",

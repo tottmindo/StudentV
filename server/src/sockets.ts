@@ -474,6 +474,22 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
       socket.emit("error", { message: "Failed to fetch external events." });
     }
   });
+
+  socket.on("getNationsguidenEvents", async () => {
+    try {
+      const events = await data.getNationsguidenEvents()
+
+      socket.emit("nationsguidenEvents", events)
+    } catch (error) {
+      console.error("Error fetching Nationsguiden events:", error)
+
+      socket.emit("error", {
+        message: "Failed to fetch Nationsguiden events."
+      })
+    }
+  });
 }
+
+
 
 export { sockets };

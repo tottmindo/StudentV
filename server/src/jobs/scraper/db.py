@@ -44,7 +44,7 @@ def dateComparison(start: datetime, end: datetime):
     return end
 
 
-def toDB(events: list):
+def toDBDestinationUppsala(events: list):
     if not events:
         return
 
@@ -98,23 +98,53 @@ def toDB(events: list):
         print(f"Database error: {e}")
         raise
 
-""" # --- Quick Manual Tests ---
+def toDBNationsguiden(events: list):
+    if not events:
+        return
 
-# 1. Standard future date in current year
-print("1.", toDateTime("7 nov"), "| Expected: 2026-11-07 00:00:00")
+    query = """
+    INSERT INTO nationsguideevents
+        (
+            title,
+            startDate,
+            endDate,
+            category,
+            externalURL,
+            organiser
+        )
+    VALUES (%s, %s, %s, %s, %s, %s);
+    """
 
-# 2. Past month (rolls over to next year)
-print("2.", toDateTime("24 jan"), "| Expected: 2027-01-24 00:00:00")
+    params = []
 
-# 3. Invalid/missing string safety check
-print("3.", toDateTime("invalid"), "| Expected: None")
+    for event in events:
+        params.append((
+            event.get("title"),
+            event.get("startDate"),
+            event.get("endDate"),
+            event.get("category"),
+            event.get("url"),
+            event.get("organiser"),
+        ))
 
-# 4. Same-year event range check (10 May -> 20 May)
-start_1 = toDateTime("10 maj")
-end_1 = toDateTime("20 maj")
-print("4.", dateComparison(start_1, end_1), "| Expected: 2027-05-20 00:00:00")
+    try:
+        with psycopg.connect(
+            user=os.getenv("PG_DB_USER"),
+            host=os.getenv("PG_DB_HOST_PYTHON"),
+            password=os.getenv("PG_DB_PASSWORD"),
+            dbname=os.getenv("PG_DB_DATABASE"),
+            port=os.getenv("PG_DB_PORT", "5432"),
+            sslmode="require"
+        ) as conn:
 
-# 5. New Year's rollover event range check (7 Nov 2026 -> 24 Jan 2026 becomes 2027)
-start_2 = toDateTime("7 nov")
-end_2 = toDateTime("24 jan")
-print("5.", dateComparison(start_2, end_2), "| Expected: 2027-01-24 00:00:00") """
+            with conn.cursor() as cursor:
+                cursor.executemany(
+                    query,
+                    params
+                )
+
+            conn.commit()
+
+    except Exception as e:
+        print(f"Database error: {e}")
+        raise

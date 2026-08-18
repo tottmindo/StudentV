@@ -37,12 +37,24 @@
           >
             {{ t('eventsView.external') }}
           </button>
+
+          <button
+            type="button"
+            @click="filters.nation = !filters.nation"
+            class="px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
+            :class="filters.nation
+              ? 'bg-purple-600 text-white'
+              : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 opacity-50'"
+          >
+            {{ t('eventsView.nationEvent') }}
+          </button>
         </div>
         <div class="w-full max-w-full">
                 <CalendarComponent
                   :marked-dates="filteredEventDates"
                   :cleaning-dates="filteredCleaningWeeks"
                   :external-dates="filteredExternalDates"
+                  :nation-dates="filteredNationDates"
                   @day-click="onCalendarDayClick"
                   class="w-full h-full"
                 />
@@ -60,31 +72,69 @@
             class="cursor-pointer flex flex-col gap-2 py-3 border-b border-gray-100 dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800"
           >
             <div class="flex items-center justify-between">
+              <!-- Event information -->
               <div>
-                <strong class="font-semibold">{{ event.title }}</strong>
-                <p class="text-sm opacity-70">{{ event.description }}</p>
+                <strong class="font-semibold">
+                  {{ event.title }}
+                </strong>
+
+                <p class="text-sm opacity-70">
+                  {{ event.description }}
+                </p>
               </div>
+
+              <!-- Date + type -->
               <div class="text-sm opacity-70 text-right">
-                <div>{{ formatDateRange(event.startDate, event.endDate) }}</div>
+                <div>
+                  {{ formatDateRange(event.startDate, event.endDate) }}
+                </div>
+
                 <div class="uppercase text-xs mt-1">
-                  <!-- Highlight external events in blue -->
-                  <span :class="event.isExternal ? 'text-blue-600 dark:text-blue-400 font-semibold' : ''">
+
+                  <!-- Destination Uppsala -->
+                  <span
+                    v-if="event.source === 'destination'"
+                    class="text-blue-600 dark:text-blue-400 font-semibold"
+                  >
                     {{ event.type }}
                   </span>
-                  <span v-if="!event.isExternal && !event.active" class="text-red-500"> ({{ t('eventsView.inactive') }})</span>
+
+                  <!-- Nationsguiden -->
+                  <span
+                    v-else-if="event.source === 'nationsguiden'"
+                    class="text-purple-600 dark:text-purple-400 font-semibold"
+                  >
+                    {{ event.type }}
+                  </span>
+
+                  <!-- Internal event -->
+                  <span v-else>
+                    {{ event.type }}
+
+                    <span
+                      v-if="!event.active"
+                      class="text-red-500"
+                    >
+                      ({{ t('eventsView.inactive') }})
+                    </span>
+                  </span>
+
                 </div>
               </div>
             </div>
           </li>
         </ul>
-        <p v-else class="text-sm opacity-70">{{ t(showHistoricalEvents ? 'eventsView.none' : 'eventsView.noneUpcoming') }}</p>
+
+        <p v-else class="text-sm opacity-70">
+          {{ t(showHistoricalEvents ? 'eventsView.none' : 'eventsView.noneUpcoming') }}
+        </p>
       </section>
     </div>
 
     <ModalComponent v-model="showEventDetailsModal">
       <div class="space-y-4">
         <h3 class="text-xl font-semibold">{{ eventModalTitle }}</h3>
-        <template v-if="selectedEvents.length || selectedCleaningWeeks.length || selectedExternalEvents.length">
+        <template v-if="selectedEvents.length || selectedCleaningWeeks.length || selectedExternalEvents.length || selectedNationEvents.length">
           <div
             v-for="event in selectedEvents"
             :key="event.id"
@@ -157,6 +207,57 @@
             rel="noopener noreferrer"
             class="text-sm font-semibold text-blue-600 hover:underline
                   dark:text-blue-400"
+          >
+            {{ t('eventsView.viewPage') }} →
+          </a>
+        </div>
+        <div
+          v-for="event in selectedNationEvents"
+          :key="event.eventID"
+          class="space-y-2 rounded-lg border border-purple-300
+                bg-purple-50 p-4 text-purple-950
+                dark:border-purple-700
+                dark:bg-purple-950/50
+                dark:text-purple-100"
+        >
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <p class="text-lg font-semibold">
+                {{ event.title }}
+              </p>
+
+              <p class="text-sm font-medium uppercase text-purple-700 dark:text-purple-300">
+                {{ t('eventsView.nationEvent') }}
+              </p>
+
+              <p
+                v-if="event.organiser"
+                class="text-sm opacity-80"
+              >
+                {{ event.organiser }}
+              </p>
+
+              <p
+                v-if="event.category"
+                class="text-sm opacity-80"
+              >
+                {{ event.category }}
+              </p>
+            </div>
+
+            <div class="text-sm opacity-80 text-right">
+              <div>
+                {{ formatDateRange(event.startDate, event.endDate) }}
+              </div>
+            </div>
+          </div>
+
+          <a
+            :href="event.externalurl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-sm font-semibold text-purple-600 hover:underline
+                  dark:text-purple-400"
           >
             {{ t('eventsView.viewPage') }} →
           </a>
@@ -288,6 +389,16 @@ type ExternalEvents = {
   endDate: string
 }
 
+type NationEvent = {
+  eventID: number
+  title: string
+  startDate: string
+  endDate: string
+  category?: string
+  externalurl: string
+  organiser?: string
+}
+
 type DisplayEvent = {
   id: string | number
   title: string
@@ -297,18 +408,21 @@ type DisplayEvent = {
   type: string
   active?: boolean
   externalUrl?: string
-  isExternal: boolean
+  source: 'internal' | 'destination' | 'nationsguiden'
 }
 
 
 const filters = ref({
   events : true,
   cleaning : true,
-  external : true
+  external : true,
+  nation: true
 })
 const showHistoricalEvents = ref(false)
 
 const externalEvents = ref<ExternalEvents[]>([]);
+const nationEvents = ref<NationEvent[]>([])
+const selectedNationEvents = ref<NationEvent[]>([])
 
 const defaultEvents: CalendarEvent[] = [
   {
@@ -354,6 +468,25 @@ const externalEventDates = computed(() => {
   const dates = new Set<string>()
 
   externalEvents.value
+    .filter((event) => showHistoricalEvents.value || displayEventHasNotEnded(event))
+    .forEach((event) => {
+      if (!event.startDate) return
+
+      getDateKeysInRange(
+        event.startDate,
+        event.endDate || event.startDate
+      ).forEach((dateKey) => {
+        dates.add(dateKey)
+      })
+    })
+
+  return Array.from(dates)
+})
+
+const nationEventDates = computed(() => {
+  const dates = new Set<string>()
+
+  nationEvents.value
     .filter((event) => showHistoricalEvents.value || displayEventHasNotEnded(event))
     .forEach((event) => {
       if (!event.startDate) return
@@ -448,7 +581,7 @@ const filteredEvents = computed<DisplayEvent[]>(() => {
             endDate: event.endDate,
             type: event.type,
             active: event.active,
-            isExternal: false
+            source: 'internal'
           })
         }
       }
@@ -472,14 +605,43 @@ const filteredEvents = computed<DisplayEvent[]>(() => {
             type: 'EXTERNAL',
             active: true,
             externalUrl: event.externalurl,
-            isExternal: true
+            source: 'destination'
           })
         }
       }
     })
   }
 
-  // 3. Sort chronologically by start date first, THEN slice to 10
+  // 3. Process Nationsguiden Events
+  if (filters.value.nation) {
+    nationEvents.value.forEach((event, index) => {
+      const end = parseEventDate(event.endDate || event.startDate)
+
+      if (end && (showHistoricalEvents.value || end.getTime() >= now)) {
+        const uniqueKey = `nation-${event.title}-${event.startDate}`
+
+        if (!seenEventKeys.has(uniqueKey)) {
+          seenEventKeys.add(uniqueKey)
+
+          list.push({
+            id: `nation-${event.eventID !== undefined ? event.eventID : index}`,
+            title: event.title,
+            description: event.organiser
+              ? `${event.category || ''} · ${event.organiser}`
+              : event.category || t('eventsView.nationEvent'),
+            startDate: event.startDate,
+            endDate: event.endDate,
+            type: 'NATION',
+            active: true,
+            externalUrl: event.externalurl,
+            source: 'nationsguiden'
+          })
+        }
+      }
+    })
+  }
+
+  // 4. Sort chronologically by start date first, THEN slice to 10
   return list
     .sort((a, b) => {
       const aStart = parseEventDate(a.startDate)?.getTime() || 0
@@ -504,23 +666,38 @@ const eventModalTitle = computed(() => {
   return t('eventsView.details')
 })
 
-const openEventDetails = (events: CalendarEvent[], dayKey = '') => {
-  selectedEvents.value = filters.value.events ? events : []
-  selectedCleaningWeeks.value = (dayKey && filters.value.cleaning)
-    ? ownCleaningWeeks.value.filter((week) => dateIsInRange(dayKey, week.startDate, week.endDate))
-    : []
-  selectedExternalEvents.value = (dayKey && filters.value.external)
-  ? externalEvents.value.filter((event) => {
-      return dateIsInRange(
-        dayKey,
-        event.startDate,
-        event.endDate || event.startDate
-      )
-    })
-  : []
-  selectedEventDay.value = dayKey
-  showEventDetailsModal.value = true
-}
+  const openEventDetails = (events: CalendarEvent[], dayKey = '') => {
+    selectedEvents.value = filters.value.events ? events : []
+
+    selectedCleaningWeeks.value = (dayKey && filters.value.cleaning)
+      ? ownCleaningWeeks.value.filter((week) =>
+          dateIsInRange(dayKey, week.startDate, week.endDate)
+        )
+      : []
+
+    selectedExternalEvents.value = (dayKey && filters.value.external)
+      ? externalEvents.value.filter((event) =>
+          dateIsInRange(
+            dayKey,
+            event.startDate,
+            event.endDate || event.startDate
+          )
+        )
+      : []
+
+    selectedNationEvents.value = (dayKey && filters.value.nation)
+      ? nationEvents.value.filter((event) =>
+          dateIsInRange(
+            dayKey,
+            event.startDate,
+            event.endDate || event.startDate
+          )
+        )
+      : []
+
+    selectedEventDay.value = dayKey
+    showEventDetailsModal.value = true
+  }
 
 const onCalendarDayClick = (dateKey: string) => {
   const matchingEvents = allEvents.value.filter((event) => {
@@ -537,22 +714,31 @@ const onCalendarDayClick = (dateKey: string) => {
 }
 
 const openEventDetail = (event: CalendarEvent | DisplayEvent) => {
-  // If it's a merged DisplayEvent and it's external, open the link
-  if ('isExternal' in event && event.isExternal && event.externalUrl) {
-    window.open(event.externalUrl, '_blank', 'noopener,noreferrer')
+  if ('source' in event) {
+    if (
+      event.source === 'destination' ||
+      event.source === 'nationsguiden'
+    ) {
+      if (event.externalUrl) {
+        window.open(event.externalUrl, '_blank', 'noopener,noreferrer')
+      }
+
+      return
+    }
+
+    const found = upcomingEvents.value.find(
+      (e) => `internal-${e.id}` === event.id
+    )
+
+    if (!found) return
+
+    selectedCleaningWeeks.value = []
+    openEventDetails([found])
     return
   }
 
-  // If it's a merged internal event from the list, find the original CalendarEvent
-  let targetEvent = event as CalendarEvent
-  if ('isExternal' in event && !event.isExternal) {
-    const found = upcomingEvents.value.find((e) => `internal-${e.id}` === event.id)
-    if (!found) return
-    targetEvent = found
-  }
-
   selectedCleaningWeeks.value = []
-  openEventDetails([targetEvent])
+  openEventDetails([event])
 }
 
 const getEventIdentifier = (event: CalendarEvent) => {
@@ -573,6 +759,7 @@ const bindSocket = () => {
   socket.off('eventsData')
   socket.off('cleaningWeeks')
   socket.off('externalEvents')
+  socket.off('nationsguidenEvents')
 
   socket.on('eventsData', (events: CalendarEvent[]) => {
     console.log('EVENTS FROM SERVER:', events)
@@ -588,12 +775,16 @@ const bindSocket = () => {
   socket.on('externalEvents', (eEvents: ExternalEvents[]) => {
     externalEvents.value = eEvents
   })
+  socket.on('nationsguidenEvents', (events: NationEvent[]) => {
+    nationEvents.value = events
+  })
 }
 
 const fetchCalendarData = () => {
   socket.emit('getEvents', { active: true, dormID: sessionStorage.getItem('dormID') })
   socket.emit('getCleaningWeeks')
   socket.emit('getExternalEvents')
+  socket.emit('getNationsguidenEvents')
 }
 
 const newEvent = ref<Partial<CalendarEvent> & {
@@ -814,6 +1005,7 @@ onUnmounted(() => {
   socket.off('eventsData')
   socket.off('cleaningWeeks')
   socket.off('externalEvents')
+  socket.off('nationsguidenEvents')
 })
 
 
@@ -830,6 +1022,11 @@ const filteredCleaningWeeks = computed(() => {
 const filteredExternalDates = computed (() => {
   if (!filters.value.external) return []
   return externalEventDates.value
+})
+
+const filteredNationDates = computed(() => {
+  if (!filters.value.nation) return []
+  return nationEventDates.value
 })
 
 
