@@ -111,7 +111,7 @@ const router = createRouter({
     {
       path: '/chatRoom/:id',
       name: 'chatRoom',
-      component: () => import('../views/ChatRoomView.vue'),
+      redirect: to => ({ name: 'chat', query: { room: String(to.params.id) } }),
       meta: { requiresAuth: true },
     },
     { path: '/:pathMatch(.*)*', redirect: '/' },

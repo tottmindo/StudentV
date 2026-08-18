@@ -1792,10 +1792,13 @@ async createSurvey(survey: any) {
   }
 }
 
-  async getChatRooms(dormID: number){
+  async getChatRooms(dormID: number, userID: number){
     try {
-      const query = 'SELECT * FROM chat WHERE dormID = ? ORDER BY chatID';
-      const [rows] = await pool.query(query, [dormID]);
+      const query = `SELECT c.* FROM chat c
+                     JOIN chatMembers cm ON cm.chatID = c.chatID
+                     WHERE c.dormID = ? AND cm.userID = ?
+                     ORDER BY c.chatID`;
+      const [rows] = await pool.query(query, [dormID, userID]);
       return rows as any;
     }catch (err){
       console.error(`Error fetching chat rooms for dorm ${dormID}`, err);
@@ -1831,20 +1834,24 @@ async createSurvey(survey: any) {
 
   async newMessage(message: string, chatID: number, userID: number) {
     try {
-      const [result]: any = await pool.query(
+      const [insertedRows]: any = await pool.query(
         `INSERT INTO chatHistory (msg, chatID, userID)
         VALUES (?, ?, ?) RETURNING messageID`,
         [message, chatID, userID]
       );
+
+      const messageID = insertedRows[0]?.messageID;
+      if (!messageID) throw new Error("The new chat message could not be retrieved.");
 
       const [rows]: any = await pool.query(
         `SELECT ch.*, u.username
         FROM chatHistory ch
         JOIN users u ON u.userID = ch.userID
         WHERE ch.messageID = ?`,
-        [result.insertId]
+        [messageID]
       );
 
+      if (!rows[0]) throw new Error("The new chat message could not be retrieved.");
       return rows[0];
     } catch (err) {
       console.error("Error creating chat message", err);

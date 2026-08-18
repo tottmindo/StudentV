@@ -171,13 +171,22 @@
     "openCalendar": "Öppna evenemangskalendern"
   },
   "chat": {
+    "rooms": "Chattrum",
     "none": "Inga chattrum hittades.",
     "roomNumber": "Chatt #{id}",
     "roomFallback": "Chattrum {id}",
     "you": "Du",
     "noMessages": "Inga meddelanden ännu.",
     "placeholder": "Skriv ett meddelande…",
-    "send": "Skicka"
+    "send": "Skicka",
+    "selectRoom": "Välj ett chattrum",
+    "selectRoomHelp": "Välj ett rum i listan för att börja chatta.",
+    "backToRooms": "Tillbaka till chattrummen",
+    "loadingRooms": "Laddar chattrum…",
+    "loadingMessages": "Laddar meddelanden…",
+    "loadFailed": "Chatten kunde inte laddas.",
+    "sendFailed": "Ditt meddelande kunde inte skickas. Försök igen.",
+    "retry": "Försök igen"
   },
   "charts": {
     "closeModal": "Stäng dialogrutan",

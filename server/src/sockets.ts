@@ -384,7 +384,7 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
 
   socket.on("getChatRooms", async() => {
     try{
-      const rooms = await data.getChatRooms(dormID);
+      const rooms = await data.getChatRooms(dormID, userID);
       socket.emit("chatRooms", rooms);
     } catch(err){
       socket.emit("error", { message: "Failed to fetch chat rooms" });
@@ -392,15 +392,16 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
   });
 
   socket.on("joinChatRoom", async(chatID: number) => {
-    socket.join(`chat-${chatID}`);
-    console.log(`Joined socket chat-${chatID}`)
     try{
+      if (!Number.isInteger(chatID) || chatID <= 0) throw new Error("Invalid chat room.");
       const hasAccess = await data.hasAccessToChat(chatID, userID);
       if (!hasAccess){
         console.warn(`Unauthorized access attempt: User ${userID} tried to join Chat ${chatID}`);
         socket.emit("error", { message: "You do not have access to this chat." });
         return;
       }
+      await socket.join(`chat-${chatID}`);
+      console.log(`Joined socket chat-${chatID}`)
       const logs = await data.getChatHistory(chatID);
       const name = await data.getChatName(chatID);
       socket.emit("chatHistory", {chatID, logs, name});
@@ -416,25 +417,28 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
   });
 
   socket.on("sendMessage", async(chatID: number, message : string, callback: any) => {
-    console.log("time to send message", message);
     try{
+        const cleanMessage = typeof message === "string" ? message.trim() : "";
+        if (!Number.isInteger(chatID) || chatID <= 0) throw new Error("Invalid chat room.");
+        if (!cleanMessage || cleanMessage.length > 2000) throw new Error("Messages must contain between 1 and 2000 characters.");
         const hasAccess = await data.hasAccessToChat(chatID, userID);
         if (!hasAccess){
           console.warn(`Unauthorized access attempt: User ${userID} tried to join Chat ${chatID}`);
           socket.emit("error", { message: "You do not have access to this chat." });
+          if (typeof callback === "function") callback({ error: "You do not have access to this chat." });
           return;
         }
-        const newMessage = await data.newMessage(message, chatID, userID);
+        const newMessage = await data.newMessage(cleanMessage, chatID, userID);
         getIO().to(`chat-${chatID}`).emit("newMessage", newMessage)
 
         if (typeof callback === "function"){
           callback(newMessage);
         }
       }catch (err: any) {
-        console.error("Error creating survey", err);
+        console.error("Error creating chat message", err);
         
         if (typeof callback === "function"){
-          callback({ error: err.message || "Failed to create survey"});
+          callback({ error: err.message || "Failed to send message"});
         }
       }
   });

@@ -108,6 +108,10 @@ io.on("connection", async (socket: Socket) => {
         socket.join(`user-${userID}`);
         console.log(`✅ Authenticated socket ${socket.id} for ${role === "ADMIN" ? "global administrator" : `dorm-${dormID}`}`);
         sockets(socket, data, dormID ?? 0, userID, role);
+        // The JWT and account checks above are asynchronous. Tell clients when
+        // feature listeners are actually ready so early refresh requests are
+        // not lost between the transport connection and authentication.
+        socket.emit("authenticated");
 
         if (dormID) {
           try {

@@ -171,13 +171,22 @@
     "openCalendar": "Open event calendar"
   },
   "chat": {
+    "rooms": "Chat rooms",
     "none": "No chat rooms found.",
     "roomNumber": "Chat #{id}",
     "roomFallback": "Chat room {id}",
     "you": "You",
     "noMessages": "No messages yet.",
     "placeholder": "Type a message…",
-    "send": "Send"
+    "send": "Send",
+    "selectRoom": "Select a chat room",
+    "selectRoomHelp": "Choose a room from the list to start chatting.",
+    "backToRooms": "Back to chat rooms",
+    "loadingRooms": "Loading chat rooms…",
+    "loadingMessages": "Loading messages…",
+    "loadFailed": "The chat could not be loaded.",
+    "sendFailed": "Your message could not be sent. Please try again.",
+    "retry": "Try again"
   },
   "charts": {
     "closeModal": "Close modal",
