@@ -4,6 +4,7 @@ import { validate } from "../middleware/validate.js";
 import { cancelTaskProposal, castTaskProposalVote, createTaskChangeProposal, createTaskProposal, createTaskRemovalProposal, listDormCommunity, listDormTaskGovernance, updateResidentProfile } from "../services/communityService.js";
 import { castTaskVoteSchema, createTaskChangeProposalSchema, createTaskProposalSchema, updateResidentProfileSchema } from "../validators/communitySchemas.js";
 import { getIO } from "./socketManager.js";
+import { getOrCreateDirectChat, setChatBlock } from "../services/chatService.js";
 
 const router = express.Router();
 
@@ -31,6 +32,16 @@ router.patch("/profile", authenticate, requireCompletedAccount, requireResidentD
     console.error("Could not update resident profile:", error);
     res.status(500).json({ error: "Could not save your introduction." });
   }
+});
+
+router.post("/direct-chat/:userID", authenticate, requireCompletedAccount, requireResidentDorm, async (req: AuthenticatedRequest, res) => {
+  try { res.status(201).json(await getOrCreateDirectChat(req.authUser!.userID, Number(req.params.userID), req.authUser!.dormID!)); }
+  catch (error: any) { res.status(400).json({ error: error.message || "Could not open a direct chat." }); }
+});
+
+router.put("/chat-blocks/:userID", authenticate, requireCompletedAccount, requireResidentDorm, async (req: AuthenticatedRequest, res) => {
+  try { res.json(await setChatBlock(req.authUser!.userID, Number(req.params.userID), req.authUser!.dormID!, req.body.blocked === true)); }
+  catch (error: any) { res.status(400).json({ error: error.message || "Could not update message visibility." }); }
 });
 
 router.get("/cleaning-tasks", authenticate, requireCompletedAccount, requireResidentDorm, async (req: AuthenticatedRequest, res) => {

@@ -29,6 +29,7 @@ import { getJwtSecret } from "../config/jwt.js";
 import { createHash, randomBytes } from "crypto";
 import { sendPasswordResetEmail, sendTemporaryPasswordEmail } from "./emailService.js";
 import { getIO } from "../routes/socketManager.js";
+import { syncDormGeneralChat } from "./chatService.js";
 
 const SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS || "10", 10);
 const JWT_EXPIRATION = process.env.JWT_EXPIRATION || "1h";
@@ -110,6 +111,13 @@ export async function registerUser(
     const newUserID = insertedUsers[0]?.userID;
     if (typeof newUserID !== "number") {
       throw new Error("Failed to retrieve the newly created user ID.");
+    }
+
+    if (assignedDormID != null) {
+      const [dormRows]: [RowDataPacket[], any] = await connection.query(
+        "SELECT address, floor FROM dorms WHERE dormID = ?", [assignedDormID]
+      );
+      await syncDormGeneralChat(connection, assignedDormID, dormRows[0].address, dormRows[0].floor);
     }
 
     if (activeRows.length > 0) {
@@ -395,6 +403,54 @@ export async function listDormsForAdmin() {
   return [...dorms.values()];
 }
 
+export async function createDormFloor(address: string, floor: number, roomIDs: number[]) {
+  const connection = await pool.getConnection();
+  await connection.beginTransaction();
+  try {
+    await connection.query("SELECT pg_advisory_xact_lock(hashtext(?))", [`${address.toLowerCase()}|${floor}`]);
+    const [existing]: [RowDataPacket[], any] = await connection.query(
+      "SELECT dormID FROM dorms WHERE LOWER(address) = LOWER(?) AND floor = ?", [address, floor]
+    );
+    if (existing[0]) throw new Error("That floor already exists in this house.");
+    const [created]: [RowDataPacket[], any] = await connection.query(
+      "INSERT INTO dorms (address, floor) VALUES (?, ?) RETURNING dormID", [address, floor]
+    );
+    const dormID = Number(created[0]?.dormID);
+    for (const roomID of roomIDs) {
+      await connection.query("INSERT INTO room (roomID, dormID) VALUES (?, ?)", [roomID, dormID]);
+    }
+    const chatID = await syncDormGeneralChat(connection, dormID, address, floor);
+    await connection.commit();
+    return { dormID, address, floor, rooms: roomIDs, generalChatID: chatID };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally { connection.release(); }
+}
+
+export async function addRoomsToDorm(dormID: number, roomIDs: number[]) {
+  const connection = await pool.getConnection();
+  await connection.beginTransaction();
+  try {
+    const [dorms]: [RowDataPacket[], any] = await connection.query(
+      "SELECT address, floor FROM dorms WHERE dormID = ? FOR UPDATE", [dormID]
+    );
+    if (!dorms[0]) throw new Error("Dorm floor not found.");
+    const [existing]: [RowDataPacket[], any] = await connection.query(
+      "SELECT roomID FROM room WHERE dormID = ? AND roomID IN (?)", [dormID, roomIDs]
+    );
+    const existingIDs = new Set(existing.map(row => Number(row.roomID)));
+    const created = roomIDs.filter(roomID => !existingIDs.has(roomID));
+    for (const roomID of created) await connection.query("INSERT INTO room (roomID, dormID) VALUES (?, ?)", [roomID, dormID]);
+    await syncDormGeneralChat(connection, dormID, dorms[0].address, dorms[0].floor);
+    await connection.commit();
+    return { created, skipped: roomIDs.filter(roomID => existingIDs.has(roomID)) };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally { connection.release(); }
+}
+
 export async function listUsersForAdmin() {
   const [rows]: [RowDataPacket[], any] = await pool.query(
     `SELECT userID, email, username, role, roomID, dormID, active, mustChangePassword
@@ -452,6 +508,12 @@ export async function updateUserForAdmin(
        credentialVersion = credentialVersion + 1 WHERE userID = ?`,
       [changes.email, changes.username, changes.role, assignedDormID, assignedRoomID, changes.active, userID]
     );
+    if (changes.active && assignedDormID != null) {
+      const [dormRows]: [RowDataPacket[], any] = await connection.query(
+        "SELECT address, floor FROM dorms WHERE dormID = ?", [assignedDormID]
+      );
+      await syncDormGeneralChat(connection, assignedDormID, dormRows[0].address, dormRows[0].floor);
+    }
     await connection.query(
       "UPDATE passwordResetTokens SET usedAt = NOW() WHERE userID = ? AND usedAt IS NULL",
       [userID]

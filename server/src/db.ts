@@ -39,7 +39,8 @@ const camelCaseColumns: Record<string, string> = {
   creatorusername: "creatorUsername", resolvedat: "resolvedAt", eligiblevoters: "eligibleVoters",
   approvecount: "approveCount", rejectcount: "rejectCount", currentuservote: "currentUserVote",
   adminnote: "adminNote", noteupdatedat: "noteUpdatedAt",
-  bio: "bio",
+  bio: "bio", isblocked: "isBlocked", isdirect: "isDirect", otheruserid: "otherUserID",
+  unreadcount: "unreadCount", lastreadmessageid: "lastReadMessageID",
 };
 
 function camelCaseRow<T extends QueryResultRow>(row: T): T {

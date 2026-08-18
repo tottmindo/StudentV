@@ -1,5 +1,5 @@
 <template>
-  <div class="relative h-72 w-full">
+  <div class="relative h-56 w-full xl:h-64">
     <canvas ref="canvas" :aria-label="t('charts.dailyFloorAria')"></canvas>
   </div>
 </template>

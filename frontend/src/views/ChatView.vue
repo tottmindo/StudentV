@@ -137,6 +137,7 @@ function handleHistory(data: ChatHistory) {
 function handleNewMessage(msg: ChatMessage) {
   if (!msg || msg.chatID !== selectedRoomID.value) return
   if (!messages.value.some(item => item.messageID === msg.messageID)) messages.value.push(msg)
+  if (msg.userID !== currentUserID) socket.emit('markChatRead', msg.chatID)
   scrollToBottom()
 }
 

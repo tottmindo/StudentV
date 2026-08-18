@@ -34,16 +34,16 @@
       <LanguageSelector class="hidden sm:inline-flex" />
       <button
         class="relative grid h-11 w-11 shrink-0 place-items-center rounded-xl transition hover:bg-surface focus:outline-none focus:ring-2 focus:ring-accent dark:hover:bg-surface-dark"
-        :class="[notifications.length ? 'text-accent' : 'opacity-65', { 'bell-ring': bellRinging }]"
+        :class="[notificationBadgeCount ? 'text-accent' : 'opacity-65', { 'bell-ring': bellRinging }]"
         type="button"
-        :aria-label="notifications.length ? t('notifications.countLabel', { count: notifications.length }) : t('notifications.noneLabel')"
+        :aria-label="notificationBadgeCount ? t('notifications.countLabel', { count: notificationBadgeCount }) : t('notifications.noneLabel')"
         @click="openNotifications"
       >
         <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
         </svg>
-        <span v-if="notifications.length" class="absolute right-0.5 top-0.5 min-w-[1.15rem] rounded-full bg-error px-1 text-center text-[10px] font-extrabold leading-[1.15rem] text-white ring-2 ring-background dark:ring-background-dark">
-          {{ notifications.length > 99 ? '99+' : notifications.length }}
+        <span v-if="notificationBadgeCount" class="absolute right-0.5 top-0.5 min-w-[1.15rem] rounded-full bg-error px-1 text-center text-[10px] font-extrabold leading-[1.15rem] text-white ring-2 ring-background dark:ring-background-dark">
+          {{ notificationBadgeCount > 99 ? '99+' : notificationBadgeCount }}
         </span>
       </button>
       <router-link to="/account" class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent font-bold text-white" :title="userLabel" :aria-label="t('nav.account')">
@@ -71,7 +71,8 @@
       </router-link>
       <p class="mb-2 px-3 text-xs font-bold uppercase tracking-wider opacity-45">{{ t('nav.residence') }}</p>
       <router-link v-for="item in visibleResidentLinks" :key="item.to" :to="item.to" class="nav-link" active-class="nav-link-active" @click="closeMenu">
-        <span class="w-6 text-center" aria-hidden="true">{{ item.icon }}</span><span>{{ item.label }}</span>
+        <span class="w-6 text-center" aria-hidden="true">{{ item.icon }}</span><span class="flex-1">{{ item.label }}</span>
+        <span v-if="item.to === '/chat' && unreadMessageTotal" class="min-w-6 rounded-full bg-error px-1.5 text-center text-xs font-extrabold text-white">{{ unreadMessageTotal > 99 ? '99+' : unreadMessageTotal }}</span>
       </router-link>
 
       <template v-if="isAdmin">
@@ -133,6 +134,7 @@ import LanguageSelector from '@/components/LanguageSelector.vue'
 import { useI18n } from 'vue-i18n'
 
 type PageInfo = { title: string; eyebrow: string; description: string; action?: { label: string; to: string; icon: string } }
+type UnreadChat = { chatID: number; name: string; unreadCount: number }
 
 const route = useRoute()
 const router = useRouter()
@@ -141,25 +143,34 @@ const socket = getSocket()
 const menuOpen = ref(false)
 const notificationsOpen = ref(false)
 const notifications = ref<AlertItem[]>([])
+const unreadChats = ref<UnreadChat[]>([])
 const displayedNotifications = ref<AlertItem[]>([])
 const bellRinging = ref(false)
 const receivedAlertIDs = ref<Set<number>>(new Set())
 let bellTimer: ReturnType<typeof setTimeout> | undefined
 const dashboardUser = ref<DashboardPayload['user'] | null>(null)
+const communitySummary = ref('')
 const closeButton = ref<HTMLButtonElement | null>(null)
 const notificationCloseButton = ref<HTMLButtonElement | null>(null)
 const isAdmin = computed(() => sessionStorage.getItem('userRole')?.toLowerCase() === 'admin')
 const userLabel = computed(() => dashboardUser.value?.name || sessionStorage.getItem('username') || sessionStorage.getItem('email') || t(isAdmin.value ? 'topbar.administrator' : 'topbar.resident'))
 const initials = computed(() => userLabel.value.split(/[\s@._-]+/).filter(Boolean).slice(0, 2).map(word => word[0]).join('').toUpperCase() || 'U')
-const notificationSummary = computed(() => displayedNotifications.value.length === 1 ? t('notifications.oneNew') : t('notifications.manyNew', { count: displayedNotifications.value.length }))
+const unreadMessageTotal = computed(() => unreadChats.value.reduce((total, room) => total + Number(room.unreadCount), 0))
+const chatNotifications = computed<AlertItem[]>(() => unreadChats.value.map(room => ({
+  id: 900000000 + room.chatID,
+  title: room.name,
+  description: t('notifications.unreadChatMessages', { count: room.unreadCount }),
+  route: `/chat?room=${room.chatID}`,
+  actionLabel: t('notifications.openChat'),
+})))
+const allNotifications = computed(() => [...chatNotifications.value, ...notifications.value])
+const notificationBadgeCount = computed(() => unreadMessageTotal.value + notifications.value.length)
+const notificationSummary = computed(() => notificationBadgeCount.value === 1 ? t('notifications.oneNew') : t('notifications.manyNew', { count: notificationBadgeCount.value }))
 
 const residentLinks = computed(() => [
   { label: t('nav.home'), to: '/home', icon: '⌂' },
   { label: t('nav.waterInsights'), to: '/stats', icon: '◒' },
-  { label: t('nav.events'), to: '/events', icon: '◇' },
   { label: t('nav.community'), to: '/community', icon: '◎' },
-  { label: t('nav.cleaning'), to: '/cleaning', icon: '✓' },
-  { label: t('nav.chats'), to: '/chat', icon: '○' },
 ])
 const visibleResidentLinks = computed(() => isAdmin.value ? residentLinks.value.filter(item => item.to !== '/community') : residentLinks.value)
 const adminLinks = computed(() => [
@@ -171,7 +182,7 @@ const adminLinks = computed(() => [
 const pages = computed<Record<string, PageInfo>>(() => ({
   stats: { title: t('nav.waterInsights'), eyebrow: t('topbar.yourFloor'), description: t('topbar.usageDescription'), action: { label: t('nav.home'), to: '/home', icon: '⌂' } },
   events: { title: t('nav.events'), eyebrow: t('nav.community'), description: t('topbar.calendarDescription'), action: { label: t('nav.cleaning'), to: '/cleaning', icon: '✓' } },
-  community: { title: t('nav.community'), eyebrow: t('nav.residence'), description: t('topbar.calendarDescription'), action: { label: t('nav.chats'), to: '/chat', icon: '○' } },
+  community: { title: t('communityHub.hub'), eyebrow: t('nav.residence'), description: communitySummary.value || t('communityHub.intro'), action: { label: t('nav.home'), to: '/home', icon: '⌂' } },
   cleaning: { title: t('nav.cleaning'), eyebrow: t('topbar.sharedSpaces'), description: t('topbar.cleaningDescription'), action: { label: t('nav.events'), to: '/events', icon: '◇' } },
   chat: { title: t('nav.chats'), eyebrow: t('nav.community'), description: t('topbar.chatDescription') },
   chatRoom: { title: t('topbar.conversation'), eyebrow: t('nav.chats'), description: t('topbar.chatDescription'), action: { label: t('topbar.allChats'), to: '/chat', icon: '←' } },
@@ -188,7 +199,7 @@ const homePage = computed<PageInfo>(() => {
   const hour = new Date().getHours()
   const greeting = t(hour < 12 ? 'topbar.morning' : hour < 18 ? 'topbar.afternoon' : 'topbar.evening')
   const location = user ? t('topbar.location', { house: user.house, floor: user.floor, room: user.room }) : t('topbar.glance')
-  return { title: userLabel.value, eyebrow: greeting, description: location, action: { label: t('topbar.viewWater'), to: '/stats', icon: '◒' } }
+  return { title: userLabel.value, eyebrow: greeting, description: location }
 })
 const page = computed(() => route.name === 'home' ? homePage.value : pages.value[String(route.name)] || { title: 'DORMS', eyebrow: t('topbar.residence'), description: t('topbar.fallbackDescription') })
 
@@ -207,7 +218,7 @@ function markNotificationsRead() {
   notifications.value = []
 }
 function openNotifications() {
-  displayedNotifications.value = [...notifications.value]
+  displayedNotifications.value = [...allNotifications.value]
   notificationsOpen.value = true
   markNotificationsRead()
 }
@@ -262,22 +273,45 @@ function handleKeydown(event: KeyboardEvent) {
   else closeMenu()
 }
 function requestDashboard() { if (!isAdmin.value) socket.emit('getDashboard') }
+function receiveCommunitySummary(event: Event) { communitySummary.value = (event as CustomEvent<string>).detail || '' }
+function requestUnreadChats() { if (!isAdmin.value) socket.emit('getChatUnreadCounts') }
+function receiveUnreadChats(data: unknown) {
+  if (!Array.isArray(data)) return
+  const previous = unreadMessageTotal.value
+  const activeChatID = route.name === 'chat' ? Number(route.query.room) : 0
+  unreadChats.value = data.filter((room): room is UnreadChat => Number.isInteger(room?.chatID) && room.chatID !== activeChatID && typeof room?.name === 'string' && Number(room?.unreadCount) > 0)
+  if (unreadMessageTotal.value > previous) {
+    bellRinging.value = false
+    requestAnimationFrame(() => {
+      bellRinging.value = true
+      if (bellTimer) clearTimeout(bellTimer)
+      bellTimer = setTimeout(() => { bellRinging.value = false }, 1400)
+    })
+  }
+}
 onMounted(() => {
   loadCachedNotifications()
   socket.on('dashboard', receiveDashboard)
   socket.on('connect', requestDashboard)
+  socket.on('authenticated', requestUnreadChats)
   socket.on('swapRequestUpdated', requestDashboard)
   socket.on('cleaningTaskProposalsUpdated', requestDashboard)
+  socket.on('chatUnreadCounts', receiveUnreadChats)
   requestDashboard()
+  requestUnreadChats()
   window.addEventListener('keydown', handleKeydown)
+  window.addEventListener('community-summary', receiveCommunitySummary)
 })
 onBeforeUnmount(() => {
   socket.off('dashboard', receiveDashboard)
   socket.off('connect', requestDashboard)
+  socket.off('authenticated', requestUnreadChats)
   socket.off('swapRequestUpdated', requestDashboard)
   socket.off('cleaningTaskProposalsUpdated', requestDashboard)
+  socket.off('chatUnreadCounts', receiveUnreadChats)
   if (bellTimer) clearTimeout(bellTimer)
   window.removeEventListener('keydown', handleKeydown)
+  window.removeEventListener('community-summary', receiveCommunitySummary)
   document.body.style.overflow = ''
 })
 </script>

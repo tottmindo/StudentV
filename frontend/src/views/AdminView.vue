@@ -28,6 +28,11 @@
         <h2 class="mt-5 text-2xl font-bold">{{ t('adminMain.sensors') }}</h2>
         <p class="mt-2 opacity-75">{{ t('adminMain.sensorsHelp') }}</p>
       </button>
+      <button class="rounded-2xl bg-surface p-8 text-left shadow-lg transition hover:-translate-y-1 hover:shadow-xl dark:bg-surface-dark" @click="openSection('buildings')">
+        <div class="text-4xl">🏠</div>
+        <h2 class="mt-5 text-2xl font-bold">{{ t('adminMain.buildings') }}</h2>
+        <p class="mt-2 opacity-75">{{ t('adminMain.buildingsHelp') }}</p>
+      </button>
     </div>
 
     <template v-else-if="activeSection === 'users'">
@@ -65,6 +70,46 @@
       <section class="flex flex-wrap items-center justify-between gap-5 rounded-2xl bg-surface p-6 shadow-lg dark:bg-surface-dark">
         <div class="max-w-3xl"><h2 class="text-xl font-bold">{{ t('adminMain.schedule') }}</h2><p class="mt-1 text-sm opacity-75">{{ t('adminMain.scheduleHelp') }}</p><p v-if="cleaningFeedback" class="mt-3 text-sm font-semibold" :class="cleaningFeedbackClass">{{ cleaningFeedback }}</p></div>
         <button :disabled="isGeneratingCleaning" class="rounded-lg bg-accent px-5 py-3 font-semibold text-white disabled:opacity-50" @click="generateCleaningSchedule">{{ t(isGeneratingCleaning ? 'adminMain.checkingSchedule' : 'adminMain.generateWeeks') }}</button>
+      </section>
+    </template>
+
+    <template v-else-if="activeSection === 'buildings'">
+      <div class="grid gap-6 lg:grid-cols-2">
+        <section class="rounded-2xl bg-surface p-8 shadow-lg dark:bg-surface-dark">
+          <h2 class="text-2xl font-bold">{{ t('adminMain.addFloor') }}</h2>
+          <p class="mt-2 text-sm opacity-75">{{ t('adminMain.addFloorHelp') }}</p>
+          <form class="mt-6 space-y-4" @submit.prevent="createFloor">
+            <input v-model.trim="newAddress" required maxlength="255" class="w-full rounded border border-border p-3" :placeholder="t('adminMain.addressPlaceholder')" />
+            <input v-model.number="newFloor" required type="number" min="-10" max="200" class="w-full rounded border border-border p-3" :placeholder="t('adminMain.floorNumber')" />
+            <textarea v-model="newFloorRooms" required rows="4" class="w-full rounded border border-border p-3" :placeholder="t('adminMain.roomsPlaceholder')"></textarea>
+            <p class="text-xs opacity-65">{{ t('adminMain.generalChatAutomation') }}</p>
+            <button :disabled="isSavingBuilding || !parsedFloorRooms.length" class="w-full rounded-lg bg-accent p-3 font-semibold text-white disabled:opacity-50">{{ t(isSavingBuilding ? 'adminMain.savingBuilding' : 'adminMain.createFloor') }}</button>
+          </form>
+        </section>
+
+        <section class="rounded-2xl bg-surface p-8 shadow-lg dark:bg-surface-dark">
+          <h2 class="text-2xl font-bold">{{ t('adminMain.addRooms') }}</h2>
+          <p class="mt-2 text-sm opacity-75">{{ t('adminMain.addRoomsHelp') }}</p>
+          <form class="mt-6 space-y-4" @submit.prevent="addRooms">
+            <select v-model.number="roomDormID" required class="w-full rounded border border-border p-3"><option disabled value="">{{ t('adminMain.selectDorm') }}</option><option v-for="dorm in dorms" :key="dorm.dormID" :value="dorm.dormID">{{ dormLabel(dorm) }}</option></select>
+            <textarea v-model="newRooms" required rows="4" class="w-full rounded border border-border p-3" :placeholder="t('adminMain.roomsPlaceholder')"></textarea>
+            <button :disabled="isSavingBuilding || !parsedNewRooms.length" class="w-full rounded-lg bg-accent p-3 font-semibold text-white disabled:opacity-50">{{ t(isSavingBuilding ? 'adminMain.savingBuilding' : 'adminMain.addRoomsAction') }}</button>
+          </form>
+        </section>
+      </div>
+
+      <p v-if="buildingFeedback" class="rounded-lg bg-surface p-4 font-semibold shadow dark:bg-surface-dark" :class="buildingFeedbackClass">{{ buildingFeedback }}</p>
+
+      <section class="rounded-2xl bg-surface p-6 shadow-lg dark:bg-surface-dark">
+        <h2 class="text-2xl font-bold">{{ t('adminMain.housesAndFloors') }}</h2>
+        <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <article v-for="dorm in dorms" :key="dorm.dormID" class="rounded-xl border border-border p-4">
+            <h3 class="font-bold">{{ dorm.address }}</h3>
+            <p class="mt-1 opacity-75">{{ t('survey.floor', { floor: dorm.floor }) }}</p>
+            <p class="mt-3 text-sm">{{ t('adminMain.roomCount', { count: dorm.rooms.length }) }}</p>
+            <p class="mt-1 break-words text-sm opacity-65">{{ dorm.rooms.join(', ') || '—' }}</p>
+          </article>
+        </div>
       </section>
     </template>
 
@@ -135,7 +180,7 @@ type SensorSortKey = keyof Sensor
 
 const socket = getSocket()
 const { t, locale } = useI18n()
-const activeSection = ref<'users' | 'sensors' | null>(null)
+const activeSection = ref<'users' | 'sensors' | 'buildings' | null>(null)
 const dorms = ref<Dorm[]>([]), users = ref<User[]>([]), sensors = ref<Sensor[]>([])
 const email = ref(''), dormID = ref<number | ''>(''), roomID = ref<number | ''>(''), createRole = ref<'STUDENT' | 'ADMIN'>('STUDENT'), filterDorm = ref('all')
 const resetEmail = ref(''), resetDormID = ref<number | ''>(''), isSubmitting = ref(false), isResetting = ref(false), isSaving = ref(false)
@@ -147,9 +192,22 @@ const sensorFeedback = ref(''), sensorFeedbackClass = ref(''), editingSensor = r
 const isImportingHistory = ref(false), historicalImportFeedback = ref(''), historicalImportFeedbackClass = ref('')
 const sensorSortKey = ref<SensorSortKey>('sensorCode'), sensorSortDirection = ref<1 | -1>(1)
 const sensorHouseFilter = ref('all'), sensorFloorFilter = ref('all')
+const newAddress = ref(''), newFloor = ref<number | ''>(''), newFloorRooms = ref(''), roomDormID = ref<number | ''>(''), newRooms = ref('')
+const isSavingBuilding = ref(false), buildingFeedback = ref(''), buildingFeedbackClass = ref('')
 const sensorColumns = computed<{ key: SensorSortKey; label: string }[]>(() => [{ key: 'sensorCode', label: t('adminMain.sensorId') }, { key: 'type', label: t('common.type') }, { key: 'location', label: t('common.location') }, { key: 'dormAddress', label: t('adminMain.dorm') }, { key: 'recordedAt', label: t('adminMain.lastReading') }, { key: 'errorCode', label: t('adminMain.attention') }, { key: 'adminNote', label: t('adminMain.adminNote') }])
 
-const sectionTitle = computed(() => t(activeSection.value === 'users' ? 'adminMain.users' : activeSection.value === 'sensors' ? 'adminMain.sensors' : 'adminMain.chooseArea'))
+const sectionTitle = computed(() => t(activeSection.value === 'users' ? 'adminMain.users' : activeSection.value === 'sensors' ? 'adminMain.sensors' : activeSection.value === 'buildings' ? 'adminMain.buildings' : 'adminMain.chooseArea'))
+function parseRoomIDs(value: string) {
+  const roomIDs: number[] = []
+  for (const part of value.split(/[\s,;]+/).filter(Boolean)) {
+    const range = part.match(/^(\d+)-(\d+)$/)
+    if (range) { const start = Number(range[1]), end = Number(range[2]); if (end >= start && end - start <= 499) for (let room = start; room <= end; room++) roomIDs.push(room) }
+    else if (/^\d+$/.test(part) && Number(part) > 0) roomIDs.push(Number(part))
+  }
+  return [...new Set(roomIDs)].slice(0, 500)
+}
+const parsedFloorRooms = computed(() => parseRoomIDs(newFloorRooms.value))
+const parsedNewRooms = computed(() => parseRoomIDs(newRooms.value))
 const parsedSensorCodes = computed(() => [...new Set(newSensorCodes.value.split(/[\s,;]+/).map(code => code.trim().toLowerCase()).filter(Boolean))])
 const selectedRooms = (id: number | '' | null) => dorms.value.find(dorm => dorm.dormID === Number(id))?.rooms || []
 const dormLabel = (dorm: Dorm) => `${dorm.address}, ${t('survey.floor', { floor: dorm.floor })}`
@@ -175,11 +233,14 @@ const headers = () => ({ 'Content-Type': 'application/json', Authorization: `Bea
 async function loadDorms() { const response = await fetch(apiUrl('/api/auth/admin/dorms'), { headers: headers() }); if (!response.ok) throw new Error(t('adminMain.loadDorms')); dorms.value = await response.json() }
 async function loadUsers() { const response = await fetch(apiUrl('/api/auth/admin/users'), { headers: headers() }); if (!response.ok) throw new Error(t('adminMain.loadUsers')); users.value = await response.json() }
 async function loadSensors() { const response = await fetch(apiUrl('/api/sensor-data/admin/sensors'), { headers: headers() }); if (!response.ok) throw new Error(t('adminMain.loadSensors')); sensors.value = await response.json() }
-async function openSection(section: 'users' | 'sensors') { activeSection.value = section; try { await (section === 'users' ? loadUsers() : loadSensors()) } catch (error) { sensorFeedback.value = error instanceof Error ? error.message : t('adminMain.loadAdmin'); sensorFeedbackClass.value = 'text-red-500' } }
+async function openSection(section: 'users' | 'sensors' | 'buildings') { activeSection.value = section; try { if (section === 'users') await loadUsers(); else if (section === 'sensors') await loadSensors(); else await loadDorms() } catch (error) { sensorFeedback.value = error instanceof Error ? error.message : t('adminMain.loadAdmin'); sensorFeedbackClass.value = 'text-red-500' } }
 function sortSensors(key: SensorSortKey) { if (sensorSortKey.value === key) sensorSortDirection.value *= -1; else { sensorSortKey.value = key; sensorSortDirection.value = 1 } }
 function sortIndicator(key: SensorSortKey) { return sensorSortKey.value === key ? (sensorSortDirection.value === 1 ? '▲' : '▼') : '↕' }
 function formatDate(value: string | null) { return value ? new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : t('common.noData') }
 function sensorStatus(sensor: Sensor) { if (sensor.leakStatus) return { label: t('adminMain.leakReported'), class: 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300' }; if (Number(sensor.errorCode)) return { label: t('adminMain.errorCode', { code: sensor.errorCode }), class: 'bg-orange-100 text-orange-800 dark:bg-orange-950/50 dark:text-orange-300' }; if (!sensor.recordedAt || Date.now() - new Date(sensor.recordedAt).getTime() > 26 * 60 * 60 * 1000) return { label: t('adminMain.noRecent'), class: 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200' }; return { label: t('adminMain.noIssues'), class: 'bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-300' } }
+
+async function createFloor() { isSavingBuilding.value = true; buildingFeedback.value = ''; try { const response = await fetch(apiUrl('/api/auth/admin/dorms'), { method: 'POST', headers: headers(), body: JSON.stringify({ address: newAddress.value, floor: newFloor.value, roomIDs: parsedFloorRooms.value }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error || t('adminMain.createFloorError')); buildingFeedback.value = t('adminMain.floorCreated', { address: data.address, floor: data.floor, count: data.rooms.length }); buildingFeedbackClass.value = 'text-green-600'; newAddress.value = ''; newFloor.value = ''; newFloorRooms.value = ''; await loadDorms() } catch (error) { buildingFeedback.value = error instanceof Error ? error.message : t('adminMain.createFloorError'); buildingFeedbackClass.value = 'text-red-500' } finally { isSavingBuilding.value = false } }
+async function addRooms() { isSavingBuilding.value = true; buildingFeedback.value = ''; try { const response = await fetch(apiUrl(`/api/auth/admin/dorms/${roomDormID.value}/rooms`), { method: 'POST', headers: headers(), body: JSON.stringify({ roomIDs: parsedNewRooms.value }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error || t('adminMain.addRoomsError')); buildingFeedback.value = t('adminMain.roomsAdded', { created: data.created.length, skipped: data.skipped.length }); buildingFeedbackClass.value = 'text-green-600'; newRooms.value = ''; await loadDorms() } catch (error) { buildingFeedback.value = error instanceof Error ? error.message : t('adminMain.addRoomsError'); buildingFeedbackClass.value = 'text-red-500' } finally { isSavingBuilding.value = false } }
 
 async function addSensors() { isAddingSensors.value = true; sensorFeedback.value = ''; try { const response = await fetch(apiUrl('/api/sensor-data/admin/sensors'), { method: 'POST', headers: headers(), body: JSON.stringify({ sensorCodes: parsedSensorCodes.value, type: newSensorType.value, location: newSensorLocation.value, dormID: newSensorDormID.value }) }); const data = await response.json(); if (!response.ok) throw new Error(t('adminMain.addSensorsError')); sensorFeedback.value = t('adminMain.sensorsRegistered', { created: data.created.length, skipped: data.skipped.length }); sensorFeedbackClass.value = 'text-green-600'; newSensorCodes.value = ''; await loadSensors() } catch (error) { sensorFeedback.value = error instanceof Error ? error.message : t('adminMain.addSensorsError'); sensorFeedbackClass.value = 'text-red-500' } finally { isAddingSensors.value = false } }
 async function importHistoricalData() { if (!confirm(t('adminMain.recoveryConfirm'))) return; isImportingHistory.value = true; historicalImportFeedback.value = t('adminMain.importStarting'); historicalImportFeedbackClass.value = ''; try { const response = await fetch(apiUrl('/api/sensor-data/admin/import-historical'), { method: 'POST', headers: headers() }); if (!response.ok && response.status !== 409) throw new Error(t('adminMain.importStartError')); while (true) { const statusResponse = await fetch(apiUrl('/api/sensor-data/admin/import-historical'), { headers: headers() }); const statusData = await statusResponse.json(); if (!statusResponse.ok) throw new Error(t('adminMain.importProgressError')); const job = statusData.job; const progress = job.progress; if (progress) historicalImportFeedback.value = t('adminMain.importProgress', { completed: progress.batchesCompleted, total: progress.totalBatches, date: formatDate(new Date(progress.startedFrom * 1000).toISOString()), snapshots: progress.snapshots, retries: progress.retries || 0 }); if (job.status === 'completed') { historicalImportFeedback.value = t('adminMain.importComplete', { snapshots: progress.snapshots, batches: progress.totalBatches }); historicalImportFeedbackClass.value = 'text-green-700 dark:text-green-400'; await loadSensors(); break } if (job.status === 'failed') throw new Error(t('adminMain.importFailed')); await new Promise(resolve => setTimeout(resolve, 2000)) } } catch (error) { historicalImportFeedback.value = error instanceof Error ? error.message : t('adminMain.importError'); historicalImportFeedbackClass.value = 'text-red-600' } finally { isImportingHistory.value = false } }

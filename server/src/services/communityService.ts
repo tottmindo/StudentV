@@ -11,16 +11,17 @@ export async function listDormCommunity(userID: number, dormID: number) {
 
   const [residents]: [RowDataPacket[], any] = await pool.query(
     `SELECT u.userID, u.username, u.roomID, COALESCE(rp.bio, '') AS bio,
-            rp.updatedAt
+            rp.updatedAt, (cb.blockerUserID IS NOT NULL) AS isBlocked
      FROM users u
      LEFT JOIN residentProfiles rp ON rp.userID = u.userID
+     LEFT JOIN chatBlocks cb ON cb.blockerUserID = ? AND cb.blockedUserID = u.userID
      WHERE u.dormID = ?
        AND u.role = 'STUDENT'
        AND u.active = TRUE
        AND u.username IS NOT NULL
        AND u.mustChangePassword = FALSE
      ORDER BY u.roomID ASC, LOWER(u.username) ASC`,
-    [dormID]
+    [userID, dormID]
   );
 
   return {

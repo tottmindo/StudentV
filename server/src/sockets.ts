@@ -391,6 +391,16 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
     }
   });
 
+  const emitUnreadChats = async (target = socket) => target.emit("chatUnreadCounts", await data.getChatUnreadCounts(userID));
+  socket.on("getChatUnreadCounts", async() => {
+    try { await emitUnreadChats(); }
+    catch (err) { console.error("Error fetching unread chats:", err); }
+  });
+  socket.on("markChatRead", async(chatID: number) => {
+    try { await data.markChatRead(chatID, userID); await emitUnreadChats(); }
+    catch (err) { console.error("Error marking chat as read:", err); }
+  });
+
   socket.on("joinChatRoom", async(chatID: number) => {
     try{
       if (!Number.isInteger(chatID) || chatID <= 0) throw new Error("Invalid chat room.");
@@ -402,9 +412,11 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
       }
       await socket.join(`chat-${chatID}`);
       console.log(`Joined socket chat-${chatID}`)
-      const logs = await data.getChatHistory(chatID);
-      const name = await data.getChatName(chatID);
+      const logs = await data.getChatHistory(chatID, userID);
+      const name = await data.getChatName(chatID, userID);
       socket.emit("chatHistory", {chatID, logs, name});
+      await data.markChatRead(chatID, userID);
+      await emitUnreadChats();
     }catch(err:any){
       socket.leave(`chat-${chatID}`);
       socket.emit("error", { message: "Failed to fetch chat logs "});
@@ -429,7 +441,14 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
           return;
         }
         const newMessage = await data.newMessage(cleanMessage, chatID, userID);
-        getIO().to(`chat-${chatID}`).emit("newMessage", newMessage)
+        const recipients = await data.getChatMessageRecipients(chatID, userID);
+        for (const recipientID of recipients) {
+          getIO().to(`user-${recipientID}`).emit("newMessage", newMessage);
+          if (recipientID !== userID) {
+            const unread = await data.getChatUnreadCounts(recipientID);
+            getIO().to(`user-${recipientID}`).emit("chatUnreadCounts", unread);
+          }
+        }
 
         if (typeof callback === "function"){
           callback(newMessage);

@@ -53,6 +53,17 @@ export const adminUpdateUserSchema = requireStudentLocation(z.object({
   replaceExisting: z.boolean().optional(),
 }));
 
+const roomIDsSchema = z.array(z.coerce.number().int().positive()).min(1).max(500)
+  .transform(roomIDs => [...new Set(roomIDs)]);
+
+export const createDormFloorSchema = z.object({
+  address: z.string().trim().min(2).max(255),
+  floor: z.coerce.number().int().min(-10).max(200),
+  roomIDs: roomIDsSchema,
+});
+
+export const addDormRoomsSchema = z.object({ roomIDs: roomIDsSchema });
+
 export const changePasswordSchema = z.object({
   username: z.string().trim().min(3).max(50),
   newPassword: z.string().min(12).max(128),

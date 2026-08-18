@@ -23,8 +23,8 @@
  * @throws {401} - Authentication failed
  */
 import express from "express";
-import { adminResetResidentPassword, completeTemporaryPassword, generateTemporaryPassword, getAccount, registerUser, loginUser, requestPasswordReset, resetPasswordWithToken, updatePassword, updateUsername, listDormsForAdmin, listUsersForAdmin, updateUserForAdmin } from "../services/authService.js";
-import { adminResetPasswordSchema, adminUpdateUserSchema, changePasswordSchema, createResidentSchema, emailSchema, registerSchema, loginSchema, resetPasswordSchema, updateAccountSchema, updatePasswordSchema } from "../validators/authSchemas.js";
+import { addRoomsToDorm, adminResetResidentPassword, completeTemporaryPassword, createDormFloor, generateTemporaryPassword, getAccount, registerUser, loginUser, requestPasswordReset, resetPasswordWithToken, updatePassword, updateUsername, listDormsForAdmin, listUsersForAdmin, updateUserForAdmin } from "../services/authService.js";
+import { addDormRoomsSchema, adminResetPasswordSchema, adminUpdateUserSchema, changePasswordSchema, createDormFloorSchema, createResidentSchema, emailSchema, registerSchema, loginSchema, resetPasswordSchema, updateAccountSchema, updatePasswordSchema } from "../validators/authSchemas.js";
 import { validate } from "../middleware/validate.js";
 import { authenticate, AuthenticatedRequest, requireAdmin, requireCompletedAccount } from "../middleware/authenticate.js";
 import { sendResidentWelcomeEmail } from "../services/emailService.js";
@@ -99,6 +99,16 @@ router.post("/complete-temporary-password", authenticate, validate(changePasswor
 router.get("/admin/dorms", authenticate, requireCompletedAccount, requireAdmin, async (_req, res) => {
   try { res.json(await listDormsForAdmin()); }
   catch { res.status(500).json({ error: "Could not load dorms." }); }
+});
+
+router.post("/admin/dorms", authenticate, requireCompletedAccount, requireAdmin, validate(createDormFloorSchema), async (req, res) => {
+  try { res.status(201).json(await createDormFloor(req.body.address, req.body.floor, req.body.roomIDs)); }
+  catch (error: any) { res.status(error.message?.includes("already exists") ? 409 : 400).json({ error: error.message || "Could not create dorm floor." }); }
+});
+
+router.post("/admin/dorms/:dormID/rooms", authenticate, requireCompletedAccount, requireAdmin, validate(addDormRoomsSchema), async (req, res) => {
+  try { res.status(201).json(await addRoomsToDorm(Number(req.params.dormID), req.body.roomIDs)); }
+  catch (error: any) { res.status(error.message === "Dorm floor not found." ? 404 : 400).json({ error: error.message || "Could not add rooms." }); }
 });
 
 router.get("/admin/users", authenticate, requireCompletedAccount, requireAdmin, async (_req, res) => {

@@ -11,8 +11,8 @@
     {{ notification.message }}
   </div>
 
-  <main class="h-[calc(100dvh-4rem-env(safe-area-inset-top))] overflow-hidden bg-background p-3 dark:bg-background-dark sm:p-6">
-    <div class="grid h-full min-h-0 grid-rows-2 gap-3 sm:gap-6 lg:grid-cols-[1.4fr_1fr] lg:grid-rows-1">
+  <main class="min-h-[calc(100dvh-4rem-env(safe-area-inset-top))] space-y-6 bg-background p-3 dark:bg-background-dark sm:p-6">
+    <div class="grid h-[calc(100dvh-7rem-env(safe-area-inset-top))] min-h-[38rem] grid-rows-2 gap-3 sm:gap-6 lg:grid-cols-[1.4fr_1fr] lg:grid-rows-1">
 
       <!-- =====================================================
            WEEKS LIST
@@ -234,7 +234,7 @@
             {{ t('cleaningView.currentOnly') }}
           </p>
 
-          <router-link to="/community#task-votes" class="mt-4 inline-flex rounded-lg border border-accent px-4 py-2 text-sm font-bold text-accent hover:bg-accent/10">{{ t('cleaningView.communityTasks') }} →</router-link>
+          <a href="#task-votes" class="mt-4 inline-flex rounded-lg border border-accent px-4 py-2 text-sm font-bold text-accent hover:bg-accent/10">{{ t('cleaningView.communityTasks') }} →</a>
 
         </div>
 
@@ -250,6 +250,8 @@
       </section>
 
     </div>
+
+    <CleaningTaskGovernance />
 
     <!-- =====================================================
          SWAP MODAL
@@ -327,6 +329,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { getSocket } from '@/composables/socket'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import CleaningTaskGovernance from '@/components/CleaningTaskGovernance.vue'
 
 const socket = getSocket()
 const route = useRoute()

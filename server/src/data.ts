@@ -961,7 +961,7 @@ class Data {
         alerts.push({
           id: 800000 + Number(vote.proposalID), title: "Cleaning task vote open",
           description: `${vote.creatorUsername} proposed to ${action}. Your vote can help the dorm reach a majority.`,
-          route: "/community#task-votes", actionLabel: "Vote now",
+          route: "/cleaning#task-votes", actionLabel: "Vote now",
         });
       }
 
@@ -1794,11 +1794,21 @@ async createSurvey(survey: any) {
 
   async getChatRooms(dormID: number, userID: number){
     try {
-      const query = `SELECT c.* FROM chat c
+      const query = `SELECT c.chatID, c.createdAt, c.dormID,
+                       COALESCE(otherUser.username, c.name) AS name,
+                       (direct.chatID IS NOT NULL) AS isDirect,
+                       otherUser.userID AS otherUserID,
+                       (blocks.blockerUserID IS NOT NULL) AS isBlocked
+                     FROM chat c
                      JOIN chatMembers cm ON cm.chatID = c.chatID
+                     LEFT JOIN chatDirectConversations direct ON direct.chatID = c.chatID
+                     LEFT JOIN users otherUser ON otherUser.userID = CASE
+                       WHEN direct.user1ID = ? THEN direct.user2ID
+                       WHEN direct.user2ID = ? THEN direct.user1ID END
+                     LEFT JOIN chatBlocks blocks ON blocks.blockerUserID = ? AND blocks.blockedUserID = otherUser.userID
                      WHERE c.dormID = ? AND cm.userID = ?
                      ORDER BY c.chatID`;
-      const [rows] = await pool.query(query, [dormID, userID]);
+      const [rows] = await pool.query(query, [userID, userID, userID, dormID, userID]);
       return rows as any;
     }catch (err){
       console.error(`Error fetching chat rooms for dorm ${dormID}`, err);
@@ -1806,13 +1816,18 @@ async createSurvey(survey: any) {
     }
   }
 
-  async getChatHistory(chatID: number){
+  async getChatHistory(chatID: number, viewerUserID: number){
     try{
       const query = `SELECT ch.*, u.username FROM
                      chatHistory ch JOIN users u ON
                      ch.userID = u.userID WHERE ch.chatID = ?
+                     AND NOT EXISTS (
+                       SELECT 1 FROM chatDirectConversations direct
+                       JOIN chatBlocks blocks ON blocks.blockerUserID = ? AND blocks.blockedUserID = ch.userID
+                       WHERE direct.chatID = ch.chatID
+                     )
                      ORDER BY ch.sentAt DESC`;
-      const [rows] = await pool.query(query, [chatID]);
+      const [rows] = await pool.query(query, [chatID, viewerUserID]);
       return rows as any;
     }catch (err){
       console.error(`Error fetching chat logs for chat ${chatID}`);
@@ -1820,10 +1835,16 @@ async createSurvey(survey: any) {
     }
   }
 
-  async getChatName(chatID: number){
+  async getChatName(chatID: number, viewerUserID: number){
     try{
-      const query = `SELECT name FROM chat WHERE chatID = ?`;
-      const [rows]: any = await pool.query(query, [chatID]);
+      const query = `SELECT COALESCE(otherUser.username, c.name) AS name
+                     FROM chat c
+                     LEFT JOIN chatDirectConversations direct ON direct.chatID = c.chatID
+                     LEFT JOIN users otherUser ON otherUser.userID = CASE
+                       WHEN direct.user1ID = ? THEN direct.user2ID
+                       WHEN direct.user2ID = ? THEN direct.user1ID END
+                     WHERE c.chatID = ?`;
+      const [rows]: any = await pool.query(query, [viewerUserID, viewerUserID, chatID]);
 
       return rows[0]?.name;
     }catch (err){
@@ -1857,6 +1878,48 @@ async createSurvey(survey: any) {
       console.error("Error creating chat message", err);
       throw err;
     }
+  }
+
+  async getChatMessageRecipients(chatID: number, senderUserID: number) {
+    const [rows]: any = await pool.query(
+      `SELECT cm.userID FROM chatMembers cm
+       WHERE cm.chatID = ? AND NOT EXISTS (
+         SELECT 1 FROM chatDirectConversations direct
+         JOIN chatBlocks blocks ON blocks.blockerUserID = cm.userID AND blocks.blockedUserID = ?
+         WHERE direct.chatID = cm.chatID
+       )`, [chatID, senderUserID]);
+    return rows.map((row: any) => Number(row.userID));
+  }
+
+  async markChatRead(chatID: number, userID: number) {
+    if (!await this.hasAccessToChat(chatID, userID)) throw new Error("You do not have access to this chat.");
+    await pool.query(
+      `INSERT INTO chatReadState (chatID, userID, lastReadMessageID)
+       SELECT ?, ?, COALESCE(MAX(messageID), 0) FROM chatHistory WHERE chatID = ?
+       ON CONFLICT (chatID, userID) DO UPDATE SET
+         lastReadMessageID = GREATEST(chatReadState.lastReadMessageID, EXCLUDED.lastReadMessageID),
+         updatedAt = CURRENT_TIMESTAMP`, [chatID, userID, chatID]);
+  }
+
+  async getChatUnreadCounts(userID: number) {
+    const [rows]: any = await pool.query(
+      `SELECT c.chatID, COALESCE(otherUser.username, c.name) AS name, COUNT(ch.messageID)::int AS unreadCount
+       FROM chatMembers cm
+       JOIN chat c ON c.chatID = cm.chatID
+       LEFT JOIN chatDirectConversations direct ON direct.chatID = c.chatID
+       LEFT JOIN users otherUser ON otherUser.userID = CASE
+         WHEN direct.user1ID = ? THEN direct.user2ID WHEN direct.user2ID = ? THEN direct.user1ID END
+       LEFT JOIN chatReadState readState ON readState.chatID = c.chatID AND readState.userID = cm.userID
+       JOIN chatHistory ch ON ch.chatID = c.chatID AND ch.userID <> cm.userID
+         AND ch.messageID > COALESCE(readState.lastReadMessageID, 0)
+       WHERE cm.userID = ? AND NOT EXISTS (
+         SELECT 1 FROM chatDirectConversations blockedDirect
+         JOIN chatBlocks blocks ON blocks.blockerUserID = cm.userID AND blocks.blockedUserID = ch.userID
+         WHERE blockedDirect.chatID = c.chatID
+       )
+       GROUP BY c.chatID, otherUser.username, c.name
+       ORDER BY MAX(ch.messageID) DESC`, [userID, userID, userID]);
+    return rows;
   }
 
 async hasAccessToChat(chatID: number, userID: number) {

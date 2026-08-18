@@ -1,6 +1,6 @@
 <template>
-  <main class="min-h-screen bg-background-light px-4 py-6 text-text dark:bg-background-dark dark:text-text-dark sm:px-6 lg:px-8">
-    <div class="mx-auto max-w-7xl space-y-6">
+  <main class="home-dashboard min-h-[calc(100dvh-4rem)] bg-background-light px-4 py-4 text-text dark:bg-background-dark dark:text-text-dark sm:px-6 lg:h-[calc(100dvh-4rem)] lg:min-h-0 lg:px-8 lg:py-3">
+    <div class="mx-auto max-w-7xl space-y-4 lg:h-full">
       <div v-if="isLoading" class="grid min-h-[55vh] place-items-center" role="status"><div class="text-center"><span class="mx-auto block h-10 w-10 animate-spin rounded-full border-4 border-accent/20 border-t-accent"></span><p class="mt-4 font-semibold">{{ t('home.loading') }}</p></div></div>
 
       <template v-else>
@@ -45,8 +45,6 @@
           </section>
         </div>
 
-        <section aria-labelledby="shortcuts-heading"><div class="mb-3"><p class="text-xs font-bold uppercase tracking-[.14em] text-accent">{{ t('home.explore') }}</p><h2 id="shortcuts-heading" class="text-2xl font-bold">{{ t('nav.residence') }}</h2></div><div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><router-link v-for="item in residentShortcuts" :key="item.to" :to="item.to" class="group rounded-2xl border border-border-border bg-background p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-accent dark:bg-surface-dark"><span class="text-2xl">{{ item.icon }}</span><h3 class="mt-3 font-bold group-hover:text-accent">{{ item.title }}</h3><p class="mt-1 text-sm opacity-65">{{ item.description }}</p></router-link></div></section>
-
         <section v-if="isAdmin" class="rounded-3xl border border-accent/25 bg-accent/5 p-5 sm:p-6" aria-labelledby="admin-heading"><div class="flex flex-wrap items-end justify-between gap-3"><div><p class="text-xs font-bold uppercase tracking-[.14em] text-accent">{{ t('topbar.administrator') }}</p><h2 id="admin-heading" class="text-2xl font-bold">{{ t('home.managementWorkspace') }}</h2><p class="mt-1 text-sm opacity-65">{{ t('home.managementHelp') }}</p></div><router-link to="/admin" class="rounded-xl bg-accent px-4 py-2.5 text-sm font-bold text-white">{{ t('home.openAdmin') }}</router-link></div><div class="mt-5 grid gap-3 sm:grid-cols-3"><router-link v-for="item in adminShortcuts" :key="item.to" :to="item.to" class="rounded-2xl bg-background p-4 font-bold shadow-sm hover:text-accent dark:bg-surface-dark"><span class="mr-2">{{ item.icon }}</span>{{ item.label }} →</router-link></div></section>
       </template>
     </div>
@@ -85,12 +83,6 @@ const weekDays = computed(() => Array.from({ length: 7 }, (_, index) => {
 }))
 const comparisonPercent = computed(() => waterConsumption.value.historicalWeeklyAverageLiters ? ((waterConsumption.value.currentWeekLiters - waterConsumption.value.historicalWeeklyAverageLiters) / waterConsumption.value.historicalWeeklyAverageLiters) * 100 : 0)
 const comparisonLabel = computed(() => { if (!waterConsumption.value.historicalWeeklyAverageLiters) return t('home.noComparison'); if (Math.abs(comparisonPercent.value) < 0.5) return t('home.aboutAverage'); return t('home.averageComparison', { percent: Math.abs(comparisonPercent.value).toFixed(0), direction: t(comparisonPercent.value < 0 ? 'home.below' : 'home.above') }) })
-const residentShortcuts = computed(() => [
-  { title: t('nav.cleaning'), description: t('home.cleaningHelp'), to: '/cleaning', icon: '✓' },
-  { title: t('nav.events'), description: t('home.eventsHelp'), to: '/events', icon: '◇' },
-  { title: t('nav.chats'), description: t('home.chatsHelp'), to: '/chat', icon: '○' },
-  { title: t('home.account'), description: t('home.accountHelp'), to: '/account', icon: '◎' },
-])
 const adminShortcuts = computed(() => [{ label: t('home.usersSensors'), to: '/admin', icon: '⚙' }, { label: t('nav.waterAnalytics'), to: '/admin/water-analytics', icon: '▥' }, { label: t('home.manageSurveys'), to: '/survey', icon: '≡' }])
 
 function formatLiters(value: number) { return `${Math.round(value).toLocaleString(locale.value)} L` }
@@ -129,3 +121,71 @@ function loadCache() { try { const cached = JSON.parse(sessionStorage.getItem('d
 onMounted(() => { loadCache(); socket.on('dashboard', applyDashboard); socket.on('error', receiveError); socket.on('swapRequestUpdated', requestDashboard); requestDashboard() })
 onBeforeUnmount(() => { socket.off('dashboard', applyDashboard); socket.off('error', receiveError); socket.off('swapRequestUpdated', requestDashboard) })
 </script>
+
+<style scoped>
+.home-dashboard section[aria-labelledby="attention-heading"] > .grid {
+  max-height: 8rem;
+  overflow-y: auto;
+  padding-right: .25rem;
+  scrollbar-gutter: stable;
+}
+
+.home-dashboard section[aria-labelledby="attention-heading"] article {
+  min-height: 5.5rem;
+  gap: .75rem;
+  padding: .75rem;
+}
+
+.home-dashboard section[aria-labelledby="attention-heading"] article > span:first-child {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: .625rem;
+  font-size: 1rem;
+}
+
+.home-dashboard section[aria-labelledby="attention-heading"] article a > span:last-child {
+  margin-top: .25rem;
+}
+
+.home-dashboard section[aria-labelledby="attention-heading"] article strong {
+  font-size: 1rem;
+}
+
+.home-dashboard section[aria-labelledby="attention-heading"] article button {
+  width: 2rem;
+  height: 2rem;
+}
+
+@media (min-width: 1024px) {
+  .home-dashboard section[aria-labelledby="attention-heading"] > .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .home-dashboard > div {
+    display: flex;
+    flex-direction: column;
+    gap: .75rem;
+  }
+
+  .home-dashboard > div > * {
+    margin-top: 0;
+  }
+
+  .home-dashboard > div > div.grid {
+    min-height: 0;
+    flex: 1;
+    gap: 1rem;
+  }
+
+  .home-dashboard > div > div.grid > section {
+    min-height: 0;
+    overflow: hidden;
+    padding: 1rem;
+  }
+
+  .home-dashboard section[aria-labelledby="attention-heading"] article {
+    min-height: 5.5rem;
+    padding: .75rem;
+  }
+}
+</style>

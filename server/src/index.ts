@@ -45,10 +45,12 @@ import "./config/env.js";
 import { setIO } from "./routes/socketManager.js";
 import { getJwtSecret } from "./config/jwt.js";
 import { ensureCommunityGovernanceSchema } from "./services/communityService.js";
+import { ensureChatSchema } from "./services/chatService.js";
 console.log('Scoring scheduler started...');
 
 const app = express();
 await ensureCommunityGovernanceSchema();
+await ensureChatSchema();
 if (process.env.TRUST_PROXY === "true") app.set("trust proxy", 1);
 const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173")
   .split(",").map(origin => origin.trim()).filter(Boolean);
