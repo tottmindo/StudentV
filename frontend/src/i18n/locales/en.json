@@ -4,6 +4,10 @@
     "english": "English",
     "swedish": "Swedish"
   },
+  "theme": {
+    "switchToDark": "Switch to dark mode",
+    "switchToLight": "Switch to light mode"
+  },
   "common": {
     "back": "Back",
     "cancel": "Cancel",

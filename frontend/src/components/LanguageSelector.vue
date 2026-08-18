@@ -1,24 +1,26 @@
 <template>
-  <label class="inline-flex items-center gap-2 text-sm font-semibold">
-    <span class="sr-only">{{ t('language.label') }}</span>
-    <select
-      :value="locale"
-      :aria-label="t('language.label')"
-      class="rounded-lg border border-border-border bg-background px-2 py-1.5 text-text dark:bg-background-dark dark:text-text-dark"
-      @change="changeLocale"
-    >
-      <option value="en">{{ t('language.english') }}</option>
-      <option value="sv">{{ t('language.swedish') }}</option>
-    </select>
-  </label>
+  <button
+    type="button"
+    class="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-2xl leading-none transition hover:bg-surface focus:outline-none focus:ring-2 focus:ring-accent dark:hover:bg-surface-dark"
+    :aria-label="label"
+    :title="label"
+    @click="toggleLocale"
+  >
+    <span aria-hidden="true">{{ flag }}</span>
+  </button>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { setLocale, type AppLocale } from '@/i18n'
+import { setLocale } from '@/i18n'
 
 const { locale, t } = useI18n()
-function changeLocale(event: Event) {
-  setLocale((event.target as HTMLSelectElement).value as AppLocale)
+const isEnglish = computed(() => locale.value === 'en')
+const flag = computed(() => isEnglish.value ? '🇬🇧' : '🇸🇪')
+const label = computed(() => `${t('language.label')}: ${t(isEnglish.value ? 'language.english' : 'language.swedish')}`)
+
+function toggleLocale() {
+  setLocale(isEnglish.value ? 'sv' : 'en')
 }
 </script>

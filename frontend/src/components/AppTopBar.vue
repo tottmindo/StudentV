@@ -31,7 +31,10 @@
       >
         <span aria-hidden="true">{{ page.action.icon }}</span>{{ page.action.label }}
       </router-link>
-      <LanguageSelector class="hidden sm:inline-flex" />
+      <div class="flex shrink-0 items-center gap-1">
+        <LanguageSelector />
+        <ThemeToggle />
+      </div>
       <button
         class="relative grid h-11 w-11 shrink-0 place-items-center rounded-xl transition hover:bg-surface focus:outline-none focus:ring-2 focus:ring-accent dark:hover:bg-surface-dark"
         :class="[notificationBadgeCount ? 'text-accent' : 'opacity-65', { 'bell-ring': bellRinging }]"
@@ -88,7 +91,6 @@
         <span class="grid h-9 w-9 place-items-center rounded-full bg-accent font-bold text-white">{{ initials }}</span>
         <span class="min-w-0"><strong class="block truncate text-sm">{{ userLabel }}</strong><span class="text-xs opacity-55">{{ t('nav.account') }}</span></span>
       </router-link>
-      <div class="mb-2 sm:hidden"><LanguageSelector /></div>
       <button class="w-full rounded-xl px-4 py-2.5 text-left text-sm font-bold text-error hover:bg-error/10" @click="logout">{{ t('auth.signOut') }}</button>
     </div>
   </aside>
@@ -131,6 +133,7 @@ import { disconnectSocket, getSocket } from '@/composables/socket'
 import { clearSession } from '@/composables/session'
 import type { AlertItem, DashboardPayload } from '@/types'
 import LanguageSelector from '@/components/LanguageSelector.vue'
+import ThemeToggle from '@/components/ThemeToggle.vue'
 import { useI18n } from 'vue-i18n'
 
 type PageInfo = { title: string; eyebrow: string; description: string; action?: { label: string; to: string; icon: string } }

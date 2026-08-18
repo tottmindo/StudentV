@@ -4,6 +4,10 @@
     "english": "Engelska",
     "swedish": "Svenska"
   },
+  "theme": {
+    "switchToDark": "Byt till mörkt läge",
+    "switchToLight": "Byt till ljust läge"
+  },
   "common": {
     "back": "Tillbaka",
     "cancel": "Avbryt",

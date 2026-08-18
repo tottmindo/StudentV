@@ -5,29 +5,56 @@
 
 :root {
   color-scheme: light;
-  --field-background: #ffffff;
-  --field-background-muted: #f2f2f0;
-  --field-border: #c9c9c7;
-  --field-border-hover: #9f9f9c;
-  --field-text: #1b1c1c;
-  --field-placeholder: #737373;
+  --color-accent: 207 46 46;
+  --color-error: 207 46 46;
+  --color-success: 24 79 31;
+  --color-warning: 101 64 0;
+  --field-background: #eee4d8;
+  --field-background-muted: #cfc0af;
+  --field-border: #b9a796;
+  --field-border-hover: #8f796b;
+  --field-text: #382e38;
+  --field-placeholder: #71636d;
   --field-focus: #cf2e2e;
   --field-focus-ring: rgb(207 46 46 / 0.18);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --field-background: #1f1f1f;
-    --field-background-muted: #191919;
-    --field-border: #4b4b4b;
-    --field-border-hover: #737373;
-    --field-text: #f5f2ee;
-    --field-placeholder: #aaa7a2;
-    --field-focus: #e05252;
-    --field-focus-ring: rgb(224 82 82 / 0.24);
-  }
+:root.dark {
+  color-scheme: dark;
+  --color-accent: 207 46 46;
+  --color-error: 207 46 46;
+  --color-success: 182 239 184;
+  --color-warning: 255 213 138;
+  --field-background: #514a58;
+  --field-background-muted: #48424f;
+  --field-border: #756c7d;
+  --field-border-hover: #a094a5;
+  --field-text: #fff4e8;
+  --field-placeholder: #d0c1cc;
+  --field-focus: #e05252;
+  --field-focus-ring: rgb(224 82 82 / 0.24);
 }
+
+/* Light semantic fills need dark lettering in dark mode to retain AA contrast. */
+:root.dark :is(.bg-success, .bg-warning) {
+  color: #302a33;
+}
+
+/* Normalize legacy utility colors that are used for text and action buttons. */
+:root:not(.dark) :is(.text-red-500, .text-red-600) { color: #8c2530; }
+:root:not(.dark) .text-green-600 { color: #18541f; }
+:root:not(.dark) .text-blue-500 { color: #174e91; }
+:root:not(.dark) .text-orange-500 { color: #704000; }
+:root.dark :is(.text-red-500, .text-red-600) { color: #ffaaaa; }
+:root.dark .text-green-600 { color: #b6efb8; }
+:root.dark .text-blue-500 { color: #b5d2ff; }
+:root.dark .text-orange-500 { color: #ffd0a3; }
+
+:is(.bg-red-500, .bg-red-600) { background-color: #a82431; }
+:is(.bg-green-500, .bg-green-600) { background-color: #24733a; }
+:is(.bg-blue-500, .bg-blue-600) { background-color: #24589c; }
+:is(.bg-orange-500) { background-color: #93430f; }
+:is(.bg-gray-400) { background-color: #625d65; }
 
 /*
  * Shared form-control treatment. Keeping this after Tailwind's layers makes

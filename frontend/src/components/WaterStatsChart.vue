@@ -9,11 +9,13 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { BarController, BarElement, CategoryScale, Chart, Filler, Legend, LineController, LineElement, LinearScale, PointElement, Tooltip } from 'chart.js'
 import type { FloorWaterStats } from '@/types'
 import { useI18n } from 'vue-i18n'
+import { useTheme } from '@/composables/theme'
 
 Chart.register(BarController, BarElement, CategoryScale, LineController, LineElement, LinearScale, PointElement, Tooltip, Legend, Filler)
 
 const props = defineProps<{ stats: FloorWaterStats; view: 'usage' | 'split' | 'temperature' | 'hourly' }>()
 const { t, locale } = useI18n()
+const { isDark } = useTheme()
 const canvas = ref<HTMLCanvasElement | null>(null)
 let chart: Chart | null = null
 
@@ -26,6 +28,7 @@ const shortDate = (value: string) => new Intl.DateTimeFormat(locale.value, { mon
 
 function renderChart() {
   if (!canvas.value) return
+  const textColor = isDark.value ? '#FFF4E8' : '#382E38'
   chart?.destroy()
   const isHourly = props.view === 'hourly' || props.stats.periodDays === 1
   const labels = isHourly ? Array.from({ length: 24 }, (_, hour) => `${String(hour).padStart(2, '0')}:00`) : props.stats.days.map(day => shortDate(day.date))
@@ -47,13 +50,16 @@ function renderChart() {
     type: props.view === 'split' ? 'bar' : 'line', data: { labels, datasets },
     options: {
       responsive: true, maintainAspectRatio: false, interaction: { intersect: false, mode: 'index' },
-      plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8 } }, tooltip: { callbacks: { label: context => `${context.dataset.label}: ${Number(context.raw).toLocaleString(locale.value, { maximumFractionDigits: 1 })}${props.view === 'temperature' ? ' °C' : ' L'}` } } },
-      scales: { x: { stacked: props.view === 'split', grid: { display: false }, ticks: { maxTicksLimit: isHourly ? 12 : 10 } }, y: { stacked: props.view === 'split', beginAtZero: props.view !== 'temperature', title: { display: true, text: props.view === 'temperature' ? t('charts.temperature') : t('charts.liters') } } },
+      plugins: { legend: { position: 'bottom', labels: { color: textColor, usePointStyle: true, boxWidth: 8 } }, tooltip: { callbacks: { label: context => `${context.dataset.label}: ${Number(context.raw).toLocaleString(locale.value, { maximumFractionDigits: 1 })}${props.view === 'temperature' ? ' °C' : ' L'}` } } },
+      scales: {
+        x: { stacked: props.view === 'split', grid: { display: false }, ticks: { color: textColor, maxTicksLimit: isHourly ? 12 : 10 } },
+        y: { stacked: props.view === 'split', beginAtZero: props.view !== 'temperature', ticks: { color: textColor }, title: { display: true, text: props.view === 'temperature' ? t('charts.temperature') : t('charts.liters'), color: textColor } },
+      },
     },
   })
 }
 
 onMounted(renderChart)
-watch(() => [props.stats, props.view, locale.value], renderChart, { deep: true })
+watch(() => [props.stats, props.view, locale.value, isDark.value], renderChart, { deep: true })
 onBeforeUnmount(() => chart?.destroy())
 </script>

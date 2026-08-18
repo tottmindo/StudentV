@@ -9,6 +9,7 @@
     import { Chart, registerables } from 'chart.js';
     import 'chartjs-adapter-date-fns';
     import type { ConsumptionData } from '@/types';
+    import { useTheme } from '@/composables/theme';
 
     Chart.register(...registerables);
 
@@ -20,6 +21,7 @@
         rawData: ConsumptionData[];
         timeRange: number;
     }>();
+    const { isDark } = useTheme();
 
 
     
@@ -53,6 +55,7 @@
 
     function initChart() {
         const ctx = (document.getElementById(props.chartId) as HTMLCanvasElement).getContext('2d')!;
+        const textColor = isDark.value ? '#FFF4E8' : '#382E38';
         if (chart) chart.destroy();
         const now = Date.now();
         const windowStart = now - props.timeRange * 3600e3;
@@ -75,7 +78,7 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { position: 'bottom' },
+                    legend: { position: 'bottom', labels: { color: textColor } },
                 },
                 scales: {
                     x: {
@@ -88,8 +91,10 @@
                         },
                         min: windowStart,
                         max: now,
+                        ticks: { color: textColor },
                         title: {
                             display: true,
+                            color: textColor,
                             text: (() => {
                                 switch (timeUnit.value) {
                                     case 'hour': return 'Time (hour)';
@@ -102,14 +107,15 @@
                     y: {
                         beginAtZero: true,
                         suggestedMin: 0,
-                        title: {display:true, text: 'Consumption'}
+                        ticks: { color: textColor },
+                        title: {display:true, text: 'Consumption', color: textColor}
                     }
                 }
             }
         });
     }
     onMounted(initChart);
-    watch(() => [props.rawData, props.timeRange], initChart, {deep: true});
+    watch(() => [props.rawData, props.timeRange, isDark.value], initChart, {deep: true});
 
     onBeforeUnmount(() => {
         if (chart) chart.destroy();

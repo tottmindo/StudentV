@@ -1,5 +1,5 @@
 <template>
-  <main class="chat-page">
+  <main class="chat-page bg-background-light text-text dark:bg-background-dark dark:text-text-dark">
     <section class="chat-shell" :class="{ 'mobile-room-open': selectedRoom }">
       <aside class="room-panel" :aria-label="t('chat.rooms')">
         <header class="room-header"><h1>{{ t('chat.rooms') }}</h1></header>
@@ -206,8 +206,8 @@ onUnmounted(() => {
 
 <style scoped>
 .chat-page { height: calc(100dvh - 4rem - env(safe-area-inset-top)); padding: 1rem; }
-.chat-shell { display: grid; grid-template-columns: minmax(15rem, 21rem) minmax(0, 1fr); height: 100%; max-width: 80rem; margin: auto; overflow: hidden; border: 1px solid rgb(0 0 0 / .09); border-radius: 1rem; background: white; box-shadow: 0 12px 35px rgb(0 0 0 / .07); }
-.room-panel { display: flex; min-width: 0; flex-direction: column; border-right: 1px solid rgb(0 0 0 / .09); background: #f5f4f1; }
+.chat-shell { display: grid; grid-template-columns: minmax(15rem, 21rem) minmax(0, 1fr); height: 100%; max-width: 80rem; margin: auto; overflow: hidden; border: 1px solid rgb(56 46 56 / .18); border-radius: 1rem; background: #eee4d8; box-shadow: 0 12px 35px rgb(56 46 56 / .1); }
+.room-panel { display: flex; min-width: 0; flex-direction: column; border-right: 1px solid rgb(56 46 56 / .18); background: #cfc0af; }
 .room-header, .conversation-header { min-height: 4.5rem; padding: 1rem 1.25rem; border-bottom: 1px solid rgb(0 0 0 / .09); }
 .room-header h1, .conversation-header h2 { font-size: 1.25rem; font-weight: 800; }
 .conversation-header { display: flex; align-items: center; gap: .75rem; }
@@ -224,7 +224,7 @@ onUnmounted(() => {
 .message-list { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 1.25rem; }
 .message-row { display: flex; margin-bottom: .75rem; }
 .message-row.own { justify-content: flex-end; }
-.message-bubble { max-width: min(75%, 38rem); padding: .7rem .9rem; border-radius: 1rem; background: #eeedea; overflow-wrap: anywhere; }
+.message-bubble { max-width: min(75%, 38rem); padding: .7rem .9rem; border-radius: 1rem; background: #d8c9bb; overflow-wrap: anywhere; }
 .message-row.own .message-bubble { border-bottom-right-radius: .25rem; background: #cf2e2e; color: white; }
 .message-row.other .message-bubble { border-bottom-left-radius: .25rem; }
 .message-meta { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: .2rem; font-size: .72rem; opacity: .72; }
@@ -247,12 +247,10 @@ onUnmounted(() => {
   .message-list { padding: .85rem; }
   .message-bubble { max-width: 88%; }
 }
-@media (prefers-color-scheme: dark) {
-  .chat-shell { border-color: rgb(255 255 255 / .12); background: #191919; }
-  .room-panel { border-color: rgb(255 255 255 / .12); background: #202020; }
-  .room-header, .conversation-header, .composer { border-color: rgb(255 255 255 / .12); }
-  .room-button:hover { background: rgb(255 255 255 / .07); }
-  .message-bubble { background: #292929; }
-  .back-button { background: rgb(255 255 255 / .09); }
-}
+:global(html.dark .chat-shell) { border-color: rgb(255 244 232 / .2); background: #48424f; }
+:global(html.dark .room-panel) { border-color: rgb(255 244 232 / .2); background: #514a58; }
+:global(html.dark .room-header), :global(html.dark .conversation-header), :global(html.dark .composer) { border-color: rgb(255 255 255 / .12); }
+:global(html.dark .room-button:hover) { background: rgb(255 255 255 / .07); }
+:global(html.dark .message-bubble) { background: #625969; }
+:global(html.dark .back-button) { background: rgb(255 255 255 / .09); }
 </style>

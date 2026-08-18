@@ -5,6 +5,9 @@ import App from './App.vue'
 import router from './router'
 import { restoreSocket } from './composables/socket'
 import { i18n } from './i18n'
+import { initializeTheme } from './composables/theme'
+
+initializeTheme()
 
 const app = createApp(App)
 

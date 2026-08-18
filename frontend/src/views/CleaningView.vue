@@ -11,7 +11,7 @@
     {{ notification.message }}
   </div>
 
-  <main class="min-h-[calc(100dvh-4rem-env(safe-area-inset-top))] space-y-6 bg-background p-3 dark:bg-background-dark sm:p-6">
+  <main class="min-h-[calc(100dvh-4rem-env(safe-area-inset-top))] space-y-6 bg-background p-3 text-text dark:bg-background-dark dark:text-text-dark sm:p-6">
     <div class="grid h-[calc(100dvh-7rem-env(safe-area-inset-top))] min-h-[38rem] grid-rows-2 gap-3 sm:gap-6 lg:grid-cols-[1.4fr_1fr] lg:grid-rows-1">
 
       <!-- =====================================================

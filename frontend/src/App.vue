@@ -60,7 +60,7 @@ html, body, #app {
 
 body {
   margin: 0;
-  background: #F7F7F5;
+  background: #D9C7A9;
   font-family: 'Nunito Sans', sans-serif;
 }
 
@@ -73,8 +73,6 @@ body {
   background: #7c2d12; color: white; text-align: center; font-size: .875rem; font-weight: 700;
 }
 
-@media (prefers-color-scheme: dark) {
-  body { background: #121212; }
-}
+html.dark body { background: #35313B; }
 
 </style>
