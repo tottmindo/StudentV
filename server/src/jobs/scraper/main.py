@@ -1,11 +1,31 @@
 import destinationuppsala
 import db
+import nationsguiden
+from datetime import datetime, timedelta
+
+def getDateRange(days: int):
+    today = datetime.today()
+
+    return[ (today + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(days)]
 
 if __name__ == "__main__":
-    events = destinationuppsala.destUppScraper()
+    duEvents = destinationuppsala.destUppScraper()
 
-    print(f"Found {len(events)} events")
+    print(f"Found {len(duEvents)} Destination Uppsala events")
 
-    db.toDB(events)
+    db.toDBDestinationUppsala(duEvents)
 
-    print("Database updated")
+    print("externalevents updated")
+
+    dateSpan = getDateRange(7)
+
+    nuEvents = nationsguiden.scrapeTimespan(dateSpan)
+
+    print(f"Found {len(nuEvents)} Nations Guiden events")
+
+    parsed = nationsguiden.parseEvents(nuEvents)
+
+    db.toDBNationsguiden(parsed)
+
+    print("nationsguidenevents updated")
+

@@ -237,6 +237,17 @@ CREATE TABLE externalevents (
     lastSeen TIMESTAMPTZ
 );
 
+CREATE TABLE nationsguideevents (
+    eventID INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    externalURL VARCHAR(500),
+    title VARCHAR(255),
+    startDate TIMESTAMPTZ NOT NULL,
+    endDate TIMESTAMPTZ,
+    category VARCHAR(100),
+    organiser VARCHAR(255),
+    createdAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Daily anonymous page-view counters. Deliberately has no user/device identifier.
 CREATE TABLE page_visit_stats (
   visitdate date NOT NULL,

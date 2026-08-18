@@ -178,6 +178,16 @@ interface ExternalEvents {
   endDate: string
 }
 
+type NationsguidenEvent = {
+  eventID: number
+  externalURL: string
+  title: string
+  startDate: string
+  endDate: string
+  category: string
+  organiser: string
+}
+
 class Data {
 
   getWaterData(): any {
@@ -1946,6 +1956,24 @@ async getExternalEvents(): Promise<ExternalEvents[]>{
       throw new Error("Error fetiching external events");
     }
 }
+
+async getNationsguidenEvents(): Promise<NationsguidenEvent[]> {
+    try {
+      const query = `
+        SELECT *
+        FROM nationsguideevents
+        WHERE endDate >= NOW()
+        ORDER BY startDate ASC
+      `
+
+      const [rows] = await pool.query(query)
+
+      return rows as NationsguidenEvent[]
+    } catch (err) {
+      console.error("Error fetching Nationsguiden events:", err)
+      throw new Error("Error fetching Nationsguiden events")
+    }
+  }
 }
 
 export { Data };
