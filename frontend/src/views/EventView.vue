@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen p-6 bg-background dark:bg-background-dark">
+  <div class="min-h-screen bg-background p-6 text-text dark:bg-background-dark dark:text-text-dark">
     <div class="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
       <section class="bg-surface dark:bg-surface-dark rounded-lg p-5 border border-gray-200 dark:border-gray-700">
         <div class="mb-4 flex flex-wrap items-center justify-between gap-3">

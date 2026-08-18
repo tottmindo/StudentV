@@ -34,13 +34,13 @@
       </template>
 
       <ModalComponent v-model="showSensorModal">
-        <div class="pr-8 text-text">
+        <div class="pr-8 text-text dark:text-text-dark">
           <p class="text-sm font-bold uppercase tracking-wider text-accent">{{ t('adminWater.detail') }}</p>
           <h2 class="mt-1 text-2xl font-bold">{{ selectedSensor?.location || selectedSensor?.sensorCode }}</h2>
           <p class="mt-1 font-mono text-sm opacity-60">{{ selectedSensor?.sensorCode }} · {{ selectedSensor?.type }}</p>
           <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
-            <div class="flex gap-1 rounded-xl bg-surface p-1"><button v-for="item in periods" :key="item" class="rounded-lg px-3 py-2 text-sm font-bold" :class="sensorPeriod === item ? 'bg-white shadow' : 'opacity-60'" @click="sensorPeriod = item">{{ periodLabel(item) }}</button></div>
-            <div class="flex gap-1 rounded-xl bg-surface p-1"><button v-for="item in sensorViews" :key="item.value" class="rounded-lg px-3 py-2 text-sm font-bold" :class="sensorView === item.value ? 'bg-white shadow' : 'opacity-60'" @click="sensorView = item.value">{{ item.label }}</button></div>
+            <div class="flex gap-1 rounded-xl bg-surface p-1 dark:bg-background-dark"><button v-for="item in periods" :key="item" class="rounded-lg px-3 py-2 text-sm font-bold" :class="sensorPeriod === item ? 'bg-white shadow dark:bg-surface-dark' : 'opacity-60'" @click="sensorPeriod = item">{{ periodLabel(item) }}</button></div>
+            <div class="flex gap-1 rounded-xl bg-surface p-1 dark:bg-background-dark"><button v-for="item in sensorViews" :key="item.value" class="rounded-lg px-3 py-2 text-sm font-bold" :class="sensorView === item.value ? 'bg-white shadow dark:bg-surface-dark' : 'opacity-60'" @click="sensorView = item.value">{{ item.label }}</button></div>
           </div>
           <div v-if="sensorLoading" class="grid h-80 place-items-center font-semibold opacity-60">{{ t('adminWater.loadingMeter') }}</div>
           <p v-else-if="sensorError" class="mt-6 rounded-xl bg-error/10 p-4 font-semibold text-error">{{ sensorError }}</p>

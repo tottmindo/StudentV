@@ -61,6 +61,7 @@ html, body, #app {
 body {
   margin: 0;
   background: #D9C7A9;
+  color: #382E38;
   font-family: 'Nunito Sans', sans-serif;
 }
 
@@ -73,6 +74,9 @@ body {
   background: #7c2d12; color: white; text-align: center; font-size: .875rem; font-weight: 700;
 }
 
-html.dark body { background: #35313B; }
+html.dark body {
+  background: #35313B;
+  color: #FFF4E8;
+}
 
 </style>
