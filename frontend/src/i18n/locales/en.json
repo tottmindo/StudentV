@@ -455,7 +455,8 @@
     "other": "Other",
     "add": "Add event",
     "details": "Event details",
-    "onDate": "Events on {date}"
+    "onDate": "Events on {date}",
+    "nationEvent": "Nation events"
   },
   "eventSamples": {
     "movie": "Movie night",
@@ -738,7 +739,8 @@
     "today": "Today",
     "event": "Event",
     "cleaning": "Cleaning week",
-    "external": "External event"
+    "external": "External event",
+    "nation" : "Nations event"
   },
   "account": {
     "profile": "Profile",

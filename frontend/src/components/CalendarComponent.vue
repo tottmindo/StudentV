@@ -44,10 +44,34 @@
           <span v-if="cell.hasEvent" class="h-1.5 w-1.5 rounded-full bg-accent"></span>
           <span v-if="cell.hasCleaning" class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
           <span v-if="cell.hasExternal" class="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+          <span v-if="cell.hasNation" class="h-1.5 w-1.5 rounded-full bg-purple-500"></span>
         </span>
       </div>
     </div>
 
+    <!-- Legend -->
+    <div class="flex flex-wrap items-center gap-4 text-xs opacity-70">
+      <span class="inline-flex items-center gap-2">
+        <span class="w-3 h-3 rounded bg-gray-800 inline-block"></span>
+        {{ t('calendar.today') }}
+      </span>
+      <span class="inline-flex items-center gap-2">
+        <span class="h-2 w-2 rounded-full bg-accent inline-block"></span>
+        {{ t('calendar.event') }}
+      </span>
+      <span class="inline-flex items-center gap-2">
+        <span class="h-2 w-2 rounded-full bg-emerald-500 inline-block"></span>
+        {{ t('calendar.cleaning') }}
+      </span>
+      <span class="inline-flex items-center gap-2">
+      <span class="h-2 w-2 rounded-full bg-blue-500 inline-block"></span>
+        {{ t('calendar.external') }}
+      </span>
+      <span class="inline-flex items-center gap-2">
+      <span class="h-2 w-2 rounded-full bg-purple-500 inline-block"></span>
+        {{ t('calendar.nation') }}
+      </span>
+    </div>
   </div>
 </template>
 
@@ -70,6 +94,10 @@ const props = defineProps({
   externalDates: {
     type: Array,
     default: () => []
+  },
+  nationDates: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -86,6 +114,8 @@ const monthLabel = computed(() => new Intl.DateTimeFormat(locale.value, { month:
 const markedSet = computed(() => new Set(props.markedDates))
 const cleaningSet = computed(() => new Set(props.cleaningDates))
 const externalSet = computed(() => new Set(props.externalDates))
+const nationSet = computed(() => new Set (props.nationDates))
+
 
 
 function toDateKey(year, month, day) {
@@ -123,7 +153,8 @@ const calendarCells = computed(() => {
       isToday,
       hasEvent: markedSet.value.has(dateKey),
       hasCleaning: cleaningSet.value.has(dateKey),
-      hasExternal: externalSet.value.has(dateKey)
+      hasExternal: externalSet.value.has(dateKey),
+      hasNation: nationSet.value.has(dateKey)
     })
   }
 
@@ -137,11 +168,13 @@ function cellClasses(cell) {
   if (cell.isToday) {
     // Give Today a distinct dark/neutral background with an accent border/ring
     classes.push('bg-gray-800 text-white dark:bg-gray-100 dark:text-gray-950 font-semibold ring-2 ring-accent')
-  } else if (cell.hasEvent || cell.hasCleaning || cell.hasExternal) {
+  } else if (cell.hasEvent || cell.hasCleaning || cell.hasExternal || cell.hasNation) {
     if (cell.hasCleaning) {
       classes.push('border border-emerald-500 text-text dark:text-text-dark')
     } else if (cell.hasEvent) {
       classes.push('border border-accent text-text dark:text-text-dark')
+    } else if (cell.hasNation){
+      classes.push('border border-purple-500 text-text dark:text-text-dark')
     } else {
       classes.push('border border-blue-500 text-text dark:text-text-dark')
     }
