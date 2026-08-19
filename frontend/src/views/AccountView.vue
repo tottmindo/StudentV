@@ -1,6 +1,10 @@
 <template>
   <main class="flex min-h-screen items-center justify-center px-4 py-16 lg:py-8">
     <div class="grid w-full max-w-5xl grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
+      <button class="rounded-xl border border-error/40 px-5 py-3 font-bold text-error transition hover:bg-error/10 lg:col-span-2 lg:justify-self-end" @click="signOut">
+        {{ t('auth.signOut') }}
+      </button>
+
       <section class="rounded-2xl bg-surface p-6 shadow-lg dark:bg-surface-dark lg:p-8">
         <h2 class="text-xl font-bold">{{ t('account.profile') }}</h2>
         <p class="mt-2 text-sm opacity-75">{{ t('account.emailHelp') }}</p>
@@ -47,6 +51,7 @@
         </form>
         <p v-if="passwordMessage" class="mt-4 text-center text-red-500" role="alert">{{ passwordMessage }}</p>
       </section>
+
     </div>
   </main>
 </template>
@@ -125,5 +130,11 @@ async function changePassword() {
   } catch (error) {
     passwordMessage.value = error instanceof Error ? error.message : t('account.passwordError')
   } finally { changingPassword.value = false }
+}
+
+async function signOut() {
+  disconnectSocket()
+  clearSession()
+  await router.replace({ name: 'login' })
 }
 </script>

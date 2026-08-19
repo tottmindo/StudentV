@@ -1,99 +1,43 @@
 <template>
   <header class="app-top-bar fixed inset-x-0 top-0 z-50 border-b border-border-border/80 bg-background/95 text-text shadow-sm backdrop-blur dark:bg-background-dark/95 dark:text-text-dark">
-    <div class="mx-auto flex h-16 max-w-[1600px] items-center gap-3 px-4 sm:px-6">
-      <button
-        class="grid h-11 w-11 shrink-0 place-items-center rounded-xl transition hover:bg-surface focus:outline-none focus:ring-2 focus:ring-accent dark:hover:bg-surface-dark"
-        type="button"
-        :aria-expanded="menuOpen"
-        aria-controls="app-navigation"
-        :aria-label="t('nav.open')"
-        @click="menuOpen = !menuOpen"
-      >
-        <span class="space-y-1.5" aria-hidden="true">
-          <span class="block h-0.5 w-5 rounded bg-current"></span>
-          <span class="block h-0.5 w-5 rounded bg-current"></span>
-          <span class="block h-0.5 w-5 rounded bg-current"></span>
-        </span>
-      </button>
-
-      <div class="min-w-0 flex-1">
-        <p class="truncate text-xs font-bold uppercase tracking-[0.14em] text-accent">{{ page.eyebrow }}</p>
-        <div class="flex min-w-0 items-baseline gap-2">
-          <h1 class="truncate text-base font-bold sm:text-lg">{{ page.title }}</h1>
-          <span class="hidden truncate text-sm opacity-55 md:inline">{{ page.description }}</span>
-        </div>
+    <div class="relative mx-auto flex max-w-[1600px] flex-wrap items-center px-3 sm:px-6 xl:h-16 xl:flex-nowrap xl:gap-3">
+      <div class="min-w-0 flex-1 py-2 xl:max-w-[25%] xl:py-0">
+        <h1 class="truncate text-xs font-bold uppercase tracking-[0.14em] text-accent">{{ page.title }}</h1>
+        <p class="truncate text-sm opacity-60">{{ page.description }}</p>
       </div>
 
-      <router-link
-        v-if="page.action"
-        :to="page.action.to"
-        class="hidden items-center gap-2 rounded-xl border border-border-border px-3 py-2 text-sm font-bold transition hover:bg-surface sm:inline-flex dark:hover:bg-surface-dark"
-      >
-        <span aria-hidden="true">{{ page.action.icon }}</span>{{ page.action.label }}
-      </router-link>
-      <div class="flex shrink-0 items-center gap-1">
+      <div class="ml-auto flex shrink-0 items-center gap-1">
         <LanguageSelector />
         <ThemeToggle />
+        <button
+          class="relative grid h-11 w-11 shrink-0 place-items-center rounded-xl transition hover:bg-surface focus:outline-none focus:ring-2 focus:ring-accent dark:hover:bg-surface-dark"
+          :class="[notificationBadgeCount ? 'text-accent' : 'opacity-65', { 'bell-ring': bellRinging }]"
+          type="button"
+          :aria-label="notificationBadgeCount ? t('notifications.countLabel', { count: notificationBadgeCount }) : t('notifications.noneLabel')"
+          @click="openNotifications"
+        >
+          <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
+          </svg>
+          <span v-if="notificationBadgeCount" class="absolute right-0.5 top-0.5 min-w-[1.15rem] rounded-full bg-error px-1 text-center text-[10px] font-extrabold leading-[1.15rem] text-white ring-2 ring-background dark:ring-background-dark">
+            {{ notificationBadgeCount > 99 ? '99+' : notificationBadgeCount }}
+          </span>
+        </button>
+        <router-link to="/account" class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent font-bold text-white" :title="userLabel" :aria-label="t('nav.account')">
+          {{ initials }}
+        </router-link>
       </div>
-      <button
-        class="relative grid h-11 w-11 shrink-0 place-items-center rounded-xl transition hover:bg-surface focus:outline-none focus:ring-2 focus:ring-accent dark:hover:bg-surface-dark"
-        :class="[notificationBadgeCount ? 'text-accent' : 'opacity-65', { 'bell-ring': bellRinging }]"
-        type="button"
-        :aria-label="notificationBadgeCount ? t('notifications.countLabel', { count: notificationBadgeCount }) : t('notifications.noneLabel')"
-        @click="openNotifications"
+      <nav
+        class="top-navigation order-last flex w-full gap-1 overflow-hidden border-t border-border-border/70 py-2 transition-[max-height,opacity,padding,border-color,transform] duration-300 xl:absolute xl:left-1/2 xl:top-1/2 xl:max-h-none xl:w-[min(38rem,40vw)] xl:-translate-x-1/2 xl:-translate-y-1/2 xl:border-0 xl:py-0 xl:opacity-100"
+        :class="navigationVisible ? 'max-h-16 opacity-100' : 'max-h-0 -translate-y-3 border-transparent py-0 opacity-0'"
+        :aria-label="t('nav.main')"
       >
-        <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
-        </svg>
-        <span v-if="notificationBadgeCount" class="absolute right-0.5 top-0.5 min-w-[1.15rem] rounded-full bg-error px-1 text-center text-[10px] font-extrabold leading-[1.15rem] text-white ring-2 ring-background dark:ring-background-dark">
-          {{ notificationBadgeCount > 99 ? '99+' : notificationBadgeCount }}
-        </span>
-      </button>
-      <router-link to="/account" class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent font-bold text-white" :title="userLabel" :aria-label="t('nav.account')">
-        {{ initials }}
-      </router-link>
+        <router-link v-for="item in navigationLinks" :key="item.to" :to="item.to" class="top-nav-link" active-class="top-nav-link-active">
+          <span class="text-base" aria-hidden="true">{{ item.icon }}</span><span>{{ item.label }}</span>
+        </router-link>
+      </nav>
     </div>
   </header>
-
-  <div v-if="menuOpen" class="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm" @click="closeMenu"></div>
-  <aside
-    id="app-navigation"
-    class="mobile-drawer fixed inset-y-0 left-0 z-[70] flex w-[min(21rem,88vw)] flex-col bg-background text-text shadow-2xl transition-transform duration-300 dark:bg-background-dark dark:text-text-dark"
-    :class="menuOpen ? 'translate-x-0' : '-translate-x-full'"
-    :aria-hidden="!menuOpen"
-    :inert="!menuOpen"
-  >
-    <div class="flex h-16 items-center justify-between border-b border-border-border px-5">
-      <router-link to="/home" class="text-xl font-extrabold tracking-tight" @click="closeMenu">DORMS</router-link>
-      <button ref="closeButton" class="grid h-11 w-11 place-items-center rounded-xl text-2xl hover:bg-surface dark:hover:bg-surface-dark" :aria-label="t('nav.close')" @click="closeMenu">×</button>
-    </div>
-
-    <nav class="flex-1 overflow-y-auto p-4" :aria-label="t('nav.main')">
-      <router-link v-if="page.action" :to="page.action.to" class="mb-4 flex min-h-11 items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 font-bold text-white sm:hidden" @click="closeMenu">
-        <span aria-hidden="true">{{ page.action.icon }}</span>{{ page.action.label }}
-      </router-link>
-      <p class="mb-2 px-3 text-xs font-bold uppercase tracking-wider opacity-45">{{ t('nav.residence') }}</p>
-      <router-link v-for="item in visibleResidentLinks" :key="item.to" :to="item.to" class="nav-link" active-class="nav-link-active" @click="closeMenu">
-        <span class="w-6 text-center" aria-hidden="true">{{ item.icon }}</span><span class="flex-1">{{ item.label }}</span>
-        <span v-if="item.to === '/chat' && unreadMessageTotal" class="min-w-6 rounded-full bg-error px-1.5 text-center text-xs font-extrabold text-white">{{ unreadMessageTotal > 99 ? '99+' : unreadMessageTotal }}</span>
-      </router-link>
-
-      <template v-if="isAdmin">
-        <p class="mb-2 mt-6 px-3 text-xs font-bold uppercase tracking-wider opacity-45">{{ t('nav.administration') }}</p>
-        <router-link v-for="item in adminLinks" :key="item.to" :to="item.to" class="nav-link" active-class="nav-link-active" @click="closeMenu">
-          <span class="w-6 text-center" aria-hidden="true">{{ item.icon }}</span><span>{{ item.label }}</span>
-        </router-link>
-      </template>
-    </nav>
-
-    <div class="drawer-footer border-t border-border-border p-4">
-      <router-link to="/account" class="mb-2 flex items-center gap-3 rounded-xl p-3 hover:bg-surface dark:hover:bg-surface-dark" @click="closeMenu">
-        <span class="grid h-9 w-9 place-items-center rounded-full bg-accent font-bold text-white">{{ initials }}</span>
-        <span class="min-w-0"><strong class="block truncate text-sm">{{ userLabel }}</strong><span class="text-xs opacity-55">{{ t('nav.account') }}</span></span>
-      </router-link>
-      <button class="w-full rounded-xl px-4 py-2.5 text-left text-sm font-bold text-error hover:bg-error/10" @click="logout">{{ t('auth.signOut') }}</button>
-    </div>
-  </aside>
 
   <div v-if="notificationsOpen" class="fixed inset-0 z-[80] flex items-end bg-black/45 sm:items-center sm:justify-center sm:p-4" role="presentation" @click.self="closeNotifications">
     <section class="notification-panel flex max-h-[min(80dvh,42rem)] w-full flex-col rounded-t-3xl bg-background text-text shadow-2xl dark:bg-background-dark dark:text-text-dark sm:max-w-lg sm:rounded-3xl" role="dialog" aria-modal="true" aria-labelledby="notifications-title">
@@ -129,21 +73,19 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { disconnectSocket, getSocket } from '@/composables/socket'
-import { clearSession } from '@/composables/session'
+import { getSocket } from '@/composables/socket'
 import type { AlertItem, DashboardPayload } from '@/types'
 import LanguageSelector from '@/components/LanguageSelector.vue'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 import { useI18n } from 'vue-i18n'
 
-type PageInfo = { title: string; eyebrow: string; description: string; action?: { label: string; to: string; icon: string } }
+type PageInfo = { title: string; description: string }
 type UnreadChat = { chatID: number; name: string; unreadCount: number }
 
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
 const socket = getSocket()
-const menuOpen = ref(false)
 const notificationsOpen = ref(false)
 const notifications = ref<AlertItem[]>([])
 const unreadChats = ref<UnreadChat[]>([])
@@ -153,7 +95,6 @@ const receivedAlertIDs = ref<Set<number>>(new Set())
 let bellTimer: ReturnType<typeof setTimeout> | undefined
 const dashboardUser = ref<DashboardPayload['user'] | null>(null)
 const communitySummary = ref('')
-const closeButton = ref<HTMLButtonElement | null>(null)
 const notificationCloseButton = ref<HTMLButtonElement | null>(null)
 const isAdmin = computed(() => sessionStorage.getItem('userRole')?.toLowerCase() === 'admin')
 const userLabel = computed(() => dashboardUser.value?.name || sessionStorage.getItem('username') || sessionStorage.getItem('email') || t(isAdmin.value ? 'topbar.administrator' : 'topbar.resident'))
@@ -175,38 +116,39 @@ const residentLinks = computed(() => [
   { label: t('nav.waterInsights'), to: '/stats', icon: '◒' },
   { label: t('nav.community'), to: '/community', icon: '◎' },
 ])
-const visibleResidentLinks = computed(() => isAdmin.value ? residentLinks.value.filter(item => item.to !== '/community') : residentLinks.value)
 const adminLinks = computed(() => [
   { label: t('nav.administration'), to: '/admin', icon: '⚙' },
-  { label: t('nav.waterAnalytics'), to: '/admin/water-analytics', icon: '▥' },
   { label: t('nav.surveys'), to: '/survey', icon: '≡' },
 ])
+const navigationLinks = computed(() => isAdmin.value ? adminLinks.value : residentLinks.value)
+const navigationVisible = ref(true)
+let lastScrollY = 0
+let scrollDistance = 0
 
 const pages = computed<Record<string, PageInfo>>(() => ({
-  stats: { title: t('nav.waterInsights'), eyebrow: t('topbar.yourFloor'), description: t('topbar.usageDescription'), action: { label: t('nav.home'), to: '/home', icon: '⌂' } },
-  events: { title: t('nav.events'), eyebrow: t('nav.community'), description: t('topbar.calendarDescription'), action: { label: t('nav.cleaning'), to: '/cleaning', icon: '✓' } },
-  community: { title: t('communityHub.hub'), eyebrow: t('nav.residence'), description: communitySummary.value || t('communityHub.intro'), action: { label: t('nav.home'), to: '/home', icon: '⌂' } },
-  cleaning: { title: t('nav.cleaning'), eyebrow: t('topbar.sharedSpaces'), description: t('topbar.cleaningDescription'), action: { label: t('nav.events'), to: '/events', icon: '◇' } },
-  chat: { title: t('nav.chats'), eyebrow: t('nav.community'), description: t('topbar.chatDescription') },
-  chatRoom: { title: t('topbar.conversation'), eyebrow: t('nav.chats'), description: t('topbar.chatDescription'), action: { label: t('topbar.allChats'), to: '/chat', icon: '←' } },
-  account: { title: t('nav.account'), eyebrow: t('topbar.yourProfile'), description: t('topbar.accountDescription'), action: { label: t('nav.home'), to: '/home', icon: '⌂' } },
-  admin: { title: t('nav.administration'), eyebrow: t('topbar.management'), description: t('topbar.adminDescription') },
-  'admin-water-analytics': { title: t('nav.waterAnalytics'), eyebrow: t('nav.administration'), description: t('topbar.waterDescription'), action: { label: t('nav.administration'), to: '/admin', icon: '←' } },
-  survey: { title: t('nav.surveys'), eyebrow: t('nav.administration'), description: t('topbar.surveyDescription'), action: { label: t('topbar.newSurvey'), to: '/createSurvey', icon: '+' } },
-  createSurvey: { title: t(route.params.id ? 'topbar.editSurvey' : 'topbar.createSurvey'), eyebrow: t('nav.surveys'), description: t('topbar.buildQuestions'), action: { label: t('topbar.allSurveys'), to: '/survey', icon: '←' } },
-  answerSurvey: { title: t('topbar.survey'), eyebrow: t('topbar.yourFeedback'), description: t('topbar.shareExperience'), action: { label: t('common.back'), to: '/home', icon: '←' } },
-  'change-password': { title: t('topbar.finishSetup'), eyebrow: t('topbar.security'), description: t('topbar.setupDescription') },
+  stats: { title: t('nav.waterInsights'), description: t('topbar.usageDescription') },
+  events: { title: t('nav.events'), description: t('topbar.calendarDescription') },
+  community: { title: t('nav.community'), description: communitySummary.value || t('communityHub.intro') },
+  cleaning: { title: t('nav.cleaning'), description: t('topbar.cleaningDescription') },
+  chat: { title: t('nav.chats'), description: t('topbar.chatDescription') },
+  chatRoom: { title: t('topbar.conversation'), description: t('topbar.chatDescription') },
+  account: { title: t('nav.account'), description: t('topbar.accountDescription') },
+  admin: { title: t('nav.administration'), description: t('topbar.adminDescription') },
+  'admin-water-analytics': { title: t('nav.waterAnalytics'), description: t('topbar.waterDescription') },
+  survey: { title: t('nav.surveys'), description: t('topbar.surveyDescription') },
+  createSurvey: { title: t(route.params.id ? 'topbar.editSurvey' : 'topbar.createSurvey'), description: t('topbar.buildQuestions') },
+  answerSurvey: { title: t('topbar.survey'), description: t('topbar.shareExperience') },
+  'change-password': { title: t('topbar.finishSetup'), description: t('topbar.setupDescription') },
 }))
 const homePage = computed<PageInfo>(() => {
   const user = dashboardUser.value
   const hour = new Date().getHours()
   const greeting = t(hour < 12 ? 'topbar.morning' : hour < 18 ? 'topbar.afternoon' : 'topbar.evening')
   const location = user ? t('topbar.location', { house: user.house, floor: user.floor, room: user.room }) : t('topbar.glance')
-  return { title: userLabel.value, eyebrow: greeting, description: location }
+  return { title: t('nav.home'), description: `${greeting}, ${userLabel.value} · ${location}` }
 })
-const page = computed(() => route.name === 'home' ? homePage.value : pages.value[String(route.name)] || { title: 'DORMS', eyebrow: t('topbar.residence'), description: t('topbar.fallbackDescription') })
+const page = computed(() => route.name === 'home' ? homePage.value : pages.value[String(route.name)] || { title: 'DORMS', description: t('topbar.fallbackDescription') })
 
-function closeMenu() { menuOpen.value = false }
 function closeNotifications() { notificationsOpen.value = false }
 function notificationStorageKey(userID?: number) { return `read-dashboard-alerts:${userID || 'resident'}` }
 function readAlertIDs(userID?: number) {
@@ -226,7 +168,6 @@ function openNotifications() {
   markNotificationsRead()
 }
 function openNotification(notification: AlertItem) { closeNotifications(); router.push(notification.route || '/home') }
-function logout() { disconnectSocket(); clearSession(); closeMenu(); router.replace({ name: 'login' }) }
 function dashboardNotifications(dashboard: DashboardPayload) {
   const surveyAlerts: AlertItem[] = (dashboard.pendingSurveys || []).map(survey => ({
     id: 700000 + Number(survey.eID),
@@ -237,10 +178,8 @@ function dashboardNotifications(dashboard: DashboardPayload) {
   }))
   return [...(dashboard.alerts || []), ...surveyAlerts]
 }
-watch(() => route.fullPath, closeMenu)
-watch([menuOpen, notificationsOpen], async ([menuIsOpen, modalIsOpen]) => {
-  document.body.style.overflow = menuIsOpen || modalIsOpen ? 'hidden' : ''
-  if (menuIsOpen) { await nextTick(); closeButton.value?.focus() }
+watch(notificationsOpen, async (modalIsOpen) => {
+  document.body.style.overflow = modalIsOpen ? 'hidden' : ''
   if (modalIsOpen) { await nextTick(); notificationCloseButton.value?.focus() }
 })
 function receiveDashboard(dashboard: DashboardPayload) {
@@ -273,7 +212,18 @@ function loadCachedNotifications() {
 function handleKeydown(event: KeyboardEvent) {
   if (event.key !== 'Escape') return
   if (notificationsOpen.value) closeNotifications()
-  else closeMenu()
+}
+function handleScroll() {
+  const currentScrollY = Math.max(window.scrollY, 0)
+  const delta = currentScrollY - lastScrollY
+  if (!delta) return
+  if ((delta > 0) !== (scrollDistance > 0)) scrollDistance = 0
+  scrollDistance += delta
+  if (currentScrollY < 32) navigationVisible.value = true
+  else if (scrollDistance > 24 && currentScrollY > 80) navigationVisible.value = false
+  else if (scrollDistance < -12) navigationVisible.value = true
+  if (Math.abs(scrollDistance) >= 24) scrollDistance = 0
+  lastScrollY = currentScrollY
 }
 function requestDashboard() { if (!isAdmin.value) socket.emit('getDashboard') }
 function receiveCommunitySummary(event: Event) { communitySummary.value = (event as CustomEvent<string>).detail || '' }
@@ -293,6 +243,7 @@ function receiveUnreadChats(data: unknown) {
   }
 }
 onMounted(() => {
+  lastScrollY = Math.max(window.scrollY, 0)
   loadCachedNotifications()
   socket.on('dashboard', receiveDashboard)
   socket.on('connect', requestDashboard)
@@ -304,6 +255,7 @@ onMounted(() => {
   requestUnreadChats()
   window.addEventListener('keydown', handleKeydown)
   window.addEventListener('community-summary', receiveCommunitySummary)
+  window.addEventListener('scroll', handleScroll, { passive: true })
 })
 onBeforeUnmount(() => {
   socket.off('dashboard', receiveDashboard)
@@ -315,15 +267,16 @@ onBeforeUnmount(() => {
   if (bellTimer) clearTimeout(bellTimer)
   window.removeEventListener('keydown', handleKeydown)
   window.removeEventListener('community-summary', receiveCommunitySummary)
+  window.removeEventListener('scroll', handleScroll)
   document.body.style.overflow = ''
 })
 </script>
 
 <style scoped>
 .app-top-bar { padding-top: env(safe-area-inset-top); }
-.mobile-drawer { padding-top: env(safe-area-inset-top); }
-.drawer-footer { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
 .notification-panel { padding-bottom: env(safe-area-inset-bottom); }
+.top-nav-link { @apply flex min-h-11 min-w-0 flex-1 basis-0 items-center justify-center gap-2 rounded-xl px-2 text-center text-sm font-bold transition hover:bg-surface focus:outline-none focus:ring-2 focus:ring-accent dark:hover:bg-surface-dark; }
+.top-nav-link-active { @apply bg-accent text-white hover:bg-accent dark:hover:bg-accent; }
 .bell-ring svg { transform-origin: 50% 15%; animation: bell-ring 1.1s ease-in-out; }
 @keyframes bell-ring {
   0%, 100% { transform: rotate(0); }
@@ -331,8 +284,6 @@ onBeforeUnmount(() => {
   30%, 60%, 90% { transform: rotate(-16deg); }
 }
 @media (prefers-reduced-motion: reduce) { .bell-ring svg { animation: none; } }
-.nav-link { @apply mb-1 flex items-center gap-3 rounded-xl px-3 py-2.5 font-semibold transition hover:bg-surface dark:hover:bg-surface-dark; }
-.nav-link-active { @apply bg-accent text-white hover:bg-accent dark:hover:bg-accent; }
 @media (max-width: 380px) {
   .app-top-bar > div { gap: .5rem; padding-left: .625rem; padding-right: .625rem; }
 }

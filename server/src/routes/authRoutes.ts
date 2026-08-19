@@ -24,11 +24,13 @@
  */
 import express from "express";
 import { addRoomsToDorm, adminResetResidentPassword, completeTemporaryPassword, createDormFloor, generateTemporaryPassword, getAccount, registerUser, loginUser, requestPasswordReset, resetPasswordWithToken, updatePassword, updateUsername, listDormsForAdmin, listUsersForAdmin, updateUserForAdmin } from "../services/authService.js";
-import { addDormRoomsSchema, adminResetPasswordSchema, adminUpdateUserSchema, changePasswordSchema, createDormFloorSchema, createResidentSchema, emailSchema, registerSchema, loginSchema, resetPasswordSchema, updateAccountSchema, updatePasswordSchema } from "../validators/authSchemas.js";
+import { addDormRoomsSchema, adminResetPasswordSchema, adminUpdateUserSchema, changePasswordSchema, createAdminEventSchema, createDormFloorSchema, createResidentSchema, emailSchema, registerSchema, loginSchema, resetPasswordSchema, updateAccountSchema, updatePasswordSchema } from "../validators/authSchemas.js";
 import { validate } from "../middleware/validate.js";
 import { authenticate, AuthenticatedRequest, requireAdmin, requireCompletedAccount } from "../middleware/authenticate.js";
 import { sendResidentWelcomeEmail } from "../services/emailService.js";
 import { generateCleaningWeeks } from "../jobs/scheduler.js";
+import { createTargetedAdminEvent } from "../services/eventService.js";
+import { getIO } from "./socketManager.js";
 
 const router = express.Router();
 
@@ -99,6 +101,16 @@ router.post("/complete-temporary-password", authenticate, validate(changePasswor
 router.get("/admin/dorms", authenticate, requireCompletedAccount, requireAdmin, async (_req, res) => {
   try { res.json(await listDormsForAdmin()); }
   catch { res.status(500).json({ error: "Could not load dorms." }); }
+});
+
+router.post("/admin/events", authenticate, requireCompletedAccount, requireAdmin, validate(createAdminEventSchema), async (req, res) => {
+  try {
+    const result = await createTargetedAdminEvent(req.body);
+    for (const created of result.created) getIO().to(`dorm-${created.dormID}`).emit("eventsUpdated");
+    res.status(201).json(result);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message || "Could not create event." });
+  }
 });
 
 router.post("/admin/dorms", authenticate, requireCompletedAccount, requireAdmin, validate(createDormFloorSchema), async (req, res) => {

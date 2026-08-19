@@ -50,6 +50,39 @@ const createSensorsSchema = sensorDetailsSchema.extend({
 const updateSensorSchema = sensorDetailsSchema;
 const sensorNoteSchema = z.object({ note: z.string().trim().max(2000) });
 
+const exportFields = {
+  recordedAt: { sql: "sd.recordedAt", header: "recorded_at" },
+  sensorCode: { sql: "sd.sensorCode", header: "sensor_code" },
+  house: { sql: "d.address", header: "house" },
+  floor: { sql: "d.floor", header: "floor" },
+  sensorType: { sql: "s.type", header: "sensor_type" },
+  location: { sql: "s.location", header: "location" },
+  totalVolume: { sql: "sd.totalVolume", header: "total_volume_liters" },
+  tempMin: { sql: "sd.tempMin", header: "water_temperature_min_c" },
+  tempMax: { sql: "sd.tempMax", header: "water_temperature_max_c" },
+  ambientTemp: { sql: "sd.ambientTemp", header: "ambient_temperature_c" },
+  humidity: { sql: "sd.humidity", header: "humidity_percent" },
+  battery: { sql: "sd.battery", header: "battery_volts" },
+  errorCode: { sql: "sd.errorCode", header: "error_code" },
+  leakStatus: { sql: "sd.leakStatus", header: "leak_status" },
+} as const;
+type ExportField = keyof typeof exportFields;
+
+const waterExportSchema = z.object({
+  from: z.string().datetime(),
+  to: z.string().datetime(),
+  fields: z.array(z.enum(Object.keys(exportFields) as [ExportField, ...ExportField[]])).min(1),
+  dormIDs: z.array(z.number().int().positive()).optional(),
+  sensorCodes: z.array(z.string().trim().min(1).max(100)).optional(),
+}).refine(value => new Date(value.from) <= new Date(value.to), { message: "The start must be before the end." });
+
+function csvCell(value: unknown): string {
+  if (value == null) return "";
+  let text = value instanceof Date ? value.toISOString() : String(value);
+  if (typeof value === "string" && /^[=+\-@]/.test(text)) text = `'${text}`;
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
 router.get("/admin/sensors", authenticate, requireCompletedAccount, requireAdmin, async (_req, res) => {
   try {
     const [rows] = await pool.query(
@@ -93,6 +126,40 @@ router.get("/admin/sensors", authenticate, requireCompletedAccount, requireAdmin
   } catch (err) {
     console.error("Could not load sensors:", err);
     res.status(500).json({ error: "Could not load sensors." });
+  }
+});
+
+router.post("/admin/export", authenticate, requireCompletedAccount, requireAdmin, async (req, res) => {
+  try {
+    const input = waterExportSchema.parse(req.body);
+    const fields = [...new Set(input.fields)];
+    const where = ["sd.recordedAt >= ?", "sd.recordedAt <= ?"];
+    const values: unknown[] = [input.from, input.to];
+    if (input.dormIDs?.length) { where.push("s.dormID IN (?)"); values.push([...new Set(input.dormIDs)]); }
+    if (input.sensorCodes?.length) { where.push("sd.sensorCode IN (?)"); values.push([...new Set(input.sensorCodes.map(code => code.toLowerCase()))]); }
+    const selections = fields.map((field, index) => `${exportFields[field].sql} AS "export_${index}"`).join(", ");
+    const [rows] = await pool.query(
+      `SELECT ${selections}
+       FROM sensor_data sd
+       JOIN sensor s ON s.sensorCode = sd.sensorCode
+       JOIN dorms d ON d.dormID = s.dormID
+       WHERE ${where.join(" AND ")}
+       ORDER BY sd.recordedAt, sd.sensorCode`,
+      values,
+    );
+    const header = fields.map(field => csvCell(exportFields[field].header)).join(",");
+    const lines = (rows as Record<string, unknown>[]).map(row => fields.map((_field, index) => csvCell(row[`export_${index}`])).join(","));
+    const stamp = new Date().toISOString().slice(0, 10);
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="water-data-${stamp}.csv"`);
+    res.send(`\uFEFF${[header, ...lines].join("\r\n")}\r\n`);
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      res.status(400).json({ error: err.issues[0]?.message || "Invalid export options." });
+      return;
+    }
+    console.error("Could not export water data:", err);
+    res.status(500).json({ error: "Could not export water data." });
   }
 });
 

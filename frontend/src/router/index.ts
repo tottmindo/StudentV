@@ -103,6 +103,12 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
+      path: '/admin/events',
+      name: 'admin-events',
+      component: () => import('../views/AdminEventsView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
       path: '/chat',
       name: 'chat',
       component: () => import('../views/ChatView.vue'),

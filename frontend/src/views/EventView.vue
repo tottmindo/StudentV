@@ -1,44 +1,11 @@
 <template>
   <div class="min-h-screen bg-background p-6 text-text dark:bg-background-dark dark:text-text-dark">
-    <div class="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-      <section class="bg-surface dark:bg-surface-dark rounded-lg p-5 border border-gray-200 dark:border-gray-700">
-        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <div class="events-workspace grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+      <section class="flex min-h-0 flex-col overflow-hidden rounded-lg border border-gray-200 bg-surface p-5 dark:border-gray-700 dark:bg-surface-dark">
+        <div class="mb-4 flex items-center">
           <h2 class="text-2xl font-bold">{{ t('eventsView.calendar') }}</h2>
-          <button type="button" class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold transition hover:border-accent hover:text-accent dark:border-gray-600" :aria-pressed="showHistoricalEvents" @click="showHistoricalEvents = !showHistoricalEvents">
-            {{ t(showHistoricalEvents ? 'eventsView.hideHistory' : 'eventsView.showHistory') }}
-          </button>
         </div>
-        <div class="mb-4 flex flex-wrap items-center gap-3">
-          <span class="text-sm font-semibold opacity-80">{{ t('eventsView.filter') }}</span>
-
-          <button
-            type="button"
-            @click="filters.events = !filters.events"
-            class="px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
-            :class="filters.events ? 'bg-accent text-white' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 opacity-50'"
-          >
-            {{ t('eventsView.internal') }}
-          </button>
-
-          <button
-            type="button"
-            @click="filters.cleaning = !filters.cleaning"
-            class="px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
-            :class="filters.cleaning ? 'bg-emerald-600 text-white' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 opacity-50'"
-          >
-            {{ t('eventsView.cleaningWeeks') }}
-          </button>
-
-          <button
-            type="button"
-            @click="filters.external = !filters.external"
-            class="px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
-            :class="filters.external ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 opacity-50'"
-          >
-            {{ t('eventsView.external') }}
-          </button>
-        </div>
-        <div class="w-full max-w-full">
+        <div class="min-h-0 w-full max-w-full flex-1">
                 <CalendarComponent
                   :marked-dates="filteredEventDates"
                   :cleaning-dates="filteredCleaningWeeks"
@@ -47,12 +14,55 @@
                   class="w-full h-full"
                 />
         </div>
+        <div class="mt-4 flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-background/60 p-2 dark:border-gray-700 dark:bg-background-dark/60" role="group" :aria-label="t('eventsView.filter')">
+          <span class="px-1 text-xs font-bold uppercase tracking-wide opacity-60">{{ t('eventsView.filter') }}</span>
+
+          <button
+            type="button"
+            @click="filters.events = !filters.events"
+            class="cursor-pointer rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors"
+            :class="filters.events ? 'border-accent bg-accent text-white' : 'border-gray-300 bg-surface text-text opacity-60 dark:border-gray-600 dark:bg-surface-dark dark:text-text-dark'"
+            :aria-pressed="filters.events"
+          >
+            {{ t('eventsView.internal') }}
+          </button>
+
+          <button
+            type="button"
+            @click="filters.cleaning = !filters.cleaning"
+            class="cursor-pointer rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors"
+            :class="filters.cleaning ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-gray-300 bg-surface text-text opacity-60 dark:border-gray-600 dark:bg-surface-dark dark:text-text-dark'"
+            :aria-pressed="filters.cleaning"
+          >
+            {{ t('eventsView.cleaningWeeks') }}
+          </button>
+
+          <button
+            type="button"
+            @click="filters.external = !filters.external"
+            class="cursor-pointer rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors"
+            :class="filters.external ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-300 bg-surface text-text opacity-60 dark:border-gray-600 dark:bg-surface-dark dark:text-text-dark'"
+            :aria-pressed="filters.external"
+          >
+            {{ t('eventsView.external') }}
+          </button>
+
+          <button
+            type="button"
+            @click="showHistoricalEvents = !showHistoricalEvents"
+            class="cursor-pointer rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors"
+            :class="showHistoricalEvents ? 'border-gray-700 bg-gray-700 text-white dark:border-gray-200 dark:bg-gray-200 dark:text-gray-900' : 'border-gray-300 bg-surface text-text opacity-60 dark:border-gray-600 dark:bg-surface-dark dark:text-text-dark'"
+            :aria-pressed="showHistoricalEvents"
+          >
+            {{ t(showHistoricalEvents ? 'eventsView.hideHistory' : 'eventsView.showHistory') }}
+          </button>
+        </div>
       </section>
 
-      <section class="bg-surface dark:bg-surface-dark rounded-lg p-5 border border-gray-200 dark:border-gray-700">
-        <h2 class="text-xl font-semibold" :class="showHistoricalEvents ? 'mb-1' : 'mb-4'">{{ t(showHistoricalEvents ? 'eventsView.all' : 'eventsView.upcoming') }}</h2>
+      <section class="flex min-h-0 flex-col overflow-hidden rounded-lg border border-gray-200 bg-surface p-5 dark:border-gray-700 dark:bg-surface-dark">
+        <h2 class="shrink-0 text-xl font-semibold" :class="showHistoricalEvents ? 'mb-1' : 'mb-4'">{{ t(showHistoricalEvents ? 'eventsView.all' : 'eventsView.upcoming') }}</h2>
         <p v-if="showHistoricalEvents" class="mb-4 text-sm opacity-65">{{ t('eventsView.historyHelp') }}</p>
-        <ul v-if="filteredEvents.length" class="list-none">
+        <ul v-if="filteredEvents.length" class="min-h-0 flex-1 list-none overflow-y-auto pr-2 [scrollbar-gutter:stable]">
           <li
             v-for="event in filteredEvents"
             :key="event.id"
@@ -573,6 +583,7 @@ const bindSocket = () => {
   socket.off('eventsData')
   socket.off('cleaningWeeks')
   socket.off('externalEvents')
+  socket.off('eventsUpdated')
 
   socket.on('eventsData', (events: CalendarEvent[]) => {
     console.log('EVENTS FROM SERVER:', events)
@@ -587,6 +598,10 @@ const bindSocket = () => {
 
   socket.on('externalEvents', (eEvents: ExternalEvents[]) => {
     externalEvents.value = eEvents
+  })
+
+  socket.on('eventsUpdated', () => {
+    socket.emit('getEvents', { active: true, dormID: sessionStorage.getItem('dormID') })
   })
 }
 
@@ -835,3 +850,11 @@ const filteredExternalDates = computed (() => {
 
 
 </script>
+
+<style scoped>
+@media (min-width: 1024px) {
+  .events-workspace {
+    height: calc(100dvh - 7rem);
+  }
+}
+</style>

@@ -1,5 +1,5 @@
 <template>
-  <div class="grid gap-4">
+  <div class="grid h-full min-h-0 grid-rows-[auto_auto_minmax(0,1fr)] gap-4">
     <!-- Header: month/year + navigation -->
     <div class="flex items-center justify-between">
       <button
@@ -31,11 +31,11 @@
     </div>
 
     <!-- Day grid -->
-    <div class="grid grid-cols-7 gap-1">
+    <div class="grid min-h-0 grid-cols-7 grid-rows-6 gap-1">
       <div
         v-for="(cell, index) in calendarCells"
         :key="index"
-        class="aspect-square flex flex-col items-center justify-center gap-1 rounded text-sm hover:bg-gray-300 dark:hover:bg-gray-700 cursor-pointer"
+        class="aspect-square lg:aspect-auto flex min-h-0 flex-col items-center justify-center gap-1 rounded text-sm hover:bg-gray-300 dark:hover:bg-gray-700 cursor-pointer"
           @click="cell.day && emitDayClick(cell.dateKey)"
         :class="cellClasses(cell)"
       >
@@ -48,25 +48,6 @@
       </div>
     </div>
 
-    <!-- Legend -->
-    <div class="flex flex-wrap items-center gap-4 text-xs opacity-70">
-      <span class="inline-flex items-center gap-2">
-        <span class="w-3 h-3 rounded bg-gray-800 inline-block"></span>
-        {{ t('calendar.today') }}
-      </span>
-      <span class="inline-flex items-center gap-2">
-        <span class="h-2 w-2 rounded-full bg-accent inline-block"></span>
-        {{ t('calendar.event') }}
-      </span>
-      <span class="inline-flex items-center gap-2">
-        <span class="h-2 w-2 rounded-full bg-emerald-500 inline-block"></span>
-        {{ t('calendar.cleaning') }}
-      </span>
-      <span class="inline-flex items-center gap-2">
-      <span class="h-2 w-2 rounded-full bg-blue-500 inline-block"></span>
-        {{ t('calendar.external') }}
-      </span>
-    </div>
   </div>
 </template>
 

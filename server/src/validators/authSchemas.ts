@@ -64,6 +64,22 @@ export const createDormFloorSchema = z.object({
 
 export const addDormRoomsSchema = z.object({ roomIDs: roomIDsSchema });
 
+export const createAdminEventSchema = z.object({
+  title: z.string().trim().min(1).max(255),
+  description: z.string().trim().max(5000).default(""),
+  startDate: z.coerce.date(),
+  endDate: z.coerce.date(),
+  type: z.enum(["SOCIAL", "MEETING", "OTHER"]),
+  target: z.discriminatedUnion("scope", [
+    z.object({ scope: z.literal("all") }),
+    z.object({ scope: z.literal("house"), address: z.string().trim().min(2).max(255) }),
+    z.object({ scope: z.literal("floor"), dormID: z.coerce.number().int().positive() }),
+  ]),
+}).refine(data => data.endDate >= data.startDate, {
+  message: "The end date must be after the start date.",
+  path: ["endDate"],
+});
+
 export const changePasswordSchema = z.object({
   username: z.string().trim().min(3).max(50),
   newPassword: z.string().min(12).max(128),

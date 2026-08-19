@@ -55,7 +55,7 @@ onBeforeUnmount(() => {
 <style>
 
 html, body, #app {
-  height: 100%;
+  min-height: 100%;
 }
 
 body {
@@ -66,7 +66,11 @@ body {
 }
 
 .app-with-top-bar {
-  padding-top: calc(4rem + env(safe-area-inset-top));
+  padding-top: calc(7.75rem + env(safe-area-inset-top));
+}
+
+@media (min-width: 1280px) {
+  .app-with-top-bar { padding-top: calc(4rem + env(safe-area-inset-top)); }
 }
 
 .connection-banner {

@@ -18,6 +18,11 @@
         <h2 class="mt-5 text-2xl font-bold">{{ t('usageAdmin.title') }}</h2>
         <p class="mt-2 opacity-75">{{ t('adminMain.usageHelp') }}</p>
       </router-link>
+      <router-link to="/admin/events" class="rounded-2xl bg-surface p-8 text-left shadow-lg transition hover:-translate-y-1 hover:shadow-xl dark:bg-surface-dark">
+        <div class="text-4xl">📅</div>
+        <h2 class="mt-5 text-2xl font-bold">{{ t('adminEvents.title') }}</h2>
+        <p class="mt-2 opacity-75">{{ t('adminEvents.cardHelp') }}</p>
+      </router-link>
       <button class="rounded-2xl bg-surface p-8 text-left shadow-lg transition hover:-translate-y-1 hover:shadow-xl dark:bg-surface-dark" @click="openSection('users')">
         <div class="text-4xl">👥</div>
         <h2 class="mt-5 text-2xl font-bold">{{ t('adminMain.users') }}</h2>
@@ -64,7 +69,7 @@
 
       <section class="rounded-2xl bg-surface p-6 shadow-lg dark:bg-surface-dark">
         <div class="flex flex-wrap items-center justify-between gap-3"><div><h2 class="text-2xl font-bold">{{ t('adminMain.manageUsers') }}</h2><p class="text-sm opacity-75">{{ t('adminMain.manageUsersHelp') }}</p></div><select v-model="filterDorm" class="rounded border border-border p-2"><option value="all">{{ t('adminMain.allDorms') }}</option><option v-for="dorm in dorms" :key="dorm.dormID" :value="String(dorm.dormID)">{{ dormLabel(dorm) }}</option></select></div>
-        <div class="mt-5 overflow-x-auto"><table class="w-full text-left text-sm"><thead><tr class="border-b border-border"><th class="p-3">{{ t('adminMain.emailUsername') }}</th><th class="p-3">{{ t('adminMain.dormRoom') }}</th><th class="p-3">{{ t('adminMain.role') }}</th><th class="p-3">{{ t('adminMain.status') }}</th><th class="p-3"></th></tr></thead><tbody><tr v-for="user in filteredUsers" :key="user.userID" class="border-b border-border/50"><td class="p-3"><div class="font-semibold">{{ user.email }}</div><div class="opacity-70">{{ user.username || t('adminMain.setupIncomplete') }}</div></td><td class="p-3">{{ user.role === 'ADMIN' ? t('adminMain.globalAccess') : `${user.dormID} / ${user.roomID}` }}</td><td class="p-3">{{ t(user.role === 'ADMIN' ? 'adminMain.administrator' : 'adminMain.student') }}</td><td class="p-3">{{ user.active ? (user.mustChangePassword ? t('adminMain.temporaryPassword') : t('common.active')) : t('common.inactive') }}</td><td class="p-3"><button class="rounded bg-accent px-3 py-2 text-white" @click="startEdit(user)">{{ t('adminMain.edit') }}</button></td></tr></tbody></table></div>
+        <div class="mt-5 max-h-[32rem] overflow-auto rounded-lg border border-border/60"><table class="w-full text-left text-sm"><thead class="sticky top-0 z-10 bg-surface shadow-sm dark:bg-surface-dark"><tr class="border-b border-border"><th class="p-3">{{ t('adminMain.emailUsername') }}</th><th class="p-3">{{ t('adminMain.dormRoom') }}</th><th class="p-3">{{ t('adminMain.role') }}</th><th class="p-3">{{ t('adminMain.status') }}</th><th class="p-3"></th></tr></thead><tbody><tr v-for="user in filteredUsers" :key="user.userID" class="border-b border-border/50"><td class="p-3"><div class="font-semibold">{{ user.email }}</div><div class="opacity-70">{{ user.username || t('adminMain.setupIncomplete') }}</div></td><td class="p-3">{{ user.role === 'ADMIN' ? t('adminMain.globalAccess') : `${user.dormID} / ${user.roomID}` }}</td><td class="p-3">{{ t(user.role === 'ADMIN' ? 'adminMain.administrator' : 'adminMain.student') }}</td><td class="p-3">{{ user.active ? (user.mustChangePassword ? t('adminMain.temporaryPassword') : t('common.active')) : t('common.inactive') }}</td><td class="p-3"><button class="rounded bg-accent px-3 py-2 text-white" @click="startEdit(user)">{{ t('adminMain.edit') }}</button></td></tr></tbody></table></div>
       </section>
 
       <section class="flex flex-wrap items-center justify-between gap-5 rounded-2xl bg-surface p-6 shadow-lg dark:bg-surface-dark">
