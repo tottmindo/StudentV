@@ -456,7 +456,15 @@
     "add": "Lägg till evenemang",
     "details": "Evenemangsdetaljer",
     "onDate": "Evenemang den {date}",
-    "nationEvent": "Nations evenemang"
+    "nationEvent": "Nations evenemang",
+    "inviteFloor": "Bjud in alla aktiva boende på våningen",
+    "inviteFloorHelp": "De får en avisering som länkar till evenemanget.",
+    "attendingCount": "{count} deltar",
+    "accept": "Tacka ja",
+    "decline": "Tacka nej",
+    "cancelEvent": "Ställ in evenemang",
+    "cancelConfirm": "Ställ in evenemanget för alla?",
+    "rsvp": { "pending": "Inväntar ditt svar", "accepted": "Du deltar", "declined": "Du har tackat nej" }
   },
   "eventSamples": {
     "movie": "Filmkväll",

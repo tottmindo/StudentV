@@ -40,7 +40,7 @@
         :class="cellClasses(cell)"
       >
         <span v-if="cell.day">{{ cell.day }}</span>
-        <span v-if="cell.day && (cell.hasEvent || cell.hasCleaning || cell.hasExternal)" class="flex gap-1">
+        <span v-if="cell.day && (cell.hasEvent || cell.hasCleaning || cell.hasExternal || cell.hasNation)" class="flex gap-1">
           <span v-if="cell.hasEvent" class="h-1.5 w-1.5 rounded-full bg-accent"></span>
           <span v-if="cell.hasCleaning" class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
           <span v-if="cell.hasExternal" class="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
@@ -49,29 +49,6 @@
       </div>
     </div>
 
-    <!-- Legend -->
-    <div class="flex flex-wrap items-center gap-4 text-xs opacity-70">
-      <span class="inline-flex items-center gap-2">
-        <span class="w-3 h-3 rounded bg-gray-800 inline-block"></span>
-        {{ t('calendar.today') }}
-      </span>
-      <span class="inline-flex items-center gap-2">
-        <span class="h-2 w-2 rounded-full bg-accent inline-block"></span>
-        {{ t('calendar.event') }}
-      </span>
-      <span class="inline-flex items-center gap-2">
-        <span class="h-2 w-2 rounded-full bg-emerald-500 inline-block"></span>
-        {{ t('calendar.cleaning') }}
-      </span>
-      <span class="inline-flex items-center gap-2">
-      <span class="h-2 w-2 rounded-full bg-blue-500 inline-block"></span>
-        {{ t('calendar.external') }}
-      </span>
-      <span class="inline-flex items-center gap-2">
-      <span class="h-2 w-2 rounded-full bg-purple-500 inline-block"></span>
-        {{ t('calendar.nation') }}
-      </span>
-    </div>
   </div>
 </template>
 

@@ -99,7 +99,17 @@ CREATE TABLE events (
   createdat timestamptz NOT NULL DEFAULT current_timestamp,
   active boolean NOT NULL DEFAULT true,
   type varchar(100) NOT NULL,
-  dormid integer NOT NULL REFERENCES dorms(dormid) ON DELETE CASCADE
+  dormid integer NOT NULL REFERENCES dorms(dormid) ON DELETE CASCADE,
+  createdbyuserid integer REFERENCES users(userid) ON DELETE SET NULL,
+  cancelledat timestamptz
+);
+CREATE TABLE eventinvitations (
+  eventid integer NOT NULL REFERENCES events(eventid) ON DELETE CASCADE,
+  userid integer NOT NULL REFERENCES users(userid) ON DELETE CASCADE,
+  status varchar(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined')),
+  respondedat timestamptz,
+  createdat timestamptz NOT NULL DEFAULT current_timestamp,
+  PRIMARY KEY (eventid, userid)
 );
 CREATE TABLE activatedevents (
   eventid integer NOT NULL REFERENCES events(eventid) ON DELETE CASCADE,

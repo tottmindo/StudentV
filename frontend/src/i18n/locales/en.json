@@ -456,7 +456,15 @@
     "add": "Add event",
     "details": "Event details",
     "onDate": "Events on {date}",
-    "nationEvent": "Nation events"
+    "nationEvent": "Nation events",
+    "inviteFloor": "Invite all active residents on this floor",
+    "inviteFloorHelp": "They will receive a notification linking to this event.",
+    "attendingCount": "{count} attending",
+    "accept": "Accept",
+    "decline": "Decline",
+    "cancelEvent": "Cancel event",
+    "cancelConfirm": "Cancel this event for everyone?",
+    "rsvp": { "pending": "Awaiting your response", "accepted": "You are attending", "declined": "You declined" }
   },
   "eventSamples": {
     "movie": "Movie night",

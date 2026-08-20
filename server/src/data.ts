@@ -742,20 +742,27 @@ class Data {
    * @returns {Promise<any[]>} Array of events
    * @throws {Error} If database query fails
    */
-  async getEvents(filters?: { active?: boolean; dormID?: number }): Promise<any[]> {
+  async getEvents(filters?: { active?: boolean; dormID?: number; userID?: number }): Promise<any[]> {
     try {
-      let query = `SELECT * FROM events WHERE 1=1`;
-      const params: any[] = [];
+      let query = `SELECT e.*,
+        mine.status AS "invitationStatus",
+        COUNT(inv.userID) FILTER (WHERE inv.status = 'accepted')::integer AS "attendeeCount"
+        FROM events e
+        LEFT JOIN eventInvitations mine ON mine.eventID = e.eventID AND mine.userID = ?
+        LEFT JOIN eventInvitations inv ON inv.eventID = e.eventID`;
+      const params: any[] = [filters?.userID || 0];
+      query += ` WHERE 1=1`;
 
       if (filters?.active !== undefined) {
-        query += ` AND active = ?`;
+        query += ` AND e.active = ?`;
         params.push(filters.active);
       }
       if (filters?.dormID) {
-        query += ` AND dormID = ?`;
+        query += ` AND e.dormID = ?`;
         params.push(filters.dormID);
       }
 
+      query += ` GROUP BY e.eventID, mine.status ORDER BY e.startDate`;
       const [rows] = await pool.query(query, params);
       return rows as any[];
     } catch (err) {
@@ -777,6 +784,7 @@ class Data {
    * @throws {Error} If database query fails
    */
   async createEvent(event: any): Promise<any> {
+    const connection = await pool.getConnection();
     try {
       const {
         title,
@@ -787,31 +795,68 @@ class Data {
         type,
       } = event;
 
-      const [result]: any = await pool.query(
-        `INSERT INTO events (title, description, startDate, endDate, active, type, dormID)
-         VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING eventID`,
-        [title, description, startDate, endDate, active, type, event.dormID]
+      await connection.beginTransaction();
+      const [result]: any = await connection.query(
+        `INSERT INTO events (title, description, startDate, endDate, active, type, dormID, createdByUserID)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING eventID`,
+        [title, description, startDate, endDate || startDate, active, type, event.dormID, event.userID]
       );
+      const eventID = Number(result[0]?.eventID);
+      if (event.inviteFloor) {
+        await connection.query(
+          `INSERT INTO eventInvitations (eventID, userID, status, respondedAt)
+           SELECT ?, userID, CASE WHEN userID = ? THEN 'accepted' ELSE 'pending' END,
+                  CASE WHEN userID = ? THEN NOW() ELSE NULL END
+           FROM users WHERE dormID = ? AND active = TRUE AND role = 'STUDENT'
+           ON CONFLICT (eventID, userID) DO NOTHING`,
+          [eventID, event.userID, event.userID, event.dormID]
+        );
+      }
+      await connection.commit();
 
       const savedEvent = {
-        id: result.insertId,
+        id: eventID,
         title,
         description,
         startDate,
         endDate,
         active,
-        type,
+        type, createdByUserID: event.userID,
+        invitationStatus: event.inviteFloor ? "accepted" : null,
+        attendeeCount: event.inviteFloor ? 1 : 0,
       };
 
       return {
-        id: result.insertId,
-        insertId: result.insertId,
+        id: eventID,
+        insertId: eventID,
         event: savedEvent,
       };
     } catch (err) {
+      await connection.rollback();
       console.error("❌ Error creating event:", err);
       throw new Error("Failed to create event in db.");
+    } finally {
+      connection.release();
     }
+  }
+
+  async respondToEventInvitation(eventID: number, userID: number, dormID: number, accepted: boolean) {
+    const [result] = await pool.query(
+      `UPDATE eventInvitations i SET status = ?, respondedAt = NOW()
+       FROM events e WHERE i.eventID = e.eventID AND i.eventID = ? AND i.userID = ?
+       AND e.dormID = ? AND e.active = TRUE RETURNING i.eventID`,
+      [accepted ? "accepted" : "declined", eventID, userID, dormID]
+    );
+    if (!(result as any[])[0]) throw new Error("This event invitation is not available.");
+  }
+
+  async cancelEvent(eventID: number, userID: number, dormID: number) {
+    const [result] = await pool.query(
+      `UPDATE events SET active = FALSE, cancelledAt = NOW()
+       WHERE eventID = ? AND dormID = ? AND createdByUserID = ? AND active = TRUE RETURNING eventID`,
+      [eventID, dormID, userID]
+    );
+    if (!(result as any[])[0]) throw new Error("Only the event creator can cancel this event.");
   }
 
   /**
@@ -856,6 +901,47 @@ class Data {
   async getDashboardAlerts(userID: number, dormID: number): Promise<DashboardAlert[]> {
     try {
       const alerts: DashboardAlert[] = [];
+
+      const [invitationRows] = await pool.query(
+        `SELECT e.eventID, e.title, e.startDate, creator.username AS creatorUsername
+         FROM eventInvitations i
+         JOIN events e ON e.eventID = i.eventID
+         LEFT JOIN users creator ON creator.userID = e.createdByUserID
+         WHERE i.userID = ? AND e.dormID = ? AND i.status = 'pending'
+           AND e.active = TRUE AND e.endDate >= NOW()
+         ORDER BY e.startDate ASC`,
+        [userID, dormID]
+      );
+      for (const event of invitationRows as any[]) {
+        alerts.push({
+          id: 1000000 + Number(event.eventID),
+          title: "Event invitation",
+          description: `${event.creatorUsername || "A resident"} invited you to “${event.title}” on ${this.formatAlertDate(event.startDate)}.`,
+          route: `/events?eventID=${event.eventID}`,
+          actionLabel: "Respond",
+        });
+      }
+
+      const [cancelledEventRows] = await pool.query(
+        `SELECT e.eventID, e.title, creator.username AS creatorUsername
+         FROM eventInvitations i
+         JOIN events e ON e.eventID = i.eventID
+         LEFT JOIN users creator ON creator.userID = e.createdByUserID
+         WHERE i.userID = ? AND e.dormID = ? AND i.status = 'accepted'
+           AND e.cancelledAt IS NOT NULL AND e.createdByUserID IS NOT NULL
+           AND e.createdByUserID <> i.userID
+         ORDER BY e.cancelledAt DESC`,
+        [userID, dormID]
+      );
+      for (const event of cancelledEventRows as any[]) {
+        alerts.push({
+          id: 1100000 + Number(event.eventID),
+          title: "Event cancelled",
+          description: `${event.creatorUsername || "The organiser"} cancelled “${event.title}”.`,
+          route: `/events?eventID=${event.eventID}`,
+          actionLabel: "View event",
+        });
+      }
 
       const [cleaningRows] = await pool.query(
         `SELECT

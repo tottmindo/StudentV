@@ -34,7 +34,7 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
   socket.on("getEvents", async (filters: any) => {
     console.log(`Request for events with filters:`, filters);
     try {
-      const events = await data.getEvents(filters);
+      const events = await data.getEvents({ ...filters, dormID, userID });
       socket.emit("eventsData", events);
     } catch (error) {
       console.error("Error fetching events:", error);
@@ -46,7 +46,7 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
     console.log(`Request to create event:`, item);
     try {
       if (!dormID) throw new Error("Authentication is required to create an event.");
-      const saved = await data.createEvent({ ...item, dormID });
+      const saved = await data.createEvent({ ...item, dormID, userID });
       const response = saved.event || { id: saved.id, ...item };
       socket.emit("eventCreated", response);
 
@@ -55,12 +55,34 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
       }
 
       socket.to(`dorm-${dormID}`).emit("eventCreated", response);
+      if (item.inviteFloor) getIO().to(`dorm-${dormID}`).emit("eventInvitationsUpdated");
     } catch (error: any) {
       console.error("Error creating event:", error);
       if (typeof callback === "function") {
         callback({ error: error.message || "Failed to create event." });
       }
       socket.emit("error", { message: "Failed to create event." });
+    }
+  });
+
+  socket.on("respondToEventInvitation", async (payload: { eventID: number; accepted: boolean }, callback?: Function) => {
+    try {
+      await data.respondToEventInvitation(Number(payload.eventID), userID, dormID, Boolean(payload.accepted));
+      getIO().to(`dorm-${dormID}`).emit("eventInvitationsUpdated", { eventID: Number(payload.eventID) });
+      if (typeof callback === "function") callback({ success: true });
+    } catch (error: any) {
+      if (typeof callback === "function") callback({ error: error.message });
+    }
+  });
+
+  socket.on("cancelEvent", async (payload: { eventID: number }, callback?: Function) => {
+    try {
+      await data.cancelEvent(Number(payload.eventID), userID, dormID);
+      getIO().to(`dorm-${dormID}`).emit("eventCancelled", { eventID: Number(payload.eventID) });
+      getIO().to(`dorm-${dormID}`).emit("eventInvitationsUpdated", { eventID: Number(payload.eventID) });
+      if (typeof callback === "function") callback({ success: true });
+    } catch (error: any) {
+      if (typeof callback === "function") callback({ error: error.message });
     }
   });
 

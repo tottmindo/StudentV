@@ -1,58 +1,11 @@
 <template>
   <div class="min-h-screen bg-background p-6 text-text dark:bg-background-dark dark:text-text-dark">
     <div class="events-workspace grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-      <section class="flex min-h-0 flex-col overflow-hidden rounded-lg border border-gray-200 bg-surface p-5 dark:border-gray-700 dark:bg-surface-dark">
+      <section class="flex h-[32rem] min-h-0 flex-col overflow-hidden rounded-lg border border-gray-200 bg-surface p-5 dark:border-gray-700 dark:bg-surface-dark">
         <div class="mb-4 flex items-center">
           <h2 class="text-2xl font-bold">{{ t('eventsView.calendar') }}</h2>
-          <button type="button" class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold transition hover:border-accent hover:text-accent dark:border-gray-600" :aria-pressed="showHistoricalEvents" @click="showHistoricalEvents = !showHistoricalEvents">
-            {{ t(showHistoricalEvents ? 'eventsView.hideHistory' : 'eventsView.showHistory') }}
-          </button>
         </div>
-        <div class="mb-4 flex flex-wrap items-center gap-3">
-          <span class="text-sm font-semibold opacity-80">{{ t('eventsView.filter') }}</span>
-
-          <button
-            type="button"
-            @click="filters.events = !filters.events"
-            class="cursor-pointer rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors"
-            :class="filters.events ? 'border-accent bg-accent text-white' : 'border-gray-300 bg-surface text-text opacity-60 dark:border-gray-600 dark:bg-surface-dark dark:text-text-dark'"
-            :aria-pressed="filters.events"
-          >
-            {{ t('eventsView.internal') }}
-          </button>
-
-          <button
-            type="button"
-            @click="filters.cleaning = !filters.cleaning"
-            class="cursor-pointer rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors"
-            :class="filters.cleaning ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-gray-300 bg-surface text-text opacity-60 dark:border-gray-600 dark:bg-surface-dark dark:text-text-dark'"
-            :aria-pressed="filters.cleaning"
-          >
-            {{ t('eventsView.cleaningWeeks') }}
-          </button>
-
-          <button
-            type="button"
-            @click="filters.external = !filters.external"
-            class="cursor-pointer rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors"
-            :class="filters.external ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-300 bg-surface text-text opacity-60 dark:border-gray-600 dark:bg-surface-dark dark:text-text-dark'"
-            :aria-pressed="filters.external"
-          >
-            {{ t('eventsView.external') }}
-          </button>
-
-          <button
-            type="button"
-            @click="filters.nation = !filters.nation"
-            class="px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
-            :class="filters.nation
-              ? 'bg-purple-600 text-white'
-              : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 opacity-50'"
-          >
-            {{ t('eventsView.nationEvent') }}
-          </button>
-        </div>
-        <div class="w-full max-w-full">
+        <div class="min-h-0 w-full max-w-full flex-1">
                 <CalendarComponent
                   :marked-dates="filteredEventDates"
                   :cleaning-dates="filteredCleaningWeeks"
@@ -61,6 +14,29 @@
                   @day-click="onCalendarDayClick"
                   class="w-full h-full"
                 />
+        </div>
+        <div class="mt-4 flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-background/60 p-2 dark:border-gray-700 dark:bg-background-dark/60" role="group" :aria-label="t('eventsView.filter')">
+          <span class="px-1 text-xs font-bold uppercase tracking-wide opacity-60">{{ t('eventsView.filter') }}</span>
+
+          <button type="button" @click="filters.events = !filters.events" class="cursor-pointer rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors" :class="filters.events ? 'border-accent bg-accent text-white' : 'border-gray-300 bg-surface text-text opacity-60 dark:border-gray-600 dark:bg-surface-dark dark:text-text-dark'" :aria-pressed="filters.events">
+            {{ t('eventsView.internal') }}
+          </button>
+
+          <button type="button" @click="filters.cleaning = !filters.cleaning" class="cursor-pointer rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors" :class="filters.cleaning ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-gray-300 bg-surface text-text opacity-60 dark:border-gray-600 dark:bg-surface-dark dark:text-text-dark'" :aria-pressed="filters.cleaning">
+            {{ t('eventsView.cleaningWeeks') }}
+          </button>
+
+          <button type="button" @click="filters.external = !filters.external" class="cursor-pointer rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors" :class="filters.external ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-300 bg-surface text-text opacity-60 dark:border-gray-600 dark:bg-surface-dark dark:text-text-dark'" :aria-pressed="filters.external">
+            {{ t('eventsView.external') }}
+          </button>
+
+          <button type="button" @click="filters.nation = !filters.nation" class="cursor-pointer rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors" :class="filters.nation ? 'border-purple-600 bg-purple-600 text-white' : 'border-gray-300 bg-surface text-text opacity-60 dark:border-gray-600 dark:bg-surface-dark dark:text-text-dark'" :aria-pressed="filters.nation">
+            {{ t('eventsView.nationEvent') }}
+          </button>
+
+          <button type="button" @click="showHistoricalEvents = !showHistoricalEvents" class="cursor-pointer rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors" :class="showHistoricalEvents ? 'border-gray-700 bg-gray-700 text-white dark:border-gray-200 dark:bg-gray-200 dark:text-gray-900' : 'border-gray-300 bg-surface text-text opacity-60 dark:border-gray-600 dark:bg-surface-dark dark:text-text-dark'" :aria-pressed="showHistoricalEvents">
+            {{ t(showHistoricalEvents ? 'eventsView.hideHistory' : 'eventsView.showHistory') }}
+          </button>
         </div>
       </section>
 
@@ -159,6 +135,24 @@
               </div>
             </div>
             <p class="text-sm opacity-80">{{ event.description }}</p>
+            <div v-if="event.invitationStatus" class="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-3 dark:border-gray-700">
+              <p class="text-sm font-semibold">
+                {{ t('eventsView.attendingCount', { count: event.attendeeCount || 0 }) }}
+                <span class="ml-2 font-normal opacity-70">{{ t(`eventsView.rsvp.${event.invitationStatus}`) }}</span>
+              </p>
+              <div v-if="event.createdByUserID !== userID" class="flex gap-2">
+                <button
+                  type="button"
+                  class="rounded-lg px-3 py-2 text-sm font-bold disabled:cursor-not-allowed"
+                  :class="event.invitationStatus === 'accepted' ? 'bg-gray-400 text-gray-700 dark:bg-gray-600 dark:text-gray-300' : 'bg-accent text-white disabled:opacity-50'"
+                  :disabled="eventActionPending || event.invitationStatus === 'accepted'"
+                  @click="respondToInvitation(event, true)"
+                >{{ t('eventsView.accept') }}</button>
+                <button type="button" class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-bold disabled:opacity-50 dark:border-gray-600" :disabled="eventActionPending" @click="respondToInvitation(event, false)">{{ t('eventsView.decline') }}</button>
+              </div>
+            </div>
+            <button v-if="event.createdByUserID === userID && event.active" type="button" class="w-fit rounded-lg bg-red-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-50" :disabled="eventActionPending" @click="cancelEvent(event)">{{ t('eventsView.cancelEvent') }}</button>
+            <p v-if="eventActionError" class="text-sm font-semibold text-red-600 dark:text-red-400">{{ eventActionError }}</p>
           </div>
           <div
               v-for="week in selectedCleaningWeeks"
@@ -349,6 +343,11 @@
           </label>
         </div>
 
+        <label class="flex items-start gap-2 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+          <input type="checkbox" v-model="newEvent.inviteFloor" class="mt-0.5 h-4 w-4" />
+          <span><span class="block text-sm font-semibold">{{ t('eventsView.inviteFloor') }}</span><span class="block text-xs opacity-70">{{ t('eventsView.inviteFloorHelp') }}</span></span>
+        </label>
+
         <button type="submit" class="w-fit px-4 py-2 bg-accent text-background-light rounded cursor-pointer hover:opacity-90">{{ t('eventsView.add') }}</button>
       </form>
     </section>
@@ -356,7 +355,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import CalendarComponent from '@/components/CalendarComponent.vue'
 import ModalComponent from '@/components/ModalComponent.vue'
 import { getSocket } from '@/composables/socket'
@@ -368,9 +367,9 @@ const socket = getSocket()
 const route = useRoute()
 const { t, locale } = useI18n()
 const userID = Number(sessionStorage.getItem('userID') || 0)
-
-//Variable deiding how many upcoming events to show
-const numberOfUpcomingEvents = 10;
+const eventActionPending = ref(false)
+const eventActionError = ref('')
+const openedRequestedEventID = ref<number | null>(null)
 
 type CleaningWeek = {
   weekID: number
@@ -556,9 +555,16 @@ const ownCleaningWeeks = computed(() => {
   return cleaningWeeks.value.filter((week) => week.assignedUserID === userID)
 })
 
+const currentOwnCleaningWeeks = computed(() => {
+  const today = startOfLocalDay(toDateKey(new Date())).getTime()
+  return ownCleaningWeeks.value.filter((week) => {
+    return startOfLocalDay(week.endDate).getTime() >= today
+  })
+})
+
 const cleaningCalendarDates = computed(() => {
   const dates = new Set<string>()
-  ownCleaningWeeks.value.forEach((week) => {
+  currentOwnCleaningWeeks.value.forEach((week) => {
     getDateKeysInRange(week.startDate, week.endDate).forEach((dateKey) => dates.add(dateKey))
   })
   return Array.from(dates)
@@ -577,7 +583,7 @@ const filteredEvents = computed<DisplayEvent[]>(() => {
         if (!seenEventKeys.has(uniqueKey)) {
           seenEventKeys.add(uniqueKey)
           list.push({
-            id: `internal-${event.id !== undefined ? event.id : index}`,
+            id: `internal-${getEventIdentifier(event) || index}`,
             title: event.title,
             description: event.description,
             startDate: event.startDate,
@@ -644,14 +650,14 @@ const filteredEvents = computed<DisplayEvent[]>(() => {
     })
   }
 
-  // 4. Sort chronologically by start date first, THEN slice to 10
+  // Cleaning weeks intentionally stay out of this list; they are shown only
+  // in the calendar. Sort all internal, external, and nation events by date.
   return list
     .sort((a, b) => {
       const aStart = parseEventDate(a.startDate)?.getTime() || 0
       const bStart = parseEventDate(b.startDate)?.getTime() || 0
       return aStart - bStart
     })
-    .slice(0, numberOfUpcomingEvents)
 })
 
 const showEventDetailsModal = ref(false)
@@ -669,11 +675,12 @@ const eventModalTitle = computed(() => {
   return t('eventsView.details')
 })
 
-  const openEventDetails = (events: CalendarEvent[], dayKey = '') => {
-    selectedEvents.value = filters.value.events ? events : []
+const openEventDetails = (events: CalendarEvent[], dayKey = '', forceEvents = false) => {
+    eventActionError.value = ''
+    selectedEvents.value = (forceEvents || filters.value.events) ? events : []
 
     selectedCleaningWeeks.value = (dayKey && filters.value.cleaning)
-      ? ownCleaningWeeks.value.filter((week) =>
+      ? currentOwnCleaningWeeks.value.filter((week) =>
           dateIsInRange(dayKey, week.startDate, week.endDate)
         )
       : []
@@ -730,18 +737,18 @@ const openEventDetail = (event: CalendarEvent | DisplayEvent) => {
     }
 
     const found = upcomingEvents.value.find(
-      (e) => `internal-${e.id}` === event.id
+      (e) => `internal-${getEventIdentifier(e)}` === event.id
     )
 
     if (!found) return
 
     selectedCleaningWeeks.value = []
-    openEventDetails([found])
+    openEventDetails([found], '', true)
     return
   }
 
   selectedCleaningWeeks.value = []
-  openEventDetails([event])
+  openEventDetails([event], '', true)
 }
 
 const getEventIdentifier = (event: CalendarEvent) => {
@@ -750,23 +757,37 @@ const getEventIdentifier = (event: CalendarEvent) => {
 
 const openRequestedEvent = () => {
   const requestedEventID = Number(route.query.eventID)
-  if (!requestedEventID) return
+  if (!requestedEventID || openedRequestedEventID.value === requestedEventID) return
 
-  const requestedEvent = allEvents.value.find((event) => getEventIdentifier(event) === requestedEventID)
+  const requestedEvent = upcomingEvents.value.find((event) => getEventIdentifier(event) === requestedEventID)
   if (requestedEvent) {
+    openedRequestedEventID.value = requestedEventID
     openEventDetail(requestedEvent)
   }
 }
+
+watch(() => route.query.eventID, () => {
+  openedRequestedEventID.value = null
+  openRequestedEvent()
+})
 
 const bindSocket = () => {
   socket.off('eventsData')
   socket.off('cleaningWeeks')
   socket.off('externalEvents')
   socket.off('nationsguidenEvents')
+  socket.off('eventInvitationsUpdated', fetchCalendarData)
+  socket.off('eventCancelled', fetchCalendarData)
+  socket.off('eventCreated', fetchCalendarData)
 
   socket.on('eventsData', (events: CalendarEvent[]) => {
     console.log('EVENTS FROM SERVER:', events)
     upcomingEvents.value = events
+    if (showEventDetailsModal.value && selectedEvents.value.length) {
+      selectedEvents.value = selectedEvents.value
+        .map(selected => events.find(event => getEventIdentifier(event) === getEventIdentifier(selected)))
+        .filter((event): event is CalendarEvent => Boolean(event))
+    }
     sessionStorage.setItem('events', JSON.stringify(events))
     openRequestedEvent()
   })
@@ -781,6 +802,9 @@ const bindSocket = () => {
   socket.on('nationsguidenEvents', (events: NationEvent[]) => {
     nationEvents.value = events
   })
+  socket.on('eventInvitationsUpdated', fetchCalendarData)
+  socket.on('eventCancelled', fetchCalendarData)
+  socket.on('eventCreated', fetchCalendarData)
 }
 
 const fetchCalendarData = () => {
@@ -796,6 +820,7 @@ const newEvent = ref<Partial<CalendarEvent> & {
   startTime?: string
   endTime?: string
   hasTime?: boolean
+  inviteFloor?: boolean
 }>({
   title: '',
   description: '',
@@ -805,7 +830,8 @@ const newEvent = ref<Partial<CalendarEvent> & {
   endDateLocal: '',
   startTime: '',
   endTime: '',
-  hasTime: false
+  hasTime: false,
+  inviteFloor: false
 })
 
 const toDbDatetime = (date: string, time?: string) => {
@@ -835,14 +861,18 @@ const end = newEvent.value.endDateLocal
 
   // temporary negative id for optimistic UI
   const tempId = -Date.now()
-  const item: CalendarEvent = {
+  const item: CalendarEvent & { inviteFloor?: boolean } = {
     id: tempId,
     title: String(newEvent.value.title),
     description: String(newEvent.value.description || ''),
     startDate: start,
     endDate: end,
     active: Boolean(newEvent.value.active),
-    type: String(newEvent.value.type || 'OTHER')
+    type: String(newEvent.value.type || 'OTHER'),
+    inviteFloor: Boolean(newEvent.value.inviteFloor),
+    createdByUserID: userID,
+    invitationStatus: newEvent.value.inviteFloor ? 'accepted' : null,
+    attendeeCount: newEvent.value.inviteFloor ? 1 : 0
   }
 
   // optimistic update
@@ -865,7 +895,10 @@ const end = newEvent.value.endDateLocal
             startDate: saved.startDate || item.startDate,
             endDate: saved.endDate || item.endDate,
             active: typeof saved.active === 'boolean' ? saved.active : item.active,
-            type: saved.type || item.type
+            type: saved.type || item.type,
+            createdByUserID: saved.createdByUserID ?? item.createdByUserID,
+            invitationStatus: saved.invitationStatus ?? item.invitationStatus,
+            attendeeCount: saved.attendeeCount ?? item.attendeeCount
           }
           sessionStorage.setItem('events', JSON.stringify(upcomingEvents.value))
         }
@@ -887,6 +920,41 @@ const end = newEvent.value.endDateLocal
   newEvent.value.hasTime = false
   newEvent.value.active = true
   newEvent.value.type = 'SOCIAL'
+  newEvent.value.inviteFloor = false
+}
+
+const respondToInvitation = (event: CalendarEvent, accepted: boolean) => {
+  if (eventActionPending.value || (accepted && event.invitationStatus === 'accepted')) return
+  eventActionPending.value = true
+  eventActionError.value = ''
+  socket.emit('respondToEventInvitation', { eventID: getEventIdentifier(event), accepted }, (response: any) => {
+    if (response?.error) {
+      eventActionPending.value = false
+      eventActionError.value = response.error
+      return
+    }
+
+    const previousStatus = event.invitationStatus
+    event.invitationStatus = accepted ? 'accepted' : 'declined'
+    if (previousStatus !== event.invitationStatus) {
+      event.attendeeCount = Math.max(0, Number(event.attendeeCount || 0) + (accepted ? 1 : previousStatus === 'accepted' ? -1 : 0))
+    }
+    eventActionPending.value = false
+    fetchCalendarData()
+    socket.emit('getDashboard')
+  })
+}
+
+const cancelEvent = (event: CalendarEvent) => {
+  if (!window.confirm(t('eventsView.cancelConfirm'))) return
+  eventActionPending.value = true
+  eventActionError.value = ''
+  socket.emit('cancelEvent', { eventID: getEventIdentifier(event) }, (response: any) => {
+    eventActionPending.value = false
+    if (response?.error) { eventActionError.value = response.error; return }
+    showEventDetailsModal.value = false
+    fetchCalendarData()
+  })
 }
 
 const formatDate = (dateString?: string, showTime = true) => {
@@ -902,14 +970,12 @@ const formatDate = (dateString?: string, showTime = true) => {
 
   if (!showTime) {
     return dateObj.toLocaleDateString(locale.value, {
-      year: 'numeric',
       month: 'long',
       day: 'numeric'
     })
   }
 
   return dateObj.toLocaleString(locale.value, {
-    year: 'numeric',
     month: 'long',
     day: 'numeric',
     hour: 'numeric',
@@ -962,7 +1028,19 @@ const formatDateRange = (start?: string, end?: string) => {
 
   // Same date, different times
   if (sameDate) {
-    return `${formatDate(start, true)} — ${formatDate(end, true)}`
+    const dateLabel = startDate.toLocaleDateString(locale.value, {
+      month: 'long',
+      day: 'numeric'
+    })
+    const startTime = startDate.toLocaleTimeString(locale.value, {
+      hour: 'numeric',
+      minute: '2-digit'
+    })
+    const endTime = endDate.toLocaleTimeString(locale.value, {
+      hour: 'numeric',
+      minute: '2-digit'
+    })
+    return `${dateLabel}, ${startTime} — ${endTime}`
   }
 
   // Different dates
@@ -1009,6 +1087,9 @@ onUnmounted(() => {
   socket.off('cleaningWeeks')
   socket.off('externalEvents')
   socket.off('nationsguidenEvents')
+  socket.off('eventInvitationsUpdated', fetchCalendarData)
+  socket.off('eventCancelled', fetchCalendarData)
+  socket.off('eventCreated', fetchCalendarData)
 })
 
 

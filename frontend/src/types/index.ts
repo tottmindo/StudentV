@@ -56,6 +56,9 @@ export type CalendarEvent = {
   endDate?: string
   active: boolean
   type: string
+  createdByUserID?: number | null
+  invitationStatus?: 'pending' | 'accepted' | 'declined' | null
+  attendeeCount?: number
 }
 
 export type ActivatedEventItem = {

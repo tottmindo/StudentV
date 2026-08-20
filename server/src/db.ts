@@ -33,6 +33,8 @@ const camelCaseColumns: Record<string, string> = {
   isdeleted: "isDeleted", activateduserid: "activatedUserID", taskname: "taskName",
   weektaskid: "weekTaskID", totaltasks: "totalTasks", completedtasks: "completedTasks",
   pendingtasks: "pendingTasks",
+  invitationstatus: "invitationStatus", attendeecount: "attendeeCount",
+  invited: "invited", respondedat: "respondedAt",
   proposalid: "proposalID", proposaltype: "proposalType", targettemplateid: "targetTemplateID",
   proposedtitle: "proposedTitle", proposeddescription: "proposedDescription",
   proposedisimportant: "proposedIsImportant", creatoruserid: "creatorUserID",
