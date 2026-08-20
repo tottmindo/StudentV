@@ -214,13 +214,18 @@ INSERT INTO page_visit_stats (visitdate, page, visits) VALUES
   (current_date, '/cleaning', 5),
   (current_date, '/sensors', 9);
 
--- Base cleaning tasks with new fields (createdByUserID NULL for base tasks, isImportant varies)
+-- Base cleaning tasks based on the residence cleaning rules.
+-- createdByUserID and dormID are NULL because these tasks apply to every dorm.
 INSERT INTO cleaningtasktemplate (taskname, description, active, createdbyuserid, isimportant) VALUES
-  ('Kitchen', 'Clean kitchen counters and shared appliances.', true, NULL, true),
-  ('Bathroom', 'Clean the shared bathroom.', true, NULL, true),
-  ('Floors', 'Vacuum and mop shared floors.', true, NULL, false),
-  ('Trash and recycling', 'Empty shared bins.', true, NULL, false),
-  ('Common area', 'Tidy up common areas and furniture.', true, NULL, false);
+  ('Sink and dishes', 'Wash and dry dishes and kitchen equipment. Clean the sink with cleaning spray, remove food residue, and unclog it if needed.', true, NULL, true),
+  ('Shower', 'Clean the shared shower after use.', true, NULL, true),
+  ('Floors', 'Clean spills immediately. Vacuum and mop shared floors as needed; vacuum cleaner bags are available from the office.', true, NULL, false),
+  ('Trash and recycling', 'Empty full bins and always empty them on Sunday evening. Sort recycling and deposit-return cans and bottles, replace bin bags, clean dirty bins and the area under the sink, and empty compost before it overfills.', true, NULL, true),
+  ('Tables and counters', 'Wipe tables and kitchen counters with cleaning spray and scrape away anything stuck to them.', true, NULL, false),
+  ('Stove and oven', 'Clean the stove with cleaning spray, scrape away burnt residue, and clean the oven when needed, especially the bottom.', true, NULL, true),
+  ('Microwave', 'Clean the microwave inside and outside, including the microwave cover.', true, NULL, false),
+  ('Drying rack', 'Put dry dishes in the shared cupboards and clean the area around and underneath the drying rack with cleaning spray.', true, NULL, false),
+  ('Refrigerator', 'Keep the shared refrigerator clean, check its contents, and throw away old food.', true, NULL, false);
 
 -- Multiple cleaning weeks (current and future) for testing swaps
 INSERT INTO cleaningweeks (dormid, assigneduserid, startdate, enddate) VALUES

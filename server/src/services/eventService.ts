@@ -5,7 +5,7 @@ type AdminEvent = {
   description: string;
   startDate: Date;
   endDate: Date;
-  type: "SOCIAL" | "MEETING" | "OTHER";
+  type: "SAFETY" | "MAINTENANCE" | "MEETING" | "OTHER";
   target: { scope: "all" } | { scope: "house"; address: string } | { scope: "floor"; dormID: number };
 };
 

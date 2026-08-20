@@ -7,13 +7,27 @@
 
     <section class="mt-6 rounded-2xl bg-surface p-6 shadow-lg dark:bg-surface-dark sm:p-8">
       <form class="grid gap-5" @submit.prevent="createEvent">
+        <div>
+          <p class="font-semibold">{{ t('adminEvents.templates') }}</p>
+          <p class="mt-1 text-sm opacity-65">{{ t('adminEvents.templatesHelp') }}</p>
+          <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <button v-for="template in eventTemplates" :key="template.key" type="button" class="rounded-xl border border-border p-3 text-left transition hover:border-accent hover:bg-accent/5" :class="form.template === template.key ? 'border-accent ring-2 ring-accent' : ''" @click="applyTemplate(template)">
+              <span class="text-xl" aria-hidden="true">{{ template.icon }}</span><strong class="mt-1 block">{{ template.label }}</strong><span class="mt-1 block text-xs opacity-65">{{ template.help }}</span>
+            </button>
+          </div>
+        </div>
         <label class="grid gap-1.5"><span class="font-semibold">{{ t('eventsView.title') }}</span><input v-model.trim="form.title" required maxlength="255" class="rounded-lg border border-border p-3" /></label>
         <label class="grid gap-1.5"><span class="font-semibold">{{ t('eventsView.description') }}</span><textarea v-model.trim="form.description" rows="4" maxlength="5000" class="rounded-lg border border-border p-3"></textarea></label>
         <div class="grid gap-4 sm:grid-cols-2">
-          <label class="grid gap-1.5"><span class="font-semibold">{{ t('adminEvents.starts') }}</span><input v-model="form.startDate" required type="datetime-local" class="rounded-lg border border-border p-3" /></label>
-          <label class="grid gap-1.5"><span class="font-semibold">{{ t('adminEvents.ends') }}</span><input v-model="form.endDate" required type="datetime-local" :min="form.startDate" class="rounded-lg border border-border p-3" /></label>
+          <label class="grid gap-1.5"><span class="font-semibold">{{ t('eventsView.startDate') }}</span><input v-model="form.startDate" required type="date" class="rounded-lg border border-border p-3" /></label>
+          <label class="grid gap-1.5"><span class="font-semibold">{{ t('eventsView.endDate') }}</span><input v-model="form.endDate" type="date" :min="form.startDate" class="rounded-lg border border-border p-3" /></label>
         </div>
-        <label class="grid gap-1.5"><span class="font-semibold">{{ t('eventsView.type') }}</span><select v-model="form.type" class="rounded-lg border border-border p-3"><option value="SOCIAL">{{ t('eventsView.social') }}</option><option value="MEETING">{{ t('eventsView.meeting') }}</option><option value="OTHER">{{ t('eventsView.other') }}</option></select></label>
+        <label class="flex items-center gap-2"><input v-model="form.hasTime" type="checkbox" class="h-4 w-4" /><span class="text-sm font-semibold">{{ t('eventsView.specifyTime') }}</span></label>
+        <div v-if="form.hasTime" class="grid gap-4 sm:grid-cols-2">
+          <label class="grid gap-1.5"><span class="font-semibold">{{ t('eventsView.startTime') }}</span><input v-model="form.startTime" required type="time" class="rounded-lg border border-border p-3" /></label>
+          <label class="grid gap-1.5"><span class="font-semibold">{{ t('eventsView.endTime') }}</span><input v-model="form.endTime" required type="time" class="rounded-lg border border-border p-3" /></label>
+        </div>
+        <label class="grid gap-1.5"><span class="font-semibold">{{ t('eventsView.type') }}</span><select v-model="form.type" class="rounded-lg border border-border p-3"><option value="SAFETY">{{ t('adminEvents.safety') }}</option><option value="MAINTENANCE">{{ t('adminEvents.maintenance') }}</option><option value="MEETING">{{ t('eventsView.meeting') }}</option><option value="OTHER">{{ t('eventsView.other') }}</option></select><span v-if="importantEvent" class="text-sm font-semibold text-warning">{{ t('adminEvents.reminderHelp') }}</span></label>
 
         <fieldset class="rounded-xl border border-border p-4">
           <legend class="px-2 font-bold">{{ t('adminEvents.audience') }}</legend>
@@ -37,16 +51,27 @@ import { useI18n } from 'vue-i18n'
 import { apiUrl } from '@/composables/api'
 
 type Dorm = { dormID: number; address: string; floor: number }
+type EventType = 'SAFETY' | 'MAINTENANCE' | 'MEETING' | 'OTHER'
+type EventTemplate = { key: string; icon: string; label: string; help: string; title: string; description: string; type: EventType }
 const { t } = useI18n()
 const dorms = ref<Dorm[]>([]), submitting = ref(false), success = ref(false), feedback = ref('')
-const form = reactive({ title: '', description: '', startDate: '', endDate: '', type: 'SOCIAL', scope: 'all' as 'all'|'house'|'floor', address: '', dormID: '' as number|'' })
+const form = reactive({ template: '', title: '', description: '', startDate: '', endDate: '', hasTime: false, startTime: '', endTime: '', type: 'SAFETY' as EventType, scope: 'all' as 'all'|'house'|'floor', address: '', dormID: '' as number|'' })
 const houses = computed(() => [...new Set(dorms.value.map(dorm => dorm.address))].sort((a, b) => a.localeCompare(b)))
+const importantEvent = computed(() => ['SAFETY', 'MAINTENANCE', 'MEETING'].includes(form.type))
+const eventTemplates = computed<EventTemplate[]>(() => [
+  { key: 'fire-drill', icon: '🚨', label: t('adminEvents.fireDrill'), help: t('adminEvents.fireDrillHelp'), title: t('adminEvents.fireDrillTitle'), description: t('adminEvents.fireDrillDescription'), type: 'SAFETY' },
+  { key: 'maintenance', icon: '🔧', label: t('adminEvents.maintenance'), help: t('adminEvents.maintenanceHelp'), title: t('adminEvents.maintenanceTitle'), description: '', type: 'MAINTENANCE' },
+  { key: 'inspection', icon: '📋', label: t('adminEvents.inspection'), help: t('adminEvents.inspectionHelp'), title: t('adminEvents.inspectionTitle'), description: '', type: 'SAFETY' },
+  { key: 'meeting', icon: '📣', label: t('eventsView.meeting'), help: t('adminEvents.meetingHelp'), title: t('adminEvents.meetingTitle'), description: '', type: 'MEETING' },
+])
 const scopes = computed(() => [
   { value: 'all', label: t('adminEvents.all'), help: t('adminEvents.allHelp') },
   { value: 'house', label: t('adminEvents.house'), help: t('adminEvents.houseHelp') },
   { value: 'floor', label: t('adminEvents.floor'), help: t('adminEvents.floorHelp') },
 ])
 const headers = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${sessionStorage.getItem('authToken')}` })
+function applyTemplate(template: EventTemplate) { form.template = template.key; form.title = template.title; form.description = template.description; form.type = template.type }
+function eventDate(date: string, time: string, end = false) { return new Date(`${date}T${form.hasTime ? time : end ? '23:59' : '00:00'}`).toISOString() }
 
 async function loadDorms() {
   const response = await fetch(apiUrl('/api/auth/admin/dorms'), { headers: headers() })
@@ -56,11 +81,12 @@ async function loadDorms() {
 async function createEvent() {
   feedback.value = ''; submitting.value = true
   try {
+    const endDate = form.endDate || form.startDate
     const target = form.scope === 'all' ? { scope: 'all' } : form.scope === 'house' ? { scope: 'house', address: form.address } : { scope: 'floor', dormID: form.dormID }
-    const response = await fetch(apiUrl('/api/auth/admin/events'), { method: 'POST', headers: headers(), body: JSON.stringify({ title: form.title, description: form.description, startDate: new Date(form.startDate).toISOString(), endDate: new Date(form.endDate).toISOString(), type: form.type, target }) })
+    const response = await fetch(apiUrl('/api/auth/admin/events'), { method: 'POST', headers: headers(), body: JSON.stringify({ title: form.title, description: form.description, startDate: eventDate(form.startDate, form.startTime), endDate: eventDate(endDate, form.endTime, true), type: form.type, target }) })
     const data = await response.json()
     if (!response.ok) throw new Error(data.error || t('adminEvents.error'))
-    success.value = true; feedback.value = t('adminEvents.success', { count: data.count }); form.title = ''; form.description = ''; form.startDate = ''; form.endDate = ''
+    success.value = true; feedback.value = t('adminEvents.success', { count: data.count }); form.template = ''; form.title = ''; form.description = ''; form.startDate = ''; form.endDate = ''; form.startTime = ''; form.endTime = ''; form.hasTime = false
   } catch (error) { success.value = false; feedback.value = error instanceof Error ? error.message : t('adminEvents.error') }
   finally { submitting.value = false }
 }

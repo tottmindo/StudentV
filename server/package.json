@@ -10,6 +10,7 @@
     "start:scheduler": "node dist/jobs/scheduler.js",
     "db:schema": "node scripts/run-sql.mjs src/data/database-and-simulation/generate-postgres.sql",
     "db:migrate:resident-profiles": "node scripts/run-sql.mjs src/data/database-and-simulation/add-resident-profiles-postgres.sql",
+    "db:migrate:resident-deactivation": "node scripts/run-sql.mjs src/data/database-and-simulation/add-resident-deactivation-deadline-postgres.sql",
     "db:seed": "node scripts/run-sql.mjs src/data/database-and-simulation/add-test-data-postgres.sql --seed"
   },
   "dependencies": {

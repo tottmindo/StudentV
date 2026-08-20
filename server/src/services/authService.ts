@@ -33,8 +33,21 @@ import { syncDormGeneralChat } from "./chatService.js";
 
 const SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS || "10", 10);
 const JWT_EXPIRATION = process.env.JWT_EXPIRATION || "1h";
+const RESIDENT_DEACTIVATION_DELAY_DAYS = positiveIntegerEnv("RESIDENT_DEACTIVATION_DELAY_DAYS", 30);
 type RowDataPacket = Record<string, any>;
 type ResultSetHeader = { affectedRows: number; insertId?: number };
+
+function positiveIntegerEnv(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (raw == null || raw.trim() === "") return fallback;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value <= 0) throw new Error(`${name} must be a positive integer`);
+  return value;
+}
+
+function residentDeactivationDeadline(now: Date = new Date()): Date {
+  return new Date(now.getTime() + RESIDENT_DEACTIVATION_DELAY_DAYS * 24 * 60 * 60 * 1000);
+}
 
 export async function registerUser(
   roomID: number | null,
@@ -78,6 +91,7 @@ export async function registerUser(
        WHERE roomID = ?
          AND dormID = ?
          AND active = TRUE
+         AND scheduledDeactivationAt IS NULL
        ORDER BY userID ASC`,
       [assignedRoomID, assignedDormID]
     );
@@ -94,11 +108,12 @@ export async function registerUser(
     if (activeRows.length > 0) {
       await connection.query(
         `UPDATE users
-         SET active = FALSE
+         SET scheduledDeactivationAt = ?
          WHERE roomID = ?
            AND dormID = ?
-           AND active = TRUE`,
-        [assignedRoomID, assignedDormID]
+           AND active = TRUE
+           AND scheduledDeactivationAt IS NULL`,
+        [residentDeactivationDeadline(), assignedRoomID, assignedDormID]
       );
     }
 
@@ -459,6 +474,22 @@ export async function listUsersForAdmin() {
   return rows.map(row => ({ ...row, active: Boolean(row.active), mustChangePassword: Boolean(row.mustChangePassword) }));
 }
 
+/** Deactivate residents whose replacement grace period has ended. */
+export async function deactivateExpiredResidents(now: Date = new Date()): Promise<number> {
+  const [rows]: [RowDataPacket[], any] = await pool.query(
+    `UPDATE users
+     SET active = FALSE, scheduledDeactivationAt = NULL,
+         credentialVersion = credentialVersion + 1
+     WHERE active = TRUE
+       AND scheduledDeactivationAt IS NOT NULL
+       AND scheduledDeactivationAt <= ?
+     RETURNING userID`,
+    [now]
+  );
+  rows.forEach(row => disconnectUser(Number(row.userID)));
+  return rows.length;
+}
+
 export async function updateUserForAdmin(
   actingAdminID: number,
   userID: number,
@@ -488,7 +519,8 @@ export async function updateUserForAdmin(
 
     const [occupied]: [RowDataPacket[], any] = await connection.query(
       `SELECT userID, email, username FROM users
-       WHERE roomID = ? AND dormID = ? AND active = TRUE AND userID <> ? FOR UPDATE`,
+       WHERE roomID = ? AND dormID = ? AND active = TRUE
+         AND scheduledDeactivationAt IS NULL AND userID <> ? FOR UPDATE`,
       [assignedRoomID, assignedDormID, userID]
     );
     if (changes.active && occupied[0] && !changes.replaceExisting) {
@@ -499,13 +531,13 @@ export async function updateUserForAdmin(
     }
     if (changes.active && occupied.length) {
       await connection.query(
-        "UPDATE users SET active = FALSE, credentialVersion = credentialVersion + 1 WHERE userID IN (?)",
-        [occupied.map(row => row.userID)]
+        "UPDATE users SET scheduledDeactivationAt = ? WHERE userID IN (?)",
+        [residentDeactivationDeadline(), occupied.map(row => row.userID)]
       );
     }
     await connection.query(
       `UPDATE users SET email = ?, username = ?, role = ?, dormID = ?, roomID = ?, active = ?,
-       credentialVersion = credentialVersion + 1 WHERE userID = ?`,
+       scheduledDeactivationAt = NULL, credentialVersion = credentialVersion + 1 WHERE userID = ?`,
       [changes.email, changes.username, changes.role, assignedDormID, assignedRoomID, changes.active, userID]
     );
     if (changes.active && assignedDormID != null) {
@@ -520,7 +552,6 @@ export async function updateUserForAdmin(
     );
     await connection.commit();
     disconnectUser(userID);
-    occupied.forEach(row => disconnectUser(row.userID));
     return { message: "User updated successfully." };
   } catch (error: any) {
     await connection.rollback();

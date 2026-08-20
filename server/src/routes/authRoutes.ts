@@ -106,7 +106,10 @@ router.get("/admin/dorms", authenticate, requireCompletedAccount, requireAdmin, 
 router.post("/admin/events", authenticate, requireCompletedAccount, requireAdmin, validate(createAdminEventSchema), async (req, res) => {
   try {
     const result = await createTargetedAdminEvent(req.body);
-    for (const created of result.created) getIO().to(`dorm-${created.dormID}`).emit("eventsUpdated");
+    for (const created of result.created) {
+      getIO().to(`dorm-${created.dormID}`).emit("eventCreated", { eventID: created.eventID });
+      getIO().to(`dorm-${created.dormID}`).emit("eventInvitationsUpdated", { eventID: created.eventID });
+    }
     res.status(201).json(result);
   } catch (error: any) {
     res.status(400).json({ error: error.message || "Could not create event." });

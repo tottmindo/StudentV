@@ -61,6 +61,8 @@ Use the root `.env` for local development. The most important values are:
 - `CLEANING_GENERATION_MONTHS` (defaults to `6`) controls how far ahead cleaning weeks are populated
 - `CLEANING_SCHEDULE_CRON` (defaults to `0 8 * * *`) and `CLEANING_SCHEDULE_TIMEZONE` (defaults to `Europe/Stockholm`) control the periodic idempotent schedule check
 - `CLEANING_SCHEDULE_ENABLED=false` disables the automatic check (the admin button remains available)
+- `RESIDENT_DEACTIVATION_DELAY_DAYS` (defaults to `30`) controls how long a replaced resident can still sign in before their account is deactivated
+- `RESIDENT_DEACTIVATION_CRON` (defaults to hourly) and `RESIDENT_DEACTIVATION_TIMEZONE` control the deactivation check; set `RESIDENT_DEACTIVATION_ENABLED=false` to disable it
 
 ## Database setup
 
@@ -87,6 +89,13 @@ new deployments should use the `PG_DB_*` variables. PostgreSQL is the only
 supported database. The database directory contains one complete schema and
 one development-data script; changes to database features belong in those two
 files instead of separate migration or fixture fragments.
+
+For an existing database created before delayed resident deactivation was
+added, apply its idempotent migration once:
+
+```sh
+npm run db:migrate:resident-deactivation -w server
+```
 
 To load the PostgreSQL development fixtures, which erase the current
 application data, run:

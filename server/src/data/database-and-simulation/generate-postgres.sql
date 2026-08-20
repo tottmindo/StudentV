@@ -24,6 +24,7 @@ CREATE TABLE users (
   roomid integer,
   dormid integer,
   active boolean NOT NULL DEFAULT true,
+  scheduleddeactivationat timestamptz,
   mustchangepassword boolean NOT NULL DEFAULT false,
   credentialversion integer NOT NULL DEFAULT 0,
   CONSTRAINT users_role_check CHECK (role IN ('ADMIN', 'STUDENT')),
@@ -33,6 +34,8 @@ CREATE TABLE users (
   ),
   FOREIGN KEY (roomid, dormid) REFERENCES room(roomid, dormid)
 );
+CREATE INDEX idx_users_scheduled_deactivation ON users (scheduleddeactivationat)
+  WHERE active = true AND scheduleddeactivationat IS NOT NULL;
 
 -- Optional public resident information is kept separate from authentication data.
 -- A profile belongs to exactly one user and is removed with that account.

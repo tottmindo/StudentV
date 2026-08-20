@@ -2,6 +2,7 @@ import cron from "node-cron";
 import "../config/env.js";
 import { Data } from "../data.js";
 import { importLatestSensorData } from "../services/sensorDataImportService.js";
+import { deactivateExpiredResidents } from "../services/authService.js";
 
 const data = new Data();
 
@@ -18,6 +19,8 @@ function positiveInteger(name: string, fallback: number): number {
 const cleaningMonthsAhead = positiveInteger("CLEANING_GENERATION_MONTHS", 6);
 const cleaningSchedule = process.env.CLEANING_SCHEDULE_CRON || "0 8 * * *";
 const cleaningTimezone = process.env.CLEANING_SCHEDULE_TIMEZONE || "Europe/Stockholm";
+const residentDeactivationSchedule = process.env.RESIDENT_DEACTIVATION_CRON || "0 * * * *";
+const residentDeactivationTimezone = process.env.RESIDENT_DEACTIVATION_TIMEZONE || "Europe/Stockholm";
 
 export function getCleaningWeekStart(now: Date = new Date()): Date {
   const localDate = new Intl.DateTimeFormat("en-CA", { timeZone: cleaningTimezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
@@ -86,4 +89,16 @@ if (process.env.SENSOR_SYNC_ENABLED !== "false") {
   const schedule = process.env.SENSOR_SYNC_CRON || "*/15 * * * *", timezone = process.env.SENSOR_SYNC_TIMEZONE || "Europe/Stockholm";
   if (!cron.validate(schedule)) throw new Error("SENSOR_SYNC_CRON is not a valid cron expression");
   cron.schedule(schedule, async () => { try { const result = await importLatestSensorData(); console.log(`Sensor data collected: ${result.snapshots} snapshots imported`) } catch (error) { console.error("Scheduled sensor data collection failed", error) } }, { scheduled: true, timezone });
+}
+
+if (process.env.RESIDENT_DEACTIVATION_ENABLED !== "false") {
+  if (!cron.validate(residentDeactivationSchedule)) throw new Error("RESIDENT_DEACTIVATION_CRON is not a valid cron expression");
+  cron.schedule(residentDeactivationSchedule, async () => {
+    try {
+      const count = await deactivateExpiredResidents();
+      if (count > 0) console.log(`Deactivated ${count} expired resident account(s)`);
+    } catch (error) {
+      console.error("Resident account deactivation failed", error);
+    }
+  }, { scheduled: true, timezone: residentDeactivationTimezone });
 }

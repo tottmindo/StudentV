@@ -69,7 +69,7 @@ export const createAdminEventSchema = z.object({
   description: z.string().trim().max(5000).default(""),
   startDate: z.coerce.date(),
   endDate: z.coerce.date(),
-  type: z.enum(["SOCIAL", "MEETING", "OTHER"]),
+  type: z.enum(["SAFETY", "MAINTENANCE", "MEETING", "OTHER"]),
   target: z.discriminatedUnion("scope", [
     z.object({ scope: z.literal("all") }),
     z.object({ scope: z.literal("house"), address: z.string().trim().min(2).max(255) }),
