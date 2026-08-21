@@ -23,10 +23,40 @@
 
       <section v-if="selectedRoom" class="conversation-panel" :aria-label="selectedRoom.name">
         <header class="conversation-header">
-          <button class="back-button" type="button" :aria-label="t('chat.backToRooms')" @click="closeMobileRoom"><span aria-hidden="true">←</span></button>
+          <button class="back-button" type="button" :aria-label="t('chat.backToRooms')" @click="closeMobileRoom">
+            <span aria-hidden="true">←</span>
+          </button>
+
           <div class="min-w-0">
             <h2 class="truncate">{{ chatName || selectedRoom.name }}</h2>
             <p>{{ t('chat.roomNumber', { id: selectedRoom.chatID }) }}</p>
+          </div>
+
+          <div ref="membersDropdownRef" class="members-dropdown-wrapper">
+            <button
+              type="button"
+              class="members-toggle-button"
+              :aria-expanded="showMembersDropdown"
+              @click="showMembersDropdown = !showMembersDropdown"
+            >
+              <span aria-hidden="true">👥</span>
+              <span class="font-bold">{{ roomMembers.length }}</span>
+              <span class="text-xs transition-transform duration-200" :class="{ 'rotate-180': showMembersDropdown }">▼</span>
+            </button>
+
+            <div v-if="showMembersDropdown" class="members-dropdown">
+              <div class="members-dropdown-title">
+                {{ t('chat.members') }} ({{ roomMembers.length }})
+              </div>
+              <ul class="members-list">
+                <li v-for="(member, idx) in roomMembers" :key="idx" class="member-item">
+                  <span class="member-avatar" aria-hidden="true">
+                    {{ member.username.charAt(0).toUpperCase() }}
+                  </span>
+                  <span class="member-name truncate">{{ member.username }}</span>
+                </li>
+              </ul>
+            </div>
           </div>
         </header>
         <div ref="scrollBox" class="message-list" aria-live="polite">
@@ -44,11 +74,44 @@
           </div>
         </div>
         <form class="composer" @submit.prevent="sendMessage">
-          <label class="sr-only" for="chat-message">{{ t('chat.placeholder') }}</label>
-          <input id="chat-message" v-model="newMessage" type="text" maxlength="2000" autocomplete="off"
-            :placeholder="t('chat.placeholder')" :disabled="sending || loadingMessages" />
-          <button type="submit" :disabled="sending || !newMessage.trim()">{{ t('chat.send') }}</button>
-        </form>
+        <!-- Emoji picker -->
+        <div ref="emojiPickerWrapper" class="emoji-picker-wrapper">
+          <button
+            type="button"
+            class="emoji-button"
+            aria-label="Emoji"
+            @click="showEmojiPickerElement = !showEmojiPickerElement"
+          >
+            😊
+          </button>
+          <emoji-picker
+            v-if="showEmojiPickerElement"
+            class="emoji-picker"
+            @emoji-click="addEmoji"
+          />
+        </div>
+        <label class="sr-only" for="chat-message">
+          {{ t('chat.placeholder') }}
+        </label>
+
+        <input
+          id="chat-message"
+          v-model="newMessage"
+          type="text"
+          maxlength="2000"
+          autocomplete="off"
+          :placeholder="t('chat.placeholder')"
+          :disabled="sending || loadingMessages"
+        />
+
+        <button
+          type="submit"
+          :disabled="sending || !newMessage.trim()"
+        >
+          {{ t('chat.send') }}
+        </button>
+
+      </form>
       </section>
 
       <section v-else class="empty-conversation">
@@ -63,6 +126,8 @@ import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { getSocket } from '@/composables/socket'
+import "emoji-picker-element"
+import { polyfillCountryFlagEmojis } from 'country-flag-emoji-polyfill'
 
 interface ChatRoom { chatID: number; name: string }
 interface ChatMessage { messageID: number; chatID: number; userID: number; username: string; msg: string; sentAt: string }
@@ -85,6 +150,43 @@ const loadingMessages = ref(false)
 const sending = ref(false)
 const roomsError = ref('')
 const chatError = ref('')
+const showEmojiPickerElement = ref(false)
+const emojiPickerWrapper = ref<HTMLElement | null>(null)
+const roomMembers = ref<{ username: string}[]>([])
+const showMembersDropdown = ref(false)
+const membersDropdownRef = ref<HTMLElement | null>(null)
+
+function handleClickOutsideMembersDropdown(event: MouseEvent) {
+  if (
+    showMembersDropdown.value &&
+    membersDropdownRef.value &&
+    !membersDropdownRef.value.contains(event.target as Node)
+  ) {
+    showMembersDropdown.value = false
+  }
+}
+
+polyfillCountryFlagEmojis("Twemoji Mozilla")
+
+function handleRoomMembers(data: unknown){
+  if (Array.isArray(data)){
+    roomMembers.value = data
+  }
+}
+
+function addEmoji(event: CustomEvent){
+  newMessage.value += event.detail.unicode
+}
+
+function handleClickOutsideEmojiPicker(event: MouseEvent) {
+  if (
+    showEmojiPickerElement.value &&
+    emojiPickerWrapper.value &&
+    !emojiPickerWrapper.value.contains(event.target as Node)
+  ) {
+    showEmojiPickerElement.value = false
+  }
+}
 
 function requestRooms() {
   loadingRooms.value = true
@@ -111,6 +213,7 @@ function selectRoom(room: ChatRoom, updateUrl = true) {
   chatError.value = ''
   loadingMessages.value = true
   socket.emit('joinChatRoom', room.chatID)
+  socket.emit('getChatMembers', room.chatID)
   if (updateUrl) void router.replace({ name: 'chat', query: { room: String(room.chatID) } })
 }
 
@@ -118,6 +221,8 @@ function leaveCurrentRoom() {
   if (selectedRoomID.value !== null) socket.emit('leaveChatRoom', selectedRoomID.value)
   selectedRoomID.value = null
   loadingMessages.value = false
+  roomMembers.value = []
+  showMembersDropdown.value = false
 }
 
 function closeMobileRoom() {
@@ -190,6 +295,11 @@ onMounted(() => {
   socket.on('error', handleSocketError)
   socket.on('connect', handleReconnect)
   socket.on('authenticated', handleAuthenticated)
+  socket.on('chatMembers', handleRoomMembers)
+  document.addEventListener('click', handleClickOutsideMembersDropdown)
+
+  document.addEventListener('click', handleClickOutsideEmojiPicker)
+
   requestRooms()
 })
 
@@ -201,11 +311,123 @@ onUnmounted(() => {
   socket.off('error', handleSocketError)
   socket.off('connect', handleReconnect)
   socket.off('authenticated', handleAuthenticated)
+  socket.off('chatMembers', handleRoomMembers)
+
+  document.removeEventListener('click', handleClickOutsideEmojiPicker)
+  document.removeEventListener('click', handleClickOutsideMembersDropdown)
 })
 </script>
 
 <style scoped>
-.chat-page { height: calc(100dvh - 4rem - env(safe-area-inset-top)); padding: 1rem; }
+/* Push the dropdown to the top-right corner of the header */
+.members-dropdown-wrapper {
+  position: relative;
+  margin-left: auto;
+  flex: none;
+}
+
+/* Toggle Button */
+.members-toggle-button {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid rgb(56 46 56 / .18);
+  border-radius: 0.75rem;
+  background: transparent;
+  color: inherit;
+  font-size: 0.875rem;
+  transition: background-color 150ms ease;
+}
+
+.members-toggle-button:hover {
+  background: rgb(0 0 0 / .06);
+}
+
+/* Dropdown Menu */
+.members-dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  z-index: 100;
+  width: 14rem;
+  max-height: 18rem;
+  overflow-y: auto;
+  padding: 0.5rem;
+  border: 1px solid rgb(56 46 56 / .18);
+  border-radius: 0.75rem;
+  background: #eee4d8;
+  box-shadow: 0 10px 25px rgb(0 0 0 / 0.15);
+}
+
+.members-dropdown-title {
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid rgb(0 0 0 / .08);
+  font-size: 0.75rem;
+  font-weight: 700;
+  opacity: 0.7;
+  text-transform: uppercase;
+}
+
+.members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.4rem;
+}
+
+.member-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.5rem;
+}
+
+.member-avatar {
+  display: grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex: none;
+  place-items: center;
+  border-radius: 999px;
+  background: rgb(0 0 0 / .08);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.member-name {
+  font-size: 0.875rem;
+}
+
+/* Dark Mode Support */
+:global(html.dark .members-toggle-button) {
+  border-color: rgb(255 255 255 / .2);
+}
+
+:global(html.dark .members-toggle-button:hover) {
+  background: rgb(255 255 255 / .08);
+}
+
+:global(html.dark .members-dropdown) {
+  border-color: rgb(255 255 255 / .2);
+  background: #514a58;
+}
+
+:global(html.dark .members-dropdown-title) {
+  border-color: rgb(255 255 255 / .12);
+}
+
+:global(html.dark .member-avatar) {
+  background: rgb(255 255 255 / .12);
+}
+.emoji-picker-wrapper { position: relative; flex: none; }
+.emoji-button { display: flex; align-items: center; justify-content: center; width: 2.75rem; height: 2.75rem; padding: 0;
+  margin: 0; border: 1px solid rgb(56 46 56 / .18); border-radius: .75rem; background: transparent; color: inherit;
+  font-size: 1.25rem; line-height: 1;}
+.emoji-button:hover { background: rgb(0 0 0 / .06);}
+.emoji-picker { position: absolute; bottom: calc(100% + .5rem); left: 0; z-index: 100;}
+.chat-page { height: calc(100dvh - 4rem - env(safe-area-inset-top)); padding: 1rem; font-family: "Twemoji Mozilla", system-ui, sans-serif; }
 .chat-shell { display: grid; grid-template-columns: minmax(15rem, 21rem) minmax(0, 1fr); height: 100%; max-width: 80rem; margin: auto; overflow: hidden; border: 1px solid rgb(56 46 56 / .18); border-radius: 1rem; background: #eee4d8; box-shadow: 0 12px 35px rgb(56 46 56 / .1); }
 .room-panel { display: flex; min-width: 0; flex-direction: column; border-right: 1px solid rgb(56 46 56 / .18); background: #cfc0af; }
 .room-header, .conversation-header { min-height: 4.5rem; padding: 1rem 1.25rem; border-bottom: 1px solid rgb(0 0 0 / .09); }
@@ -230,7 +452,7 @@ onUnmounted(() => {
 .message-meta { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: .2rem; font-size: .72rem; opacity: .72; }
 .message-bubble p { white-space: pre-wrap; }
 .composer { display: flex; gap: .65rem; padding: .85rem max(.85rem, env(safe-area-inset-right)) max(.85rem, env(safe-area-inset-bottom)) max(.85rem, env(safe-area-inset-left)); border-top: 1px solid rgb(0 0 0 / .09); }
-.composer input { min-width: 0; flex: 1; padding: .7rem .9rem; }
+.composer input { min-width: 0; flex: 1; padding: .7rem .9rem; font-family: inherit;}
 .composer button { padding: .7rem 1.1rem; border-radius: .75rem; background: #cf2e2e; color: white; font-weight: 800; }
 .composer button:disabled { cursor: not-allowed; opacity: .45; }
 .empty-conversation { display: grid; place-items: center; padding: 2rem; text-align: center; opacity: .65; }

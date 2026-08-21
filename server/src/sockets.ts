@@ -413,6 +413,22 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
     }
   });
 
+  socket.on("getChatMembers", async(chatID: number) =>{
+    try{
+      if (!Number.isInteger(chatID) || chatID <= 0) throw new Error("Invalid chat room.");
+      const hasAccess = await data.hasAccessToChat(chatID, userID);
+      if (!hasAccess){
+        console.warn(`Unauthorized access attempt: User ${userID} tried to join Chat ${chatID}`);
+        socket.emit("error", { message: "You do not have access to this chat." });
+        return;
+      }
+      const members = await data.getChatRoomMembers(chatID);
+      socket.emit("chatMembers", members);
+    }catch(err:any){
+      socket.emit("error", { message: "Failed to fetch chat members "});
+    }
+  });
+
   const emitUnreadChats = async (target = socket) => target.emit("chatUnreadCounts", await data.getChatUnreadCounts(userID));
   socket.on("getChatUnreadCounts", async() => {
     try { await emitUnreadChats(); }
@@ -483,6 +499,8 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
         }
       }
   });
+
+
 
 
 //-----------EXTERNAL EVENTS----------------

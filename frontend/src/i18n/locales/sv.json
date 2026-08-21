@@ -192,7 +192,8 @@
     "loadingMessages": "Laddar meddelanden…",
     "loadFailed": "Chatten kunde inte laddas.",
     "sendFailed": "Ditt meddelande kunde inte skickas. Försök igen.",
-    "retry": "Försök igen"
+    "retry": "Försök igen",
+    "members": "Gruppmedlemar"
   },
   "charts": {
     "closeModal": "Stäng dialogrutan",

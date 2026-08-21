@@ -1949,6 +1949,23 @@ async createSurvey(survey: any) {
     }
   }
 
+  async getChatRoomMembers(chatID: number) {
+    try {
+      const query = `
+      SELECT u.username 
+      FROM chatmembers cm
+      JOIN users u ON cm.userID = u.userID
+      WHERE cm.chatID = ?
+      ORDER BY u.username ASC`
+
+      const [rows] = await pool.query(query, [chatID]);
+      return rows as { username : string }[];
+    }catch (err) {
+      console.error('Error fetching members from chat ${chatID}', err)
+      throw new Error('Error fetching chat members')
+    }
+  }
+
   async newMessage(message: string, chatID: number, userID: number) {
     try {
       const [insertedRows]: any = await pool.query(

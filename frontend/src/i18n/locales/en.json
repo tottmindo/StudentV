@@ -192,7 +192,8 @@
     "loadingMessages": "Loading messages…",
     "loadFailed": "The chat could not be loaded.",
     "sendFailed": "Your message could not be sent. Please try again.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "members" : "Group members"
   },
   "charts": {
     "closeModal": "Close modal",
