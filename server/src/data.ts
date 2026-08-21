@@ -1931,6 +1931,33 @@ async createSurvey(survey: any) {
     }
   }
 
+  async getChatMessageReactions(chatID: number, userID: number) {
+    try {
+      const query = `
+        SELECT
+          r.messageID,
+          r.emoji,
+          COUNT(*) AS count,
+          MAX(CASE WHEN r.userID = ? THEN 1 ELSE 0 END) AS reacted
+        FROM chatMessageReactions r
+        JOIN chatHistory ch ON ch.messageID = r.messageID
+        WHERE ch.chatID = ?
+        GROUP BY r.messageID, r.emoji
+        ORDER BY r.messageID, MIN(r.createdAt)
+      `;
+
+      const [rows] = await pool.query(query, [userID, chatID]);
+
+      return rows as any[];
+    } catch (err) {
+      console.error(
+        `Error fetching reactions for chat ${chatID}`,
+        err
+      );
+      throw err;
+    }
+  }
+
   async getChatName(chatID: number, viewerUserID: number){
     try{
       const query = `SELECT COALESCE(otherUser.username, c.name) AS name
@@ -1946,6 +1973,23 @@ async createSurvey(survey: any) {
     }catch (err){
       console.error(`Error fetching name for chat with id ${chatID}`);
       throw new Error("Error fetching chat name")
+    }
+  }
+
+  async getChatRoomMembers(chatID: number) {
+    try {
+      const query = `
+      SELECT u.username 
+      FROM chatmembers cm
+      JOIN users u ON cm.userID = u.userID
+      WHERE cm.chatID = ?
+      ORDER BY u.username ASC`
+
+      const [rows] = await pool.query(query, [chatID]);
+      return rows as { username : string }[];
+    }catch (err) {
+      console.error('Error fetching members from chat ${chatID}', err)
+      throw new Error('Error fetching chat members')
     }
   }
 
@@ -1972,6 +2016,49 @@ async createSurvey(survey: any) {
       return rows[0];
     } catch (err) {
       console.error("Error creating chat message", err);
+      throw err;
+    }
+  }
+
+  async toggleChatMessageReaction(messageID: number, userID: number, emoji: string) {
+    try {
+      const [existingRows]: any = await pool.query(
+        `SELECT 1
+        FROM chatMessageReactions
+        WHERE messageID = ?
+          AND userID = ?
+          AND emoji = ?
+        LIMIT 1`,
+        [messageID, userID, emoji]
+      );
+
+      if (existingRows.length > 0) {
+        // Reaction already exists -> remove it
+        await pool.query(
+          `DELETE FROM chatMessageReactions
+          WHERE messageID = ?
+            AND userID = ?
+            AND emoji = ?`,
+          [messageID, userID, emoji]
+        );
+
+        return false;
+      }
+
+      // Reaction doesn't exist -> add it
+      await pool.query(
+        `INSERT INTO chatMessageReactions
+        (messageID, userID, emoji)
+        VALUES (?, ?, ?)`,
+        [messageID, userID, emoji]
+      );
+
+      return true;
+    } catch (err) {
+      console.error(
+        `Error toggling reaction for message ${messageID}`,
+        err
+      );
       throw err;
     }
   }
