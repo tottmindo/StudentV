@@ -167,6 +167,15 @@ CREATE TABLE chathistory (
   userid integer NOT NULL,
   FOREIGN KEY (chatid, userid) REFERENCES chatmembers(chatid, userid) ON DELETE CASCADE
 );
+CREATE TABLE chatmessagereactions (
+  messageid integer NOT NULL
+      REFERENCES chathistory(messageid) ON DELETE CASCADE,
+  userid integer NOT NULL
+      REFERENCES users(userid) ON DELETE CASCADE,
+  emoji text NOT NULL,
+  createdat timestamptz NOT NULL DEFAULT current_timestamp,
+  PRIMARY KEY (messageid, userid, emoji)
+);
 CREATE TABLE sensor_data (
   sensorcode varchar(100) NOT NULL REFERENCES sensor(sensorcode) ON DELETE CASCADE,
   recordedat timestamptz NOT NULL DEFAULT current_timestamp,

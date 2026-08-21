@@ -452,7 +452,8 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
       console.log(`Joined socket chat-${chatID}`)
       const logs = await data.getChatHistory(chatID, userID);
       const name = await data.getChatName(chatID, userID);
-      socket.emit("chatHistory", {chatID, logs, name});
+      const reactions = await data.getChatMessageReactions(chatID, userID);
+      socket.emit("chatHistory", {chatID, logs, name, reactions});
       await data.markChatRead(chatID, userID);
       await emitUnreadChats();
     }catch(err:any){
@@ -500,8 +501,64 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
       }
   });
 
+  socket.on(
+  "toggleMessageReaction", async ( messageID: number, chatID: number, emoji: string, callback: any ) => {
+    try {
+      
+      if (!Number.isInteger(messageID) || messageID <= 0) {
+        throw new Error("Invalid message.");
+      }
 
+      if (typeof emoji !== "string" || !emoji.trim()) {
+        throw new Error("Invalid reaction.");
+      }
 
+      if (!chatID) {
+        throw new Error("Message not found.");
+      }
+
+      // Make sure the user can access that chat
+      const hasAccess = await data.hasAccessToChat(chatID, userID);
+
+      if (!hasAccess) {
+        throw new Error("You do not have access to this chat.");
+      }
+
+      // Add or remove the reaction
+      const added = await data.toggleChatMessageReaction(
+        messageID,
+        userID,
+        emoji
+      );
+
+      // Tell everyone in this chat that the reaction changed
+      getIO()
+        .to(`chat-${chatID}`)
+        .emit("messageReactionUpdated", {
+          messageID,
+          userID,
+          emoji,
+          added
+        });
+
+      if (typeof callback === "function") {
+        callback({
+          messageID,
+          emoji,
+          added
+        });
+      }
+    } catch (err: any) {
+      console.error("Error toggling message reaction", err);
+
+      if (typeof callback === "function") {
+        callback({
+          error: err.message || "Failed to update reaction"
+        });
+      }
+    }
+  }
+);
 
 //-----------EXTERNAL EVENTS----------------
   socket.on("getExternalEvents", async () => {

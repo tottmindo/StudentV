@@ -63,15 +63,63 @@
           <div v-if="loadingMessages" class="message-state">{{ t('chat.loadingMessages') }}</div>
           <div v-else-if="chatError" class="message-state text-red-700 dark:text-red-300">{{ chatError }}</div>
           <div v-else-if="messages.length === 0" class="message-state">{{ t('chat.noMessages') }}</div>
-          <div v-for="msg in messages" :key="msg.messageID" class="message-row" :class="msg.userID === currentUserID ? 'own' : 'other'">
-            <div class="message-bubble">
-              <div class="message-meta">
-                <strong>{{ msg.userID === currentUserID ? t('chat.you') : msg.username }}</strong>
-                <time :datetime="msg.sentAt">{{ formatTime(msg.sentAt) }}</time>
+          <div
+              v-for="msg in messages"
+              :key="msg.messageID"
+              class="message-row"
+              :class="msg.userID === currentUserID ? 'own' : 'other'"
+            >
+              <div class="message-bubble">
+                <div class="message-meta">
+                  <strong>
+                    {{ msg.userID === currentUserID ? t('chat.you') : msg.username }}
+                  </strong>
+                  <time :datetime="msg.sentAt">
+                    {{ formatTime(msg.sentAt) }}
+                  </time>
+                </div>
+
+                <p>{{ msg.msg }}</p>
+
+                <div
+                  v-if="msg.reactions.length"
+                  class="message-reactions"
+                >
+                  <button
+                    v-for="reaction in msg.reactions"
+                    :key="reaction.emoji"
+                    type="button"
+                    class="reaction-button"
+                    :class="{ reacted: reaction.reacted }"
+                    @click="toggleReaction(msg.messageID, reaction.emoji)"
+                  >
+                    <span>{{ reaction.emoji }}</span>
+                    <span>{{ reaction.count }}</span>
+                  </button>
+                </div>
               </div>
-              <p>{{ msg.msg }}</p>
+
+              <!-- Reaction button OUTSIDE the bubble -->
+              <div
+                class="reaction-picker-wrapper"
+                :data-message-id="msg.messageID"
+              >
+                <button
+                  type="button"
+                  class="reaction-add-button"
+                  aria-label="Add reaction"
+                  @click="openReactionPicker(msg.messageID)"
+                >
+                  +
+                </button>
+
+                <emoji-picker
+                  v-if="reactionPickerMessageID === msg.messageID"
+                  class="reaction-picker"
+                  @emoji-click="(event : CustomEvent <{ unicode : string}>) => addReaction(msg.messageID, event)"
+                />
+              </div>
             </div>
-          </div>
         </div>
         <form class="composer" @submit.prevent="sendMessage">
         <!-- Emoji picker -->
@@ -130,8 +178,9 @@ import "emoji-picker-element"
 import { polyfillCountryFlagEmojis } from 'country-flag-emoji-polyfill'
 
 interface ChatRoom { chatID: number; name: string }
-interface ChatMessage { messageID: number; chatID: number; userID: number; username: string; msg: string; sentAt: string }
-interface ChatHistory { chatID: number; logs: ChatMessage[]; name?: string }
+interface ChatMessage { messageID: number; chatID: number; userID: number; username: string; msg: string; sentAt: string, reactions : MessageReactions[] }
+interface MessageReactions { messageID : number, emoji : string,  count : number, reacted : boolean }
+interface ChatHistory { chatID: number; logs: ChatMessage[]; name?: string, reactions: MessageReactions[] }
 
 const socket = getSocket()
 const route = useRoute()
@@ -152,9 +201,11 @@ const roomsError = ref('')
 const chatError = ref('')
 const showEmojiPickerElement = ref(false)
 const emojiPickerWrapper = ref<HTMLElement | null>(null)
+const reactionPickerMessageID = ref<number | null>(null)
 const roomMembers = ref<{ username: string}[]>([])
 const showMembersDropdown = ref(false)
 const membersDropdownRef = ref<HTMLElement | null>(null)
+const reactionPickerWrapper = ref<HTMLElement | null>(null)
 
 function handleClickOutsideMembersDropdown(event: MouseEvent) {
   if (
@@ -179,13 +230,43 @@ function addEmoji(event: CustomEvent){
 }
 
 function handleClickOutsideEmojiPicker(event: MouseEvent) {
+  const target = event.target as Node
+
   if (
     showEmojiPickerElement.value &&
     emojiPickerWrapper.value &&
-    !emojiPickerWrapper.value.contains(event.target as Node)
+    !emojiPickerWrapper.value.contains(target)
   ) {
     showEmojiPickerElement.value = false
   }
+
+  if (reactionPickerMessageID.value !== null) {
+    const picker = document.querySelector(
+      `.reaction-picker-wrapper[data-message-id="${reactionPickerMessageID.value}"]`
+    )
+
+    if (picker && !picker.contains(target)) {
+      reactionPickerMessageID.value = null
+    }
+  }
+}
+
+function openReactionPicker(messageID: number) {
+  if (reactionPickerMessageID.value === messageID) {
+    reactionPickerMessageID.value = null
+  } else {
+    reactionPickerMessageID.value = messageID
+  }
+}
+
+function addReaction(messageID: number, event: CustomEvent) {
+  const emoji = event.detail.unicode
+
+  if (!emoji) return
+
+  toggleReaction(messageID, emoji)
+
+  reactionPickerMessageID.value = null
 }
 
 function requestRooms() {
@@ -232,16 +313,113 @@ function closeMobileRoom() {
 }
 
 function handleHistory(data: ChatHistory) {
-  if (!data || data.chatID !== selectedRoomID.value || !Array.isArray(data.logs)) return
+  if (
+    !data ||
+    data.chatID !== selectedRoomID.value ||
+    !Array.isArray(data.logs)
+  ) return
+
   chatName.value = data.name || selectedRoom.value?.name || ''
-  messages.value = [...data.logs].reverse()
+
+  const reactions = Array.isArray(data.reactions)
+    ? data.reactions
+    : []
+
+  messages.value = [...data.logs]
+    .reverse()
+    .map(message => ({
+      ...message,
+      reactions: reactions.filter(
+        reaction => reaction.messageID === message.messageID
+      )
+    }))
+
   loadingMessages.value = false
   scrollToBottom()
 }
 
+function toggleReaction(messageID: number, emoji: string) {
+  const chatID = selectedRoomID.value
+
+  if (chatID === null) return
+
+  socket.timeout(10000).emit(
+    'toggleMessageReaction',
+    messageID,
+    chatID,
+    emoji,
+    (timeoutError: Error | null, response?: { error?: string }) => {
+      if (timeoutError) {
+        chatError.value = t('chat.reactionFailed')
+        return
+      }
+
+      if (response?.error) {
+        chatError.value = response.error
+        return
+      }
+
+      chatError.value = ''
+    }
+  )
+}
+
+function handleReactionUpdated(data: {messageID: number
+                                      userID: number
+                                      emoji: string 
+                                      added: boolean}) {
+  if (!data) return
+
+  const message = messages.value.find(
+    msg => msg.messageID === data.messageID
+  )
+
+  if (!message) return
+
+  const existingReaction = message.reactions.find(
+    reaction => reaction.emoji === data.emoji
+  )
+
+  if (data.added) {
+    if (existingReaction) {
+      existingReaction.count += 1
+
+      if (data.userID === currentUserID) {
+        existingReaction.reacted = true
+      }
+    } else {
+      message.reactions.push({
+        messageID: data.messageID,
+        emoji: data.emoji,
+        count: 1,
+        reacted: data.userID === currentUserID
+      })
+    }
+  } else {
+    if (!existingReaction) return
+
+    existingReaction.count -= 1
+
+    if (data.userID === currentUserID) {
+      existingReaction.reacted = false
+    }
+
+    if (existingReaction.count <= 0) {
+      message.reactions = message.reactions.filter(
+        reaction => reaction.emoji !== data.emoji
+      )
+    }
+  }
+}
+
 function handleNewMessage(msg: ChatMessage) {
   if (!msg || msg.chatID !== selectedRoomID.value) return
-  if (!messages.value.some(item => item.messageID === msg.messageID)) messages.value.push(msg)
+  if (!messages.value.some(item => item.messageID === msg.messageID)) {
+    messages.value.push({
+      ...msg,
+      reactions: []
+    })
+  }
   if (msg.userID !== currentUserID) socket.emit('markChatRead', msg.chatID)
   scrollToBottom()
 }
@@ -296,6 +474,7 @@ onMounted(() => {
   socket.on('connect', handleReconnect)
   socket.on('authenticated', handleAuthenticated)
   socket.on('chatMembers', handleRoomMembers)
+  socket.on('messageReactionUpdated', handleReactionUpdated)
   document.addEventListener('click', handleClickOutsideMembersDropdown)
 
   document.addEventListener('click', handleClickOutsideEmojiPicker)
@@ -312,6 +491,7 @@ onUnmounted(() => {
   socket.off('connect', handleReconnect)
   socket.off('authenticated', handleAuthenticated)
   socket.off('chatMembers', handleRoomMembers)
+  socket.off('messageReactionUpdated', handleReactionUpdated)
 
   document.removeEventListener('click', handleClickOutsideEmojiPicker)
   document.removeEventListener('click', handleClickOutsideMembersDropdown)
@@ -421,6 +601,88 @@ onUnmounted(() => {
 :global(html.dark .member-avatar) {
   background: rgb(255 255 255 / .12);
 }
+:global(html.dark .reaction-button) {
+  border-color: rgb(255 255 255 / .18);
+  background: rgb(255 255 255 / .08);
+}
+
+:global(html.dark .reaction-button:hover) {
+  background: rgb(255 255 255 / .14);
+}
+
+:global(html.dark .reaction-button.reacted) {
+  border-color: #cf2e2e;
+  background: rgb(207 46 46 / .2);
+}
+:global(html.dark .reaction-add-button) {
+  border-color: rgb(255 255 255 / .18);
+  background: rgb(255 255 255 / .08);
+}
+
+:global(html.dark .reaction-add-button:hover) {
+  background: rgb(255 255 255 / .14);
+}
+
+.message-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  margin-top: .5rem;
+}
+
+.reaction-button {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  padding: .2rem .45rem;
+  border: 1px solid rgb(56 46 56 / .18);
+  border-radius: 999px;
+  background: rgb(255 255 255 / .55);
+  font-size: .85rem;
+  line-height: 1.2;
+}
+
+.reaction-button:hover {
+  background: rgb(255 255 255 / .8);
+}
+
+.reaction-button.reacted {
+  border-color: #cf2e2e;
+  background: rgb(207 46 46 / .12);
+}
+
+.message-row.own .reaction-button {
+  color: inherit;
+}
+.reaction-picker-wrapper {
+  position: static;
+  flex: none;
+}
+
+.reaction-add-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  padding: 0;
+  border: 1px solid rgb(56 46 56 / .18);
+  border-radius: 999px;
+  background: rgb(255 255 255 / .55);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.reaction-add-button:hover {
+  background: rgb(255 255 255 / .8);
+}
+
+.reaction-picker {
+  position: absolute;
+  bottom: calc(100% + .5rem);
+  right: 0;
+  z-index: 1000;
+}
 .emoji-picker-wrapper { position: relative; flex: none; }
 .emoji-button { display: flex; align-items: center; justify-content: center; width: 2.75rem; height: 2.75rem; padding: 0;
   margin: 0; border: 1px solid rgb(56 46 56 / .18); border-radius: .75rem; background: transparent; color: inherit;
@@ -444,7 +706,16 @@ onUnmounted(() => {
 .retry-button { display: block; margin: .75rem auto 0; text-decoration: underline; }
 .conversation-panel { display: flex; min-width: 0; min-height: 0; flex-direction: column; }
 .message-list { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 1.25rem; }
-.message-row { display: flex; margin-bottom: .75rem; }
+.message-row {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: .4rem;
+  margin-bottom: .75rem;
+}
+.message-row.other {
+  justify-content: flex-start;
+}
 .message-row.own { justify-content: flex-end; }
 .message-bubble { max-width: min(75%, 38rem); padding: .7rem .9rem; border-radius: 1rem; background: #d8c9bb; overflow-wrap: anywhere; }
 .message-row.own .message-bubble { border-bottom-right-radius: .25rem; background: #cf2e2e; color: white; }
