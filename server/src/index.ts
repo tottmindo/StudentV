@@ -32,24 +32,26 @@ import cors from "cors";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import express from "express";
-import authRoutes from "./routes/authRoutes.js";
-import sensorDataRoutes from "./routes/sensorDataRoutes.js";
-import usageRoutes from "./routes/usageRoutes.js";
-import communityRoutes from "./routes/communityRoutes.js";
+import authRoutes from "./modules/auth/authRoutes.js";
+import sensorDataRoutes from "./modules/water/sensorDataRoutes.js";
+import usageRoutes from "./modules/water/usageRoutes.js";
+import communityRoutes from "./modules/community/communityRoutes.js";
 import { Data } from "./data.js";
 import { Socket } from "socket.io";
 import { sockets } from "./sockets.js";
 import "./jobs/scheduler.js";
 import jwt from "jsonwebtoken";
 import "./config/env.js";
-import { setIO } from "./routes/socketManager.js";
+import { setIO } from "./infrastructure/socketManager.js";
 import { getJwtSecret } from "./config/jwt.js";
-import { ensureCommunityGovernanceSchema } from "./services/communityService.js";
-import { ensureChatSchema } from "./services/chatService.js";
-import { ensureEventInvitationSchema } from "./services/eventInvitationService.js";
+import { ensureCommunityGovernanceSchema } from "./modules/community/communityService.js";
+import { ensureChatSchema } from "./modules/chat/chatService.js";
+import { ensureEventInvitationSchema } from "./modules/events/eventInvitationService.js";
 console.log('Scoring scheduler started...');
 
 const app = express();
+// These idempotent checks support databases deployed before the corresponding
+// migrations existed. The canonical schema remains generate-postgres.sql.
 await ensureCommunityGovernanceSchema();
 await ensureChatSchema();
 await ensureEventInvitationSchema();
@@ -97,6 +99,9 @@ io.on("connection", async (socket: Socket) => {
       userID = decoded.userID;
       role = decoded.role;
 
+      // JWT signature verification alone is insufficient: credentialVersion
+      // invalidates tokens after password/admin changes, and database flags
+      // enforce deactivation and the temporary-password gate immediately.
       const [authRows]: any = await pool.query(
         "SELECT credentialVersion, active, mustChangePassword FROM users WHERE userID = ? LIMIT 1",
         [userID]
@@ -108,6 +113,8 @@ io.on("connection", async (socket: Socket) => {
       }
 
       if (userID && (dormID || role === "ADMIN" || role === "RESEARCHER")) {
+        // Dorm rooms carry floor-wide updates; user rooms carry private chat
+        // notifications and allow account changes to disconnect one user.
         if (dormID) socket.join(`dorm-${dormID}`);
         socket.join(`user-${userID}`);
         console.log(`✅ Authenticated socket ${socket.id} for ${dormID ? `dorm-${dormID}` : role.toLowerCase()}`);
@@ -152,7 +159,7 @@ httpServer.listen(Number(PORT), HOST, () => {
   console.log(`🚀 Server with Socket.io running on ${HOST}:${PORT}`);
 });
 
-import pool from "./db.js";
+import pool from "./database/pool.js";
 
 async function testConnection() {
   try {

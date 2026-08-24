@@ -1,10 +1,10 @@
 import cron from "node-cron";
 import "../config/env.js";
 import { Data } from "../data.js";
-import { importLatestSensorData } from "../services/sensorDataImportService.js";
-import { deactivateExpiredResidents } from "../services/authService.js";
-import { importExternalEvents } from "../services/externalImportService.js";
-import { deactivateExpiredSurveys } from "../services/surveyService.js";
+import { importLatestSensorData } from "../modules/water/sensorDataImportService.js";
+import { deactivateExpiredResidents } from "../modules/auth/authService.js";
+import { importExternalEvents } from "../modules/scraper/scraperService.js";
+import { deactivateExpiredSurveys } from "../modules/survey/surveyService.js";
 
 const data = new Data();
 
@@ -29,6 +29,8 @@ const surveyDeactivationSchedule = process.env.SURVEY_DEACTIVATION_CRON || "0 3 
 const surveyDeactivationTimezone = process.env.SURVEY_DEACTIVATION_TIMEZONE || "Europe/Stockholm";
 
 export function getCleaningWeekStart(now: Date = new Date()): Date {
+  // Convert to a date in the configured business timezone before finding
+  // Monday. Using the host timezone here would shift weeks around DST/deploys.
   const localDate = new Intl.DateTimeFormat("en-CA", { timeZone: cleaningTimezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
   const date = new Date(`${localDate}T00:00:00.000Z`);
   date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7));
@@ -48,6 +50,8 @@ export async function generateCleaningWeeksForDorm(dormID: number, now: Date = n
   const weeksByStart = new Map(existingWeeks.map(week => [week.startDate, week]));
   const residentIndex = new Map(residents.map((resident, index) => [resident.userID, index]));
   const assignmentCounts = new Map<number, number>(residents.map(resident => [resident.userID, 0]));
+  // Count preserved assignments first so new/repaired weeks go to the resident
+  // with the fewest total weeks, not simply the next database row.
   for (const week of existingWeeks) {
     if (residentIndex.has(week.assignedUserID)) assignmentCounts.set(week.assignedUserID, (assignmentCounts.get(week.assignedUserID) ?? 0) + 1);
   }
@@ -57,6 +61,8 @@ export async function generateCleaningWeeksForDorm(dormID: number, now: Date = n
   for (const weekStart = new Date(start); weekStart < horizon; weekStart.setUTCDate(weekStart.getUTCDate() + 7)) {
     const existing = weeksByStart.get(weekStart.toISOString().slice(0, 10));
     if (existing && residentIndex.has(existing.assignedUserID)) {
+      // Re-running generation repairs missing task rows without changing a
+      // valid published assignment; createCleaningWeekTasks is idempotent.
       await data.createCleaningWeekTasks(baseTasks.map(task => ({ weekID: existing.weekID, assignedUserID: existing.assignedUserID, baseTaskID: task.baseTaskID })));
       previousResidentID = existing.assignedUserID;
       unchanged += 1;
@@ -151,6 +157,16 @@ if (process.env.SURVEY_DEACTIVATION_ENABLED !== "false") {
     { timezone: surveyDeactivationTimezone }
   );
 }
+
+console.log("Testing external events Python import...");
+
+importExternalEvents()
+  .then(() => {
+    console.log("Python import test completed successfully");
+  })
+  .catch(error => {
+    console.error("Python import test failed:", error);
+  });
 
 
 

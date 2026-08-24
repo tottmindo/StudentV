@@ -525,7 +525,6 @@
     "custom": "Custom task",
     "noneTasks": "No tasks for this week.",
     "currentOnly": "Tasks can only be checked off during this cleaning week.",
-    "communityTasks": "Suggest or vote on rotation tasks",
     "selectWeek": "Select a week to load tasks.",
     "swapTitle": "Request cleaning week swap",
     "swapIntro": "You’re about to request a swap between:",

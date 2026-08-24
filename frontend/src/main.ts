@@ -3,9 +3,9 @@ import './assets/main.css'
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
-import { restoreSocket } from './composables/socket'
+import { restoreSocket } from './shared/composables/socket'
 import { i18n } from './i18n'
-import { initializeTheme } from './composables/theme'
+import { initializeTheme } from './shared/composables/theme'
 
 initializeTheme()
 

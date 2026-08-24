@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import LoginView from '../views/LoginView.vue';
-import { apiUrl } from '../composables/api';
+import LoginView from '@/features/auth/views/LoginView.vue';
+import { apiUrl } from '@/shared/composables/api';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -9,17 +9,17 @@ const router = createRouter({
     {
       path: '/forgot-password',
       name: 'forgot-password',
-      component: () => import('../views/ForgotPasswordView.vue'),
+      component: () => import('@/features/auth/views/ForgotPasswordView.vue'),
     },
     {
       path: '/reset-password',
       name: 'reset-password',
-      component: () => import('../views/ResetPasswordView.vue'),
+      component: () => import('@/features/auth/views/ResetPasswordView.vue'),
     },
     {
       path: '/change-password',
       name: 'change-password',
-      component: () => import('../views/ChangePasswordView.vue'),
+      component: () => import('@/features/auth/views/ChangePasswordView.vue'),
       meta: { requiresAuth: true },
     },
     {
@@ -31,80 +31,80 @@ const router = createRouter({
     {
       path: '/survey',
       name: 'survey',
-      component: () => import('../views/SurveyView.vue'),
+      component: () => import('@/features/surveys/views/SurveyView.vue'),
       meta: { requiresAuth: true, requiresResearchAccess: true },
     },
 
     {
       path: '/stats',
       name: 'stats',
-      component: () => import('../views/StatsView.vue'),
+      component: () => import('@/features/water/views/StatsView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/account',
       name: 'account',
-      component: () => import('../views/AccountView.vue'),
+      component: () => import('@/features/account/views/AccountView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/home',
       name: 'home',
-      component: () => import('../views/HomeView.vue'),
+      component: () => import('@/features/home/views/HomeView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/events',
       name: 'events',
-      component: () => import('../views/EventView.vue'),
+      component: () => import('@/features/events/views/EventView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/community',
       name: 'community',
-      component: () => import('../views/CommunityView.vue'),
+      component: () => import('@/features/community/views/CommunityView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/information',
       name: 'information',
-      component: () => import('../views/InformationView.vue'),
+      component: () => import('@/features/information/informationView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/cleaning',
       name: 'cleaning',
-      component: () => import('../views/CleaningView.vue'),
+      component: () => import('@/features/cleaning/views/CleaningView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/admin',
       name: 'admin',
-      component: () => import('../views/AdminView.vue'),
+      component: () => import('@/features/admin/views/AdminView.vue'),
       meta: { requiresAuth: true, requiresResearchAccess: true },
     },
     {
       path: '/admin/water-analytics',
       name: 'admin-water-analytics',
-      component: () => import('../views/AdminWaterStatsView.vue'),
+      component: () => import('@/features/water/views/AdminWaterStatsView.vue'),
       meta: { requiresAuth: true, requiresResearchAccess: true },
     },
     {
       path: '/admin/app-usage',
       name: 'admin-app-usage',
-      component: () => import('../views/AdminUsageView.vue'),
+      component: () => import('@/features/admin/views/AdminUsageView.vue'),
       meta: { requiresAuth: true, requiresResearchAccess: true },
     },
     {
       path: '/admin/events',
       name: 'admin-events',
-      component: () => import('../views/AdminEventsView.vue'),
+      component: () => import('@/features/admin/views/AdminEventsView.vue'),
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: '/chat',
       name: 'chat',
-      component: () => import('../views/ChatView.vue'),
+      component: () => import('@/features/chat/views/ChatView.vue'),
       meta: { requiresAuth: true },
     },
     {
@@ -121,6 +121,8 @@ router.afterEach((to) => {
   const token = sessionStorage.getItem('authToken');
   const page = typeof to.name === 'string' ? to.name : '';
   if (!token || !page || page === 'admin-app-usage') return;
+  // Analytics must never make navigation fail. keepalive also lets the final
+  // visit reach the server when navigation unloads the current document.
   void fetch(apiUrl('/api/usage/visit'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -129,12 +131,15 @@ router.afterEach((to) => {
   }).catch(() => undefined);
 });
 
-// Add a global navigation guard
+// This guard is for navigation/UX only. The server independently enforces the
+// same role and password-completion rules on every protected API operation.
 router.beforeEach((to, from, next) => {
   const token = sessionStorage.getItem('authToken'); // Retrieve the token from sessionStorage
   const userRole = sessionStorage.getItem('userRole'); // Retrieve the user's role
   const mustChangePassword = sessionStorage.getItem('mustChangePassword') === 'true';
   const normalizedRole = userRole?.toLowerCase();
+  // Researchers intentionally use the admin landing page for read-only
+  // analytics but must not enter resident-only routes.
   const researcherRoutes = new Set(['admin', 'admin-water-analytics', 'admin-app-usage', 'survey', 'account', 'change-password']);
 
   if (to.meta.requiresAuth && !token) {
