@@ -25,17 +25,6 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
     socket.use(([event], next) => researcherEvents.has(event) ? next() : next(new Error("unauthorized")));
   }
 
-  socket.on("getWaterData", async ()=>{
-    console.log('Request for water data');
-    try {
-      const waterLogData = await data.getWaterData(); // Fetch testdata
-      socket.emit("waterData", waterLogData); // Send testdata back to the client
-    } catch (error) {
-      console.error("Error fetching water data:", error);
-      socket.emit("error", { message: "Failed to fetch water data." });
-      }
-  });
-
   socket.on("getEvents", async (filters: any) => {
     console.log(`Request for events with filters:`, filters);
     try {

@@ -176,11 +176,7 @@ import { useI18n } from 'vue-i18n'
 import { getSocket } from '@/composables/socket'
 import "emoji-picker-element"
 import { polyfillCountryFlagEmojis } from 'country-flag-emoji-polyfill'
-
-interface ChatRoom { chatID: number; name: string; isDirect: boolean; house: string; floor: number }
-interface ChatMessage { messageID: number; chatID: number; userID: number; username: string; msg: string; sentAt: string, reactions : MessageReactions[] }
-interface MessageReactions { messageID : number, emoji : string,  count : number, reacted : boolean }
-interface ChatHistory { chatID: number; logs: ChatMessage[]; name?: string, reactions: MessageReactions[] }
+import type { ChatHistory, ChatMessage, ChatRoom, MessageReaction } from '@/types/chat'
 
 const socket = getSocket()
 const route = useRoute()

@@ -374,51 +374,13 @@ import { getSocket } from '@/composables/socket'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import CleaningTaskGovernance from '@/components/CleaningTaskGovernance.vue'
+import type { CleaningWeek, CleaningWeekSwapRequest, CleaningWeekTask } from '@/types/cleaning'
 
 const socket = getSocket()
 const route = useRoute()
 const { t, locale } = useI18n()
 const userID = Number(sessionStorage.getItem('userID') || 0)
 const dormID = Number(sessionStorage.getItem('dormID') || 0)
-
-type CleaningWeek = {
-  weekID: number
-  dormID: number
-  assignedUserID: number
-  assignedUsername: string
-  startDate: string
-  endDate: string
-  totalTasks: number
-  completedTasks: number
-  pendingTasks: number
-}
-
-type CleaningWeekSwapRequest = {
-  requestID: number
-  dormID: number
-  requesterUserID: number
-  requesterUsername?: string
-  targetUserID: number
-  targetUsername?: string
-  sourceWeekID: number
-  targetWeekID: number
-  status: 'pending' | 'accepted' | 'rejected'
-  createdAt: string
-  updatedAt: string
-}
-
-type CleaningWeekTask = {
-  weekTaskID: number
-  weekID: number
-  assignedUserID: number
-  title: string
-  description?: string
-  assignedUsername?: string | null
-  isCompleted: boolean
-  isImportant: boolean
-  createdByUserID?: number | null
-}
-
 
 const weeks = ref<CleaningWeek[]>([])
 const selectedWeek = ref<CleaningWeek | null>(null)

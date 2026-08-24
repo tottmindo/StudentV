@@ -47,158 +47,23 @@
  * @throws {Error} If database query fails
  */
 
-import { existsSync, readFileSync } from "fs";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
 import "./config/env.js";
 import pool from "./db.js";
-import { error } from "console";
+import type {
+  CleaningWeek,
+  CleaningWeekSwapRequest,
+  CleaningWeekTask,
+  DashboardAlert,
+  ExternalEvent,
+  FloorWaterConsumption,
+  FloorWaterStats,
+  NationsguidenEvent,
+  WaterStatsDay,
+} from "./types/data.js";
 
-const currentDir = dirname(fileURLToPath(import.meta.url));
-const dataDir = existsSync(join(currentDir, "data"))
-  ? join(currentDir, "data")
-  : join(currentDir, "..", "src", "data");
-
-function readJsonFile<T = any>(fileName: string): T {
-  const contents = readFileSync(join(dataDir, fileName), "utf-8");
-  return JSON.parse(contents) as T;
-}
-
-//Input to getDbWaterDataByRange
-interface fetchOptions {
-  startDate?: Date;
-  endDate?: Date;
-  daysBack?: number;
-}
-
-export interface CleaningWeek {
-  weekID: number;
-  dormID: number;
-  assignedUserID: number;
-  assignedUsername: string;
-  startDate: string;
-  endDate: string;
-  totalTasks: number;
-  completedTasks: number;
-  pendingTasks: number;
-}
-
-export interface CleaningWeekTask {
-  weekTaskID: number;
-  weekID: number;
-  assignedUserID: number;
-
-  baseTaskID?: number | null;
-  createdByUserID?: number | null;
-
-  title: string;
-  description?: string;
-  assignedUsername?: string | null;
-
-  isImportant: boolean;
-  isBaseTask: boolean;
-
-  isCompleted: boolean;
-  completedAt?: string | null;
-
-  isDeleted: boolean;
-}
-
-export interface CleaningWeekSwapRequest {
-  requestID: number;
-  dormID: number;
-  sourceWeekID: number;
-  targetWeekID: number;
-  requesterUserID: number;
-  requesterUsername: string;
-  targetUserID: number;
-  targetUsername: string;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface DashboardAlert {
-  id: number;
-  title: string;
-  description: string;
-  route: string;
-  actionLabel: string;
-  dismissible?: boolean;
-}
-
-interface FloorWaterDay {
-  date: string;
-  currentLiters: number;
-  historicalAverageLiters: number;
-}
-
-interface FloorWaterConsumption {
-  available: boolean;
-  latestReadingAt: string | null;
-  currentWeekLiters: number;
-  historicalWeeklyAverageLiters: number;
-  coldLiters: number;
-  warmLiters: number;
-  days: FloorWaterDay[];
-}
-
-interface WaterStatsDay {
-  date: string;
-  totalLiters: number;
-  coldLiters: number;
-  warmLiters: number;
-  averageWaterTemp: number | null;
-  peakWaterTemp: number | null;
-}
-
-interface FloorWaterStats {
-  available: boolean;
-  floor: number | null;
-  address: string | null;
-  latestReadingAt: string | null;
-  periodDays: number;
-  totalLiters: number;
-  previousPeriodLiters: number;
-  coldLiters: number;
-  warmLiters: number;
-  averageDailyLiters: number;
-  peakDay: WaterStatsDay | null;
-  activeSensors: number;
-  alerts: number;
-  days: WaterStatsDay[];
-  hourlyProfile: { hour: number; averageLiters: number; averageColdLiters: number; averageWarmLiters: number; averageWaterTemp: number | null; averagePeakWaterTemp: number | null }[];
-}
-
-interface ExternalEvents {
-  eventID: number,
-  externalURL: string,
-  title: string,
-  startDate: string,
-  endDate: string
-}
-
-type NationsguidenEvent = {
-  eventID: number
-  externalURL: string
-  title: string
-  startDate: string
-  endDate: string
-  category: string
-  organiser: string
-}
+export type { CleaningWeek, CleaningWeekSwapRequest, CleaningWeekTask } from "./types/data.js";
 
 class Data {
-
-  getWaterData(): any {
-    try {
-      return readJsonFile("testData.json");
-    } catch (error) {
-      throw new Error("Failed to load test data. Please check the file path and content.");
-    }
-  }
-
-
   async getDorms(): Promise<number[]> {
     try {
       const [rows] = await pool.query(`SELECT dormID FROM dorms`);
@@ -2122,12 +1987,12 @@ async hasAccessToChat(chatID: number, userID: number) {
   }
 }
 
-async getExternalEvents(): Promise<ExternalEvents[]>{
+async getExternalEvents(): Promise<ExternalEvent[]>{
   try {
     const query = "SELECT * FROM externalevents WHERE endDate >= NOW()"
     const [rows] = await pool.query(query);
     
-      return rows as ExternalEvents[];
+      return rows as ExternalEvent[];
     }catch (err){
       console.error(`Error fetching external events`);
       throw new Error("Error fetiching external events");

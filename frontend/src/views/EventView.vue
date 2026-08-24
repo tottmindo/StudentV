@@ -359,8 +359,11 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import CalendarComponent from '@/components/CalendarComponent.vue'
 import ModalComponent from '@/components/ModalComponent.vue'
 import { getSocket } from '@/composables/socket'
+import { dateIsInRange, getDateKeysInRange, startOfLocalDay, toDateKey } from '@/composables/calendarDates'
 import { useRoute } from 'vue-router'
 import type { CalendarEvent } from '@/types'
+import type { CleaningWeek } from '@/types/cleaning'
+import type { DisplayEvent, ExternalEvent, NationEvent } from '@/types/events'
 import { useI18n } from 'vue-i18n'
 
 const socket = getSocket()
@@ -371,49 +374,6 @@ const eventActionPending = ref(false)
 const eventActionError = ref('')
 const openedRequestedEventID = ref<number | null>(null)
 
-type CleaningWeek = {
-  weekID: number
-  dormID: number
-  assignedUserID: number
-  assignedUsername: string
-  startDate: string
-  endDate: string
-  totalTasks: number
-  completedTasks: number
-  pendingTasks: number
-}
-
-type ExternalEvents = {
-  eventID: number,
-  externalurl: string,
-  title: string,
-  startDate: string,
-  endDate: string
-}
-
-type NationEvent = {
-  eventID: number
-  title: string
-  startDate: string
-  endDate: string
-  category?: string
-  externalurl: string
-  organiser?: string
-}
-
-type DisplayEvent = {
-  id: string | number
-  title: string
-  description?: string
-  startDate: string
-  endDate?: string
-  type: string
-  active?: boolean
-  externalUrl?: string
-  source: 'internal' | 'destination' | 'nationsguiden'
-}
-
-
 const filters = ref({
   events : true,
   cleaning : true,
@@ -422,7 +382,7 @@ const filters = ref({
 })
 const showHistoricalEvents = ref(false)
 
-const externalEvents = ref<ExternalEvents[]>([]);
+const externalEvents = ref<ExternalEvent[]>([]);
 const nationEvents = ref<NationEvent[]>([])
 const selectedNationEvents = ref<NationEvent[]>([])
 
@@ -464,7 +424,7 @@ const upcomingEvents = ref<CalendarEvent[]>(
 )
 const cleaningWeeks = ref<CleaningWeek[]>([])
 
-const selectedExternalEvents = ref<ExternalEvents[]>([]);
+const selectedExternalEvents = ref<ExternalEvent[]>([]);
 
 const externalEventDates = computed(() => {
   const dates = new Set<string>()
@@ -796,7 +756,7 @@ const bindSocket = () => {
     cleaningWeeks.value = weeks
   })
 
-  socket.on('externalEvents', (eEvents: ExternalEvents[]) => {
+  socket.on('externalEvents', (eEvents: ExternalEvent[]) => {
     externalEvents.value = eEvents
   })
   socket.on('nationsguidenEvents', (events: NationEvent[]) => {
@@ -1046,36 +1006,6 @@ const formatDateRange = (start?: string, end?: string) => {
   // Different dates
   return `${formatDate(start, true)} — ${formatDate(end, true)}`
 }
-const toDateKey = (date: Date) => {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-const startOfLocalDay = (dateValue: string) => {
-  const [year, month, day] = dateValue.slice(0, 10).split('-').map(Number)
-  return new Date(year, month - 1, day)
-}
-
-const getDateKeysInRange = (start: string, end: string) => {
-  const dates: string[] = []
-  const cursor = startOfLocalDay(start)
-  const endDate = startOfLocalDay(end)
-
-  while (cursor.getTime() <= endDate.getTime()) {
-    dates.push(toDateKey(cursor))
-    cursor.setDate(cursor.getDate() + 1)
-  }
-
-  return dates
-}
-
-const dateIsInRange = (dateKey: string, start: string, end: string) => {
-  const day = startOfLocalDay(dateKey).getTime()
-  return day >= startOfLocalDay(start).getTime() && day <= startOfLocalDay(end).getTime()
-}
-
 onMounted(() => {
   bindSocket()
   fetchCalendarData()
