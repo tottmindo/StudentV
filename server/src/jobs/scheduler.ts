@@ -3,6 +3,7 @@ import "../config/env.js";
 import { Data } from "../data.js";
 import { importLatestSensorData } from "../services/sensorDataImportService.js";
 import { deactivateExpiredResidents } from "../services/authService.js";
+import { importExternalEvents } from "../services/externalImportService.js";
 
 const data = new Data();
 
@@ -21,6 +22,8 @@ const cleaningSchedule = process.env.CLEANING_SCHEDULE_CRON || "0 8 * * *";
 const cleaningTimezone = process.env.CLEANING_SCHEDULE_TIMEZONE || "Europe/Stockholm";
 const residentDeactivationSchedule = process.env.RESIDENT_DEACTIVATION_CRON || "0 * * * *";
 const residentDeactivationTimezone = process.env.RESIDENT_DEACTIVATION_TIMEZONE || "Europe/Stockholm";
+const externalEventsSchedule = process.env.EXTERNAL_EVENTS_CRON || "0 4 * * 0";
+const externalEventsTimezone = process.env.EXTERNAL_EVENTS_TIMEZONE || "Europe/Stockholm";
 
 export function getCleaningWeekStart(now: Date = new Date()): Date {
   const localDate = new Intl.DateTimeFormat("en-CA", { timeZone: cleaningTimezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
@@ -101,4 +104,23 @@ if (process.env.RESIDENT_DEACTIVATION_ENABLED !== "false") {
       console.error("Resident account deactivation failed", error);
     }
   }, { timezone: residentDeactivationTimezone });
+}
+
+if (process.env.EXTERNAL_EVENTS_ENABLED !== "false") {
+  if (!cron.validate(externalEventsSchedule)) {
+    throw new Error("EXTERNAL_EVENTS_CRON is not a valid cron expression");
+  }
+
+  cron.schedule(
+    externalEventsSchedule,
+    async () => {
+      try {
+        await importExternalEvents();
+        console.log("External events import completed");
+      } catch (error) {
+        console.error("External events import failed", error);
+      }
+    },
+    { timezone: externalEventsTimezone }
+  );
 }

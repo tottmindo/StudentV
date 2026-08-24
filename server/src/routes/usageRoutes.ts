@@ -6,7 +6,7 @@ const router = Router();
 const PAGE_PATTERN = /^[a-z0-9-]{1,80}$/;
 const APP_PAGES = new Set([
   "home", "survey", "answersurvey", "createsurvey", "stats", "account",
-  "events", "cleaning", "admin", "admin-water-analytics", "chat", "chatroom",
+  "events", "cleaning", "admin", "admin-water-analytics", "chat", "chatroom", "information",
 ]);
 
 let tableReady: Promise<void> | null = null;
