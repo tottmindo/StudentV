@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 import AppTopBar from '@/components/AppTopBar.vue'
-import SurveyAnswerModal from '@/components/SurveyAnswerModal.vue'
+import SurveyAnswerModal from '@/features/surveys/components/SurveyAnswerModal.vue'
 import '@fontsource/nunito-sans';
 import '@fontsource/fredoka';
 import { useI18n } from 'vue-i18n'

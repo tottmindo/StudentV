@@ -32,21 +32,21 @@ import cors from "cors";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import express from "express";
-import authRoutes from "./routes/authRoutes.js";
-import sensorDataRoutes from "./routes/sensorDataRoutes.js";
-import usageRoutes from "./routes/usageRoutes.js";
-import communityRoutes from "./routes/communityRoutes.js";
+import authRoutes from "./modules/auth/authRoutes.js";
+import sensorDataRoutes from "./modules/water/sensorDataRoutes.js";
+import usageRoutes from "./modules/water/usageRoutes.js";
+import communityRoutes from "./modules/community/communityRoutes.js";
 import { Data } from "./data.js";
 import { Socket } from "socket.io";
 import { sockets } from "./sockets.js";
 import "./jobs/scheduler.js";
 import jwt from "jsonwebtoken";
 import "./config/env.js";
-import { setIO } from "./routes/socketManager.js";
+import { setIO } from "./infrastructure/socketManager.js";
 import { getJwtSecret } from "./config/jwt.js";
-import { ensureCommunityGovernanceSchema } from "./services/communityService.js";
-import { ensureChatSchema } from "./services/chatService.js";
-import { ensureEventInvitationSchema } from "./services/eventInvitationService.js";
+import { ensureCommunityGovernanceSchema } from "./modules/community/communityService.js";
+import { ensureChatSchema } from "./modules/chat/chatService.js";
+import { ensureEventInvitationSchema } from "./modules/events/eventInvitationService.js";
 console.log('Scoring scheduler started...');
 
 const app = express();
@@ -152,7 +152,7 @@ httpServer.listen(Number(PORT), HOST, () => {
   console.log(`🚀 Server with Socket.io running on ${HOST}:${PORT}`);
 });
 
-import pool from "./db.js";
+import pool from "./database/pool.js";
 
 async function testConnection() {
   try {

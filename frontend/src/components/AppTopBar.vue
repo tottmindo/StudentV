@@ -73,10 +73,10 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getSocket } from '@/composables/socket'
+import { getSocket } from '@/shared/composables/socket'
 import type { AlertItem, DashboardPayload } from '@/types'
-import LanguageSelector from '@/components/LanguageSelector.vue'
-import ThemeToggle from '@/components/ThemeToggle.vue'
+import LanguageSelector from '@/shared/components/LanguageSelector.vue'
+import ThemeToggle from '@/shared/components/ThemeToggle.vue'
 import { useI18n } from 'vue-i18n'
 
 type PageInfo = { title: string; description: string }

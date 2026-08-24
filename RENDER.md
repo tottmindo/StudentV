@@ -52,7 +52,7 @@ npm run db:schema -w server
 ```
 
 The schema command is safe to run again on an existing database. It creates
-the tables and indexes in `server/src/data/database-and-simulation/generate-postgres.sql`.
+the tables and indexes in `server/database/migrations/generate-postgres.sql`.
 
 ## 4. Add test data (optional)
 

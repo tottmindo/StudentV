@@ -12,7 +12,7 @@
 import { Socket } from "socket.io";
 import { Data } from "./data.js";
 import { generateCleaningWeekForDorm } from "./jobs/scheduler.js";
-import { getIO } from "./routes/socketManager.js";
+import { getIO } from "./infrastructure/socketManager.js";
 function sockets(socket: Socket, data: Data, dormID: number, userID: number, role: string): void {
   const hasResearchAccess = role === "ADMIN" || role === "RESEARCHER";
   if ((!dormID && !hasResearchAccess) || !userID) {

@@ -71,7 +71,7 @@ account provisioning and password recovery):
 
 ```sh
 createdb dorms_db
-psql -d dorms_db -f server/src/data/database-and-simulation/generate-postgres.sql
+psql -d dorms_db -f server/database/migrations/generate-postgres.sql
 ```
 
 For a local connection, configure the root `.env` like this:

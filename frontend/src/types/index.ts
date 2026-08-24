@@ -170,4 +170,4 @@ export type MenuItem = {
 
 export interface ConsumptionData { x: string; y: number }
 
-export * from '@/composables/statsTypes'
+export * from '@/shared/types/stats'

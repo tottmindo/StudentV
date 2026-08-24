@@ -1,8 +1,8 @@
 import cron from "node-cron";
 import "../config/env.js";
 import { Data } from "../data.js";
-import { importLatestSensorData } from "../services/sensorDataImportService.js";
-import { deactivateExpiredResidents } from "../services/authService.js";
+import { importLatestSensorData } from "../modules/water/sensorDataImportService.js";
+import { deactivateExpiredResidents } from "../modules/auth/authService.js";
 
 const data = new Data();
 
