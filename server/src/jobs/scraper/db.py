@@ -99,34 +99,6 @@ def toDBDestinationUppsala(events: list):
         raise
 
 def toDBNationsguiden(events: list):
-    if not events:
-        return
-
-    query = """
-    INSERT INTO nationsguideevents
-        (
-            title,
-            startDate,
-            endDate,
-            category,
-            externalURL,
-            organiser
-        )
-    VALUES (%s, %s, %s, %s, %s, %s);
-    """
-
-    params = []
-
-    for event in events:
-        params.append((
-            event.get("title"),
-            event.get("startDate"),
-            event.get("endDate"),
-            event.get("category"),
-            event.get("url"),
-            event.get("organiser"),
-        ))
-
     try:
         with psycopg.connect(
             user=os.getenv("PG_DB_USER"),
@@ -138,10 +110,39 @@ def toDBNationsguiden(events: list):
         ) as conn:
 
             with conn.cursor() as cursor:
-                cursor.executemany(
-                    query,
-                    params
-                )
+
+                cursor.execute("DELETE FROM nationsguideevents")
+
+                print(f"Removed {cursor.rowcount} old Nationsguiden events")
+
+                query = """
+                    INSERT INTO nationsguideevents
+                        (
+                            title,
+                            startDate,
+                            endDate,
+                            category,
+                            externalURL,
+                            organiser
+                        )
+                    VALUES (%s, %s, %s, %s, %s, %s);
+                """
+
+                params = [
+                    (
+                        event.get("title"),
+                        event.get("startDate"),
+                        event.get("endDate"),
+                        event.get("category"),
+                        event.get("url"),
+                        event.get("organiser"),
+                    )
+                    for event in events
+                ]
+
+                cursor.executemany(query, params)
+
+                print(f"Inserted {len(params)} Nationsguiden events")
 
             conn.commit()
 
