@@ -97,6 +97,13 @@ added, apply its idempotent migration once:
 npm run db:migrate:resident-deactivation -w server
 ```
 
+To normalize legacy house labels such as `House 12` to the stored house number
+`12`, apply:
+
+```sh
+npm run db:migrate:house-numbers -w server
+```
+
 To load the PostgreSQL development fixtures, which erase the current
 application data, run:
 

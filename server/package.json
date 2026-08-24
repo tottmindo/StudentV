@@ -6,25 +6,27 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev:backend": "nodemon --watch src --ext ts,json --exec \"node --loader ts-node/esm src/index.ts\"",
+    "dev:backend": "nodemon --watch src --ext ts,json --exec \"node --import tsx src/index.ts\"",
     "start:scheduler": "node dist/jobs/scheduler.js",
     "db:schema": "node scripts/run-sql.mjs src/data/database-and-simulation/generate-postgres.sql",
+    "db:migrate:house-numbers": "node scripts/run-sql.mjs src/data/database-and-simulation/normalize-house-numbers-postgres.sql",
     "db:migrate:resident-profiles": "node scripts/run-sql.mjs src/data/database-and-simulation/add-resident-profiles-postgres.sql",
     "db:migrate:resident-deactivation": "node scripts/run-sql.mjs src/data/database-and-simulation/add-resident-deactivation-deadline-postgres.sql",
+    "db:migrate:researcher-role": "node scripts/run-sql.mjs src/data/database-and-simulation/add-researcher-role-postgres.sql",
     "db:seed": "node scripts/run-sql.mjs src/data/database-and-simulation/add-test-data-postgres.sql --seed"
   },
   "dependencies": {
-    "bcrypt": "^5.1.1",
+    "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
-    "node-cron": "^3.0.3",
+    "node-cron": "^4.6.0",
     "nodemailer": "^9.0.3",
     "nodemon": "^3.1.9",
     "pg": "^8.15.6",
-    "socket.io": "^4.8.1",
-    "socket.io-client": "^4.8.1",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
     "zod": "^3.24.3"
   },
   "devDependencies": {
@@ -42,7 +44,7 @@
     "@vue/tsconfig": "^0.7.0",
     "concurrently": "^9.1.2",
     "npm-run-all2": "^7.0.2",
-    "ts-node": "^10.9.2",
+    "tsx": "^4.23.12",
     "typescript": "~5.8.0"
   }
 }

@@ -7,8 +7,8 @@ TRUNCATE TABLE dorms RESTART IDENTITY CASCADE;
 -- A room number is house + floor + room, for example 1251 means
 -- house 12, floor 5, room 1. Each house/floor has eight rooms.
 INSERT INTO dorms (floor, address) VALUES
-  (1, 'House 12'), (2, 'House 12'), (3, 'House 12'), (4, 'House 12'), (5, 'House 12'),
-  (1, 'House 14'), (2, 'House 14'), (3, 'House 14'), (4, 'House 14'), (5, 'House 14');
+  (1, '12'), (2, '12'), (3, '12'), (4, '12'), (5, '12'),
+  (1, '14'), (2, '14'), (3, '14'), (4, '14'), (5, '14');
 
 INSERT INTO room (roomid, dormid)
 SELECT
@@ -217,15 +217,14 @@ INSERT INTO page_visit_stats (visitdate, page, visits) VALUES
 -- Base cleaning tasks based on the residence cleaning rules.
 -- createdByUserID and dormID are NULL because these tasks apply to every dorm.
 INSERT INTO cleaningtasktemplate (taskname, description, active, createdbyuserid, isimportant) VALUES
-  ('Sink and dishes', 'Wash and dry dishes and kitchen equipment. Clean the sink with cleaning spray, remove food residue, and unclog it if needed.', true, NULL, true),
-  ('Shower', 'Clean the shared shower after use.', true, NULL, true),
-  ('Floors', 'Clean spills immediately. Vacuum and mop shared floors as needed; vacuum cleaner bags are available from the office.', true, NULL, false),
-  ('Trash and recycling', 'Empty full bins and always empty them on Sunday evening. Sort recycling and deposit-return cans and bottles, replace bin bags, clean dirty bins and the area under the sink, and empty compost before it overfills.', true, NULL, true),
+  ('Sink', 'Clean the sink with cleaning spray, remove food residue, and unclog it if needed.', true, NULL, true),
+  ('Floors', 'Vacuum and mop shared floors as needed.', true, NULL, false),
+  ('Trash and recycling', 'Always empty bins on Sunday evening. Sort recycling and deposit-return cans and bottles, replace bin bags, and clean dirty bins and the area under the sink.', true, NULL, true),
   ('Tables and counters', 'Wipe tables and kitchen counters with cleaning spray and scrape away anything stuck to them.', true, NULL, false),
   ('Stove and oven', 'Clean the stove with cleaning spray, scrape away burnt residue, and clean the oven when needed, especially the bottom.', true, NULL, true),
   ('Microwave', 'Clean the microwave inside and outside, including the microwave cover.', true, NULL, false),
   ('Drying rack', 'Put dry dishes in the shared cupboards and clean the area around and underneath the drying rack with cleaning spray.', true, NULL, false),
-  ('Refrigerator', 'Keep the shared refrigerator clean, check its contents, and throw away old food.', true, NULL, false);
+  ('Refrigerator', 'Clean the shared refrigerator and check its contents.', true, NULL, false);
 
 -- Multiple cleaning weeks (current and future) for testing swaps
 INSERT INTO cleaningweeks (dormid, assigneduserid, startdate, enddate) VALUES

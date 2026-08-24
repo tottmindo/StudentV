@@ -7,7 +7,12 @@
       <button class="rounded-lg border border-border px-4 py-2 font-semibold" @click="activeSection = null">{{ t('adminMain.back') }}</button>
     </header>
 
-    <div v-if="!activeSection" class="grid gap-6 md:grid-cols-2">
+    <div v-if="isResearcher" class="grid gap-6 md:grid-cols-2">
+      <router-link to="/admin/water-analytics" class="rounded-2xl bg-surface p-8 text-left shadow-lg transition hover:-translate-y-1 hover:shadow-xl dark:bg-surface-dark"><div class="text-4xl">📊</div><h2 class="mt-5 text-2xl font-bold">{{ t('nav.waterAnalytics') }}</h2><p class="mt-2 opacity-75">{{ t('adminMain.waterHelp') }}</p></router-link>
+      <router-link to="/survey" class="rounded-2xl bg-surface p-8 text-left shadow-lg transition hover:-translate-y-1 hover:shadow-xl dark:bg-surface-dark"><div class="text-4xl">≡</div><h2 class="mt-5 text-2xl font-bold">{{ t('nav.surveys') }}</h2><p class="mt-2 opacity-75">{{ t('topbar.surveyDescription') }}</p></router-link>
+      <router-link to="/admin/app-usage" class="rounded-2xl bg-surface p-8 text-left shadow-lg transition hover:-translate-y-1 hover:shadow-xl dark:bg-surface-dark"><div class="text-4xl">📈</div><h2 class="mt-5 text-2xl font-bold">{{ t('usageAdmin.title') }}</h2><p class="mt-2 opacity-75">{{ t('adminMain.usageHelp') }}</p></router-link>
+    </div>
+    <div v-else-if="!activeSection" class="grid gap-6 md:grid-cols-2">
       <router-link to="/admin/water-analytics" class="rounded-2xl bg-surface p-8 text-left shadow-lg transition hover:-translate-y-1 hover:shadow-xl dark:bg-surface-dark">
         <div class="text-4xl">📊</div>
         <h2 class="mt-5 text-2xl font-bold">{{ t('nav.waterAnalytics') }}</h2>
@@ -49,7 +54,7 @@
             <input v-model.trim="email" type="email" required class="w-full rounded border border-border p-3" placeholder="resident@example.com" />
             <select v-if="createRole === 'STUDENT'" v-model.number="dormID" required class="w-full rounded border border-border p-3"><option disabled value="">{{ t('adminMain.selectDorm') }}</option><option v-for="dorm in dorms" :key="dorm.dormID" :value="dorm.dormID">{{ dormLabel(dorm) }}</option></select>
             <select v-if="createRole === 'STUDENT'" v-model.number="roomID" required class="w-full rounded border border-border p-3"><option disabled value="">{{ t('adminMain.selectRoom') }}</option><option v-for="room in selectedRooms(dormID)" :key="room" :value="room">{{ t('adminMain.room', { room }) }}</option></select>
-            <select v-model="createRole" class="w-full rounded border border-border p-3"><option value="STUDENT">{{ t('adminMain.student') }}</option><option value="ADMIN">{{ t('adminMain.administrator') }}</option></select>
+            <select v-model="createRole" class="w-full rounded border border-border p-3"><option value="STUDENT">{{ t('adminMain.student') }}</option><option value="RESEARCHER">{{ t('adminMain.researcher') }}</option><option value="ADMIN">{{ t('adminMain.administrator') }}</option></select>
             <button :disabled="isSubmitting" class="w-full rounded-lg bg-accent p-3 font-semibold text-white disabled:opacity-50">{{ t(isSubmitting ? 'adminMain.creating' : 'adminMain.createAccount') }}</button>
           </form>
           <p v-if="feedbackMessage" class="mt-4 text-center" :class="feedbackClass">{{ feedbackMessage }}</p>
@@ -84,7 +89,7 @@
           <h2 class="text-2xl font-bold">{{ t('adminMain.addFloor') }}</h2>
           <p class="mt-2 text-sm opacity-75">{{ t('adminMain.addFloorHelp') }}</p>
           <form class="mt-6 space-y-4" @submit.prevent="createFloor">
-            <input v-model.trim="newAddress" required maxlength="255" class="w-full rounded border border-border p-3" :placeholder="t('adminMain.addressPlaceholder')" />
+            <input v-model.trim="newAddress" required inputmode="numeric" pattern="[0-9]+" maxlength="255" class="w-full rounded border border-border p-3" :placeholder="t('adminMain.addressPlaceholder')" />
             <input v-model.number="newFloor" required type="number" min="-10" max="200" class="w-full rounded border border-border p-3" :placeholder="t('adminMain.floorNumber')" />
             <textarea v-model="newFloorRooms" required rows="4" class="w-full rounded border border-border p-3" :placeholder="t('adminMain.roomsPlaceholder')"></textarea>
             <p class="text-xs opacity-65">{{ t('adminMain.generalChatAutomation') }}</p>
@@ -109,7 +114,7 @@
         <h2 class="text-2xl font-bold">{{ t('adminMain.housesAndFloors') }}</h2>
         <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <article v-for="dorm in dorms" :key="dorm.dormID" class="rounded-xl border border-border p-4">
-            <h3 class="font-bold">{{ dorm.address }}</h3>
+            <h3 class="font-bold">{{ t('common.houseLabel', { house: dorm.address }) }}</h3>
             <p class="mt-1 opacity-75">{{ t('survey.floor', { floor: dorm.floor }) }}</p>
             <p class="mt-3 text-sm">{{ t('adminMain.roomCount', { count: dorm.rooms.length }) }}</p>
             <p class="mt-1 break-words text-sm opacity-65">{{ dorm.rooms.join(', ') || '—' }}</p>
@@ -123,7 +128,7 @@
         <div class="flex flex-wrap items-end justify-between gap-4">
           <div><h2 class="text-2xl font-bold">{{ t('adminMain.registeredSensors') }}</h2><p class="text-sm opacity-75">{{ t('adminMain.registeredHelp') }}</p></div>
           <div class="flex flex-wrap gap-3">
-            <label class="text-sm font-semibold">{{ t('adminMain.house') }}<select v-model="sensorHouseFilter" class="mt-1 block min-w-44 rounded border border-border p-2 font-normal"><option value="all">{{ t('adminMain.allHouses') }}</option><option v-for="house in sensorHouses" :key="house" :value="house">{{ house }}</option></select></label>
+            <label class="text-sm font-semibold">{{ t('adminMain.house') }}<select v-model="sensorHouseFilter" class="mt-1 block min-w-44 rounded border border-border p-2 font-normal"><option value="all">{{ t('adminMain.allHouses') }}</option><option v-for="house in sensorHouses" :key="house" :value="house">{{ t('common.houseLabel', { house }) }}</option></select></label>
             <label class="text-sm font-semibold">{{ t('adminMain.floor') }}<select v-model="sensorFloorFilter" class="mt-1 block min-w-32 rounded border border-border p-2 font-normal"><option value="all">{{ t('adminMain.allFloors') }}</option><option v-for="floor in sensorFloors" :key="floor" :value="String(floor)">{{ t('survey.floor', { floor }) }}</option></select></label>
           </div>
         </div>
@@ -167,7 +172,7 @@
     </template>
 
     <div v-if="pendingReplacement" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"><div class="w-full max-w-md rounded-lg bg-surface p-6 shadow-xl dark:bg-surface-dark"><h2 class="text-xl font-bold">{{ t('adminMain.occupied') }}</h2><p class="mt-3">{{ t('adminMain.occupiedBy', { name: pendingReplacement.username || pendingReplacement.email }) }}</p><div class="mt-6 flex justify-end gap-3"><button class="rounded border border-border px-4 py-2" @click="pendingReplacement = null">{{ t('common.cancel') }}</button><button class="rounded bg-red-500 px-4 py-2 text-white" @click="confirmReplacement">{{ t('adminMain.replace') }}</button></div></div></div>
-    <div v-if="editing" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"><form class="w-full max-w-lg space-y-4 rounded-lg bg-surface p-6 shadow-xl dark:bg-surface-dark" @submit.prevent="saveUser(false)"><h2 class="text-xl font-bold">{{ t('adminMain.editUser') }}</h2><input v-model.trim="editing.email" type="email" required class="w-full rounded border border-border p-3" /><input v-model.trim="editing.username" class="w-full rounded border border-border p-3" :placeholder="t('adminMain.usernamePlaceholder')" /><div class="grid grid-cols-2 gap-3"><select v-model.number="editing.dormID" class="rounded border border-border p-3"><option v-for="dorm in dorms" :key="dorm.dormID" :value="dorm.dormID">{{ dormLabel(dorm) }}</option></select><select v-model.number="editing.roomID" class="rounded border border-border p-3"><option v-for="room in selectedRooms(editing.dormID)" :key="room" :value="room">{{ t('adminMain.room', { room }) }}</option></select></div><div class="grid grid-cols-2 gap-3"><select v-model="editing.role" class="rounded border border-border p-3"><option value="STUDENT">{{ t('adminMain.student') }}</option><option value="ADMIN">{{ t('adminMain.administrator') }}</option></select><label class="flex items-center gap-2 rounded border border-border p-3"><input v-model="editing.active" type="checkbox" /> {{ t('common.active') }}</label></div><p v-if="editFeedback" class="text-red-500">{{ editFeedback }}</p><div class="flex justify-end gap-3"><button type="button" class="rounded border border-border px-4 py-2" @click="editing = null">{{ t('common.cancel') }}</button><button :disabled="isSaving" class="rounded bg-accent px-4 py-2 text-white disabled:opacity-50">{{ t('adminMain.saveChanges') }}</button></div></form></div>
+    <div v-if="editing" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"><form class="w-full max-w-lg space-y-4 rounded-lg bg-surface p-6 shadow-xl dark:bg-surface-dark" @submit.prevent="saveUser(false)"><h2 class="text-xl font-bold">{{ t('adminMain.editUser') }}</h2><input v-model.trim="editing.email" type="email" required class="w-full rounded border border-border p-3" /><input v-model.trim="editing.username" class="w-full rounded border border-border p-3" :placeholder="t('adminMain.usernamePlaceholder')" /><div class="grid grid-cols-2 gap-3"><select v-model.number="editing.dormID" class="rounded border border-border p-3"><option v-for="dorm in dorms" :key="dorm.dormID" :value="dorm.dormID">{{ dormLabel(dorm) }}</option></select><select v-model.number="editing.roomID" class="rounded border border-border p-3"><option v-for="room in selectedRooms(editing.dormID)" :key="room" :value="room">{{ t('adminMain.room', { room }) }}</option></select></div><div class="grid grid-cols-2 gap-3"><select v-model="editing.role" class="rounded border border-border p-3"><option value="STUDENT">{{ t('adminMain.student') }}</option><option value="RESEARCHER">{{ t('adminMain.researcher') }}</option><option value="ADMIN">{{ t('adminMain.administrator') }}</option></select><label class="flex items-center gap-2 rounded border border-border p-3"><input v-model="editing.active" type="checkbox" /> {{ t('common.active') }}</label></div><p v-if="editFeedback" class="text-red-500">{{ editFeedback }}</p><div class="flex justify-end gap-3"><button type="button" class="rounded border border-border px-4 py-2" @click="editing = null">{{ t('common.cancel') }}</button><button :disabled="isSaving" class="rounded bg-accent px-4 py-2 text-white disabled:opacity-50">{{ t('adminMain.saveChanges') }}</button></div></form></div>
     <div v-if="editingSensor" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"><form class="w-full max-w-lg space-y-4 rounded-lg bg-surface p-6 shadow-xl dark:bg-surface-dark" @submit.prevent="saveSensor"><h2 class="text-xl font-bold">{{ t('adminMain.editSensor') }}</h2><label class="block text-sm font-semibold">{{ t('adminMain.sensorId') }}<input :value="editingSensor.sensorCode" readonly class="mt-1 w-full rounded border border-border bg-black/5 p-3 font-mono opacity-75" /></label><label class="block text-sm font-semibold">{{ t('common.type') }}<input v-model.trim="editingSensor.type" required class="mt-1 w-full rounded border border-border p-3" /></label><label class="block text-sm font-semibold">{{ t('common.location') }}<input v-model.trim="editingSensor.location" required class="mt-1 w-full rounded border border-border p-3" /></label><label class="block text-sm font-semibold">{{ t('adminMain.dorm') }}<select v-model.number="editingSensor.dormID" required class="mt-1 w-full rounded border border-border p-3"><option v-for="dorm in dorms" :key="dorm.dormID" :value="dorm.dormID">{{ dormLabel(dorm) }}</option></select></label><label class="block text-sm font-semibold">{{ t('adminMain.adminNote') }}<textarea v-model="editingSensor.adminNote" maxlength="2000" rows="4" class="mt-1 w-full rounded border border-border p-3 font-normal" :placeholder="t('adminMain.notePlaceholder')"></textarea><span class="mt-1 block text-right text-xs font-normal opacity-50">{{ editingSensor.adminNote.length }}/2000</span></label><p v-if="editSensorFeedback" class="text-red-500">{{ editSensorFeedback }}</p><div class="flex justify-end gap-3"><button type="button" class="rounded border border-border px-4 py-2" @click="editingSensor = null">{{ t('common.cancel') }}</button><button :disabled="isSavingSensor" class="rounded bg-accent px-4 py-2 text-white disabled:opacity-50">{{ t('adminMain.saveChanges') }}</button></div></form></div>
   </main>
 </template>
@@ -179,15 +184,16 @@ import { getSocket } from '@/composables/socket'
 import { apiUrl } from '@/composables/api'
 
 type Dorm = { dormID: number; floor: number; address: string; rooms: number[] }
-type User = { userID: number; email: string; username: string | null; dormID: number | null; roomID: number | null; role: 'STUDENT' | 'ADMIN'; active: boolean; mustChangePassword: boolean }
+type User = { userID: number; email: string; username: string | null; dormID: number | null; roomID: number | null; role: 'STUDENT' | 'RESEARCHER' | 'ADMIN'; active: boolean; mustChangePassword: boolean }
 type Sensor = { sensorCode: string; type: string; location: string; dormID: number; dormAddress: string; dormFloor: number; recordedAt: string | null; errorCode: number | null; leakStatus: boolean | null; adminNote: string; noteUpdatedAt: string | null }
 type SensorSortKey = keyof Sensor
 
 const socket = getSocket()
 const { t, locale } = useI18n()
+const isResearcher = computed(() => sessionStorage.getItem('userRole')?.toLowerCase() === 'researcher')
 const activeSection = ref<'users' | 'sensors' | 'buildings' | null>(null)
 const dorms = ref<Dorm[]>([]), users = ref<User[]>([]), sensors = ref<Sensor[]>([])
-const email = ref(''), dormID = ref<number | ''>(''), roomID = ref<number | ''>(''), createRole = ref<'STUDENT' | 'ADMIN'>('STUDENT'), filterDorm = ref('all')
+const email = ref(''), dormID = ref<number | ''>(''), roomID = ref<number | ''>(''), createRole = ref<'STUDENT' | 'RESEARCHER' | 'ADMIN'>('STUDENT'), filterDorm = ref('all')
 const resetEmail = ref(''), resetDormID = ref<number | ''>(''), isSubmitting = ref(false), isResetting = ref(false), isSaving = ref(false)
 const isGeneratingCleaning = ref(false), cleaningFeedback = ref(''), cleaningFeedbackClass = ref('')
 const feedbackMessage = ref(''), feedbackClass = ref(''), resetFeedback = ref(''), resetFeedbackClass = ref(''), editFeedback = ref('')
@@ -215,8 +221,8 @@ const parsedFloorRooms = computed(() => parseRoomIDs(newFloorRooms.value))
 const parsedNewRooms = computed(() => parseRoomIDs(newRooms.value))
 const parsedSensorCodes = computed(() => [...new Set(newSensorCodes.value.split(/[\s,;]+/).map(code => code.trim().toLowerCase()).filter(Boolean))])
 const selectedRooms = (id: number | '' | null) => dorms.value.find(dorm => dorm.dormID === Number(id))?.rooms || []
-const dormLabel = (dorm: Dorm) => `${dorm.address}, ${t('survey.floor', { floor: dorm.floor })}`
-const dormName = (sensor: Sensor) => `${sensor.dormAddress}, ${t('survey.floor', { floor: sensor.dormFloor })}`
+const dormLabel = (dorm: Dorm) => `${t('common.houseLabel', { house: dorm.address })}, ${t('survey.floor', { floor: dorm.floor })}`
+const dormName = (sensor: Sensor) => `${t('common.houseLabel', { house: sensor.dormAddress })}, ${t('survey.floor', { floor: sensor.dormFloor })}`
 const filteredUsers = computed(() => users.value.filter(user => filterDorm.value === 'all' || String(user.dormID) === filterDorm.value))
 const sensorHouses = computed(() => [...new Set(sensors.value.map(sensor => sensor.dormAddress))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })))
 const sensorFloors = computed(() => [...new Set(sensors.value
@@ -244,7 +250,7 @@ function sortIndicator(key: SensorSortKey) { return sensorSortKey.value === key 
 function formatDate(value: string | null) { return value ? new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : t('common.noData') }
 function sensorStatus(sensor: Sensor) { if (sensor.leakStatus) return { label: t('adminMain.leakReported'), class: 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300' }; if (Number(sensor.errorCode)) return { label: t('adminMain.errorCode', { code: sensor.errorCode }), class: 'bg-orange-100 text-orange-800 dark:bg-orange-950/50 dark:text-orange-300' }; if (!sensor.recordedAt || Date.now() - new Date(sensor.recordedAt).getTime() > 26 * 60 * 60 * 1000) return { label: t('adminMain.noRecent'), class: 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200' }; return { label: t('adminMain.noIssues'), class: 'bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-300' } }
 
-async function createFloor() { isSavingBuilding.value = true; buildingFeedback.value = ''; try { const response = await fetch(apiUrl('/api/auth/admin/dorms'), { method: 'POST', headers: headers(), body: JSON.stringify({ address: newAddress.value, floor: newFloor.value, roomIDs: parsedFloorRooms.value }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error || t('adminMain.createFloorError')); buildingFeedback.value = t('adminMain.floorCreated', { address: data.address, floor: data.floor, count: data.rooms.length }); buildingFeedbackClass.value = 'text-green-600'; newAddress.value = ''; newFloor.value = ''; newFloorRooms.value = ''; await loadDorms() } catch (error) { buildingFeedback.value = error instanceof Error ? error.message : t('adminMain.createFloorError'); buildingFeedbackClass.value = 'text-red-500' } finally { isSavingBuilding.value = false } }
+async function createFloor() { isSavingBuilding.value = true; buildingFeedback.value = ''; try { const response = await fetch(apiUrl('/api/auth/admin/dorms'), { method: 'POST', headers: headers(), body: JSON.stringify({ address: newAddress.value, floor: newFloor.value, roomIDs: parsedFloorRooms.value }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error || t('adminMain.createFloorError')); buildingFeedback.value = t('adminMain.floorCreated', { house: data.address, floor: data.floor, count: data.rooms.length }); buildingFeedbackClass.value = 'text-green-600'; newAddress.value = ''; newFloor.value = ''; newFloorRooms.value = ''; await loadDorms() } catch (error) { buildingFeedback.value = error instanceof Error ? error.message : t('adminMain.createFloorError'); buildingFeedbackClass.value = 'text-red-500' } finally { isSavingBuilding.value = false } }
 async function addRooms() { isSavingBuilding.value = true; buildingFeedback.value = ''; try { const response = await fetch(apiUrl(`/api/auth/admin/dorms/${roomDormID.value}/rooms`), { method: 'POST', headers: headers(), body: JSON.stringify({ roomIDs: parsedNewRooms.value }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error || t('adminMain.addRoomsError')); buildingFeedback.value = t('adminMain.roomsAdded', { created: data.created.length, skipped: data.skipped.length }); buildingFeedbackClass.value = 'text-green-600'; newRooms.value = ''; await loadDorms() } catch (error) { buildingFeedback.value = error instanceof Error ? error.message : t('adminMain.addRoomsError'); buildingFeedbackClass.value = 'text-red-500' } finally { isSavingBuilding.value = false } }
 
 async function addSensors() { isAddingSensors.value = true; sensorFeedback.value = ''; try { const response = await fetch(apiUrl('/api/sensor-data/admin/sensors'), { method: 'POST', headers: headers(), body: JSON.stringify({ sensorCodes: parsedSensorCodes.value, type: newSensorType.value, location: newSensorLocation.value, dormID: newSensorDormID.value }) }); const data = await response.json(); if (!response.ok) throw new Error(t('adminMain.addSensorsError')); sensorFeedback.value = t('adminMain.sensorsRegistered', { created: data.created.length, skipped: data.skipped.length }); sensorFeedbackClass.value = 'text-green-600'; newSensorCodes.value = ''; await loadSensors() } catch (error) { sensorFeedback.value = error instanceof Error ? error.message : t('adminMain.addSensorsError'); sensorFeedbackClass.value = 'text-red-500' } finally { isAddingSensors.value = false } }
@@ -261,7 +267,7 @@ async function confirmReplacement() { const action = replacementAction.value; pe
 
 watch(() => [editing.value?.dormID, editing.value?.role], () => {
   if (!editing.value) return
-  if (editing.value.role === 'ADMIN') {
+  if (editing.value.role === 'ADMIN' || editing.value.role === 'RESEARCHER') {
     editing.value.dormID = null
     editing.value.roomID = null
   } else if (editing.value.dormID != null && (editing.value.roomID == null || !selectedRooms(editing.value.dormID).includes(editing.value.roomID))) {
@@ -270,5 +276,5 @@ watch(() => [editing.value?.dormID, editing.value?.role], () => {
 })
 watch(sensorHouses, houses => { if (sensorHouseFilter.value !== 'all' && !houses.includes(sensorHouseFilter.value)) sensorHouseFilter.value = 'all' })
 watch(sensorFloors, floors => { if (sensorFloorFilter.value !== 'all' && !floors.includes(Number(sensorFloorFilter.value))) sensorFloorFilter.value = 'all' })
-onMounted(() => loadDorms().catch(error => { feedbackMessage.value = error.message; feedbackClass.value = 'text-red-500' }))
+onMounted(() => { if (!isResearcher.value) loadDorms().catch(error => { feedbackMessage.value = error.message; feedbackClass.value = 'text-red-500' }) })
 </script>

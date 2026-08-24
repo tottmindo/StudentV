@@ -63,9 +63,10 @@ export async function registerUser(
   await connection.beginTransaction();
 
   try {
-    const assignedRoomID = role === "ADMIN" ? null : roomID;
-    const assignedDormID = role === "ADMIN" ? null : dormID;
-    if (role !== "ADMIN" && (assignedRoomID == null || assignedDormID == null)) {
+    const isGlobalRole = role === "ADMIN" || role === "RESEARCHER";
+    const assignedRoomID = isGlobalRole ? null : roomID;
+    const assignedDormID = isGlobalRole ? null : dormID;
+    if (!isGlobalRole && (assignedRoomID == null || assignedDormID == null)) {
       throw new Error("Students must be assigned to a dorm and room.");
     }
     const [rows]: [RowDataPacket[], any] = await connection.query(
@@ -85,16 +86,19 @@ export async function registerUser(
       if (roomRows.length === 0) throw new Error("Room does not exist.");
     }
 
-    const [activeRows]: [RowDataPacket[], any] = await connection.query(
-      `SELECT userID, username, email, role, roomID, dormID
-       FROM users
-       WHERE roomID = ?
-         AND dormID = ?
-         AND active = TRUE
-         AND scheduledDeactivationAt IS NULL
-       ORDER BY userID ASC`,
-      [assignedRoomID, assignedDormID]
-    );
+    let activeRows: RowDataPacket[] = [];
+    if (assignedRoomID != null) {
+      [activeRows] = await connection.query(
+        `SELECT userID, username, email, role, roomID, dormID
+         FROM users
+         WHERE roomID = ?
+           AND dormID = ?
+           AND active = TRUE
+           AND scheduledDeactivationAt IS NULL
+         ORDER BY userID ASC`,
+        [assignedRoomID, assignedDormID]
+      );
+    }
 
     if (activeRows.length > 0 && !replaceExisting) {
       const err: any = new Error("Room already has an active user.");
@@ -493,7 +497,7 @@ export async function deactivateExpiredResidents(now: Date = new Date()): Promis
 export async function updateUserForAdmin(
   actingAdminID: number,
   userID: number,
-  changes: { email: string; username: string | null; role: "ADMIN" | "STUDENT"; dormID: number | null; roomID: number | null; active: boolean; replaceExisting?: boolean }
+  changes: { email: string; username: string | null; role: "ADMIN" | "RESEARCHER" | "STUDENT"; dormID: number | null; roomID: number | null; active: boolean; replaceExisting?: boolean }
 ) {
   if (actingAdminID === userID && (!changes.active || changes.role !== "ADMIN")) {
     throw new Error("You cannot deactivate or remove your own administrator access.");
@@ -501,9 +505,10 @@ export async function updateUserForAdmin(
   const connection = await pool.getConnection();
   await connection.beginTransaction();
   try {
-    const assignedRoomID = changes.role === "ADMIN" ? null : changes.roomID;
-    const assignedDormID = changes.role === "ADMIN" ? null : changes.dormID;
-    if (changes.role !== "ADMIN" && (assignedRoomID == null || assignedDormID == null)) {
+    const isGlobalRole = changes.role === "ADMIN" || changes.role === "RESEARCHER";
+    const assignedRoomID = isGlobalRole ? null : changes.roomID;
+    const assignedDormID = isGlobalRole ? null : changes.dormID;
+    if (!isGlobalRole && (assignedRoomID == null || assignedDormID == null)) {
       throw new Error("Students must be assigned to a dorm and room.");
     }
     const [targetRows]: [RowDataPacket[], any] = await connection.query(

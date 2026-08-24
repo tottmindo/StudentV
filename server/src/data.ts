@@ -1890,12 +1890,13 @@ async createSurvey(survey: any) {
 
   async getChatRooms(dormID: number, userID: number){
     try {
-      const query = `SELECT c.chatID, c.createdAt, c.dormID,
+      const query = `SELECT c.chatID, c.createdAt, c.dormID, d.address AS house, d.floor,
                        COALESCE(otherUser.username, c.name) AS name,
                        (direct.chatID IS NOT NULL) AS isDirect,
                        otherUser.userID AS otherUserID,
                        (blocks.blockerUserID IS NOT NULL) AS isBlocked
                      FROM chat c
+                     JOIN dorms d ON d.dormID = c.dormID
                      JOIN chatMembers cm ON cm.chatID = c.chatID
                      LEFT JOIN chatDirectConversations direct ON direct.chatID = c.chatID
                      LEFT JOIN users otherUser ON otherUser.userID = CASE
@@ -2086,9 +2087,12 @@ async createSurvey(survey: any) {
 
   async getChatUnreadCounts(userID: number) {
     const [rows]: any = await pool.query(
-      `SELECT c.chatID, COALESCE(otherUser.username, c.name) AS name, COUNT(ch.messageID)::int AS unreadCount
+      `SELECT c.chatID, COALESCE(otherUser.username, c.name) AS name,
+              (direct.chatID IS NOT NULL) AS isDirect, d.address AS house, d.floor,
+              COUNT(ch.messageID)::int AS unreadCount
        FROM chatMembers cm
        JOIN chat c ON c.chatID = cm.chatID
+       JOIN dorms d ON d.dormID = c.dormID
        LEFT JOIN chatDirectConversations direct ON direct.chatID = c.chatID
        LEFT JOIN users otherUser ON otherUser.userID = CASE
          WHEN direct.user1ID = ? THEN direct.user2ID WHEN direct.user2ID = ? THEN direct.user1ID END
@@ -2100,7 +2104,7 @@ async createSurvey(survey: any) {
          JOIN chatBlocks blocks ON blocks.blockerUserID = cm.userID AND blocks.blockedUserID = ch.userID
          WHERE blockedDirect.chatID = c.chatID
        )
-       GROUP BY c.chatID, otherUser.username, c.name
+       GROUP BY c.chatID, otherUser.username, c.name, direct.chatID, d.address, d.floor
        ORDER BY MAX(ch.messageID) DESC`, [userID, userID, userID]);
     return rows;
   }

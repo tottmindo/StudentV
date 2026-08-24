@@ -149,11 +149,20 @@
       ====================================================== -->
       <section class="flex min-h-0 flex-col overflow-hidden rounded-lg border border-gray-200 bg-surface p-3 dark:border-gray-700 dark:bg-surface-dark sm:p-5">
 
-        <div class="mb-3 shrink-0 sm:mb-4">
-          <h2 class="text-2xl font-bold">{{ t('cleaningView.tasks') }}</h2>
-          <p class="text-sm opacity-70">
-            {{ t('cleaningView.checklist') }}
-          </p>
+        <div class="mb-3 flex shrink-0 items-start justify-between gap-3 sm:mb-4">
+          <div>
+            <h2 class="text-2xl font-bold">{{ t('cleaningView.tasks') }}</h2>
+            <p class="text-sm opacity-70">
+              {{ t('cleaningView.checklist') }}
+            </p>
+          </div>
+          <button
+            type="button"
+            class="shrink-0 rounded-lg border border-accent px-3 py-2 text-sm font-bold text-accent transition hover:bg-accent/10"
+            @click="showCleaningRulesModal = true"
+          >
+            {{ t('cleaningView.rulesButton') }}
+          </button>
         </div>
 
         <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable]">
@@ -252,6 +261,41 @@
     </div>
 
     <CleaningTaskGovernance />
+
+    <!-- Cleaning rules apply to every resident, not only the assigned cleaner. -->
+    <div
+      v-if="showCleaningRulesModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3"
+      role="dialog"
+      aria-modal="true"
+      :aria-labelledby="cleaningRulesTitleId"
+      @click.self="showCleaningRulesModal = false"
+    >
+      <div class="relative max-h-[calc(100dvh-1.5rem)] w-full max-w-lg overflow-y-auto rounded-lg border border-gray-200 bg-surface p-5 shadow-xl dark:border-gray-700 dark:bg-surface-dark sm:p-6">
+        <button
+          type="button"
+          class="absolute right-4 top-3 text-2xl leading-none opacity-60 transition hover:opacity-100"
+          :aria-label="t('cleaningView.closeRules')"
+          @click="showCleaningRulesModal = false"
+        >
+          &times;
+        </button>
+        <h3 :id="cleaningRulesTitleId" class="pr-8 text-xl font-bold">{{ t('cleaningView.rulesTitle') }}</h3>
+        <p class="mt-2 text-sm opacity-70">{{ t('cleaningView.rulesIntro') }}</p>
+        <ul class="mt-5 list-disc space-y-3 pl-5 text-sm">
+          <li v-for="ruleNumber in 4" :key="ruleNumber">
+            {{ t(`cleaningView.rules.${ruleNumber}`) }}
+          </li>
+        </ul>
+        <button
+          type="button"
+          class="mt-6 w-full rounded-lg bg-accent px-4 py-2 text-sm font-bold text-white transition hover:opacity-90"
+          @click="showCleaningRulesModal = false"
+        >
+          {{ t('cleaningView.closeRules') }}
+        </button>
+      </div>
+    </div>
 
     <!-- =====================================================
          SWAP MODAL
@@ -385,6 +429,8 @@ const scheduleError = ref('')
 const tasksError = ref('')
 const showHistoricalWeeks = ref(false)
 const showSwapModal = ref(false)
+const showCleaningRulesModal = ref(false)
+const cleaningRulesTitleId = 'cleaning-rules-title'
 const selectedSwapTargetWeek = ref<CleaningWeek | null>(null)
 const swapError = ref('')
 const notification = ref<{ message: string; type: 'success' | 'error' } | null>(null)

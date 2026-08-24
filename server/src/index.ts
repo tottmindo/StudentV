@@ -107,10 +107,10 @@ io.on("connection", async (socket: Socket) => {
         return;
       }
 
-      if (userID && (dormID || role === "ADMIN")) {
+      if (userID && (dormID || role === "ADMIN" || role === "RESEARCHER")) {
         if (dormID) socket.join(`dorm-${dormID}`);
         socket.join(`user-${userID}`);
-        console.log(`✅ Authenticated socket ${socket.id} for ${role === "ADMIN" ? "global administrator" : `dorm-${dormID}`}`);
+        console.log(`✅ Authenticated socket ${socket.id} for ${dormID ? `dorm-${dormID}` : role.toLowerCase()}`);
         sockets(socket, data, dormID ?? 0, userID, role);
         // The JWT and account checks above are asynchronous. Tell clients when
         // feature listeners are actually ready so early refresh requests are

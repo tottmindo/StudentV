@@ -1,12 +1,17 @@
 <template>
-  <main class="flex min-h-screen items-center justify-center px-4 py-16 lg:py-8">
+  <main class="flex min-h-screen items-start justify-center px-4 py-6 sm:py-8">
     <div class="grid w-full max-w-5xl grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
-      <button class="rounded-xl border border-error/40 px-5 py-3 font-bold text-error transition hover:bg-error/10 lg:col-span-2 lg:justify-self-end" @click="signOut">
-        {{ t('auth.signOut') }}
-      </button>
-
       <section class="rounded-2xl bg-surface p-6 shadow-lg dark:bg-surface-dark lg:p-8">
-        <h2 class="text-xl font-bold">{{ t('account.profile') }}</h2>
+        <div class="flex items-center justify-between gap-4">
+          <h2 class="text-xl font-bold">{{ t('account.profile') }}</h2>
+          <button
+            type="button"
+            class="shrink-0 rounded-lg border border-error/40 px-3 py-2 text-sm font-bold text-error transition hover:bg-error/10 focus:outline-none focus:ring-2 focus:ring-error/50"
+            @click="signOut"
+          >
+            {{ t('auth.signOut') }}
+          </button>
+        </div>
         <p class="mt-2 text-sm opacity-75">{{ t('account.emailHelp') }}</p>
         <form class="mt-6 space-y-4" @submit.prevent="save">
         <label class="block">

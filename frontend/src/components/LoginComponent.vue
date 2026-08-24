@@ -94,14 +94,15 @@
       const userID = data?.userID ?? data?.userId;
       const role = data?.role;
       const isAdmin = role === 'ADMIN';
+      const isGlobalRole = isAdmin || role === 'RESEARCHER';
 
-      if (!token || !userID || !role || (!isAdmin && !dormID)) {
+      if (!token || !userID || !role || (!isGlobalRole && !dormID)) {
         throw new Error(t('auth.loginFailed'));
       }
 
       // Save the token in sessionStorage
       sessionStorage.setItem('authToken', String(token));
-      if (isAdmin) sessionStorage.removeItem('dormID');
+      if (isGlobalRole) sessionStorage.removeItem('dormID');
       else sessionStorage.setItem('dormID', String(dormID));
       sessionStorage.setItem('role', String(role));
       sessionStorage.setItem('userID', String(userID));
@@ -117,11 +118,7 @@
         sessionStorage.removeItem('mustChangePassword');
       }
 
-      if (isAdmin) {
-        sessionStorage.setItem('userRole', 'admin');
-      } else {
-        sessionStorage.setItem('userRole', 'user');
-      }
+      sessionStorage.setItem('userRole', isAdmin ? 'admin' : role === 'RESEARCHER' ? 'researcher' : 'user');
 
       // Temporary accounts must choose a permanent password before opening app data.
       if (!data.mustChangePassword) {
@@ -136,7 +133,7 @@
       // Redirect to the home view
       const requestedPath = typeof route.query.redirect === 'string' && /^\/(?!\/)/.test(route.query.redirect)
         ? route.query.redirect
-        : (isAdmin ? '/admin' : '/home');
+        : (isGlobalRole ? '/admin' : '/home');
       await router.replace(data.mustChangePassword ? '/change-password' : requestedPath);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : t('auth.loginFailed');

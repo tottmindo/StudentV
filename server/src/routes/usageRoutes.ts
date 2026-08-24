@@ -1,6 +1,6 @@
 import { Router } from "express";
 import pool from "../db.js";
-import { authenticate, requireAdmin, requireCompletedAccount } from "../middleware/authenticate.js";
+import { authenticate, requireCompletedAccount, requireResearchAccess } from "../middleware/authenticate.js";
 
 const router = Router();
 const PAGE_PATTERN = /^[a-z0-9-]{1,80}$/;
@@ -51,7 +51,7 @@ router.post("/visit", authenticate, requireCompletedAccount, async (req, res) =>
   }
 });
 
-router.get("/admin/stats", authenticate, requireCompletedAccount, requireAdmin, async (req, res) => {
+router.get("/admin/stats", authenticate, requireCompletedAccount, requireResearchAccess, async (req, res) => {
   const requestedDays = Number(req.query.days ?? 30);
   const days = Number.isInteger(requestedDays) ? Math.min(Math.max(requestedDays, 1), 365) : 30;
 

@@ -12,23 +12,23 @@
           <button v-for="room in chatRooms" :key="room.chatID" type="button" class="room-button"
             :class="{ active: room.chatID === selectedRoom?.chatID }"
             :aria-current="room.chatID === selectedRoom?.chatID ? 'page' : undefined" @click="selectRoom(room)">
-            <span class="room-avatar" aria-hidden="true">{{ room.name.charAt(0).toUpperCase() }}</span>
+            <span class="room-avatar" aria-hidden="true">{{ roomName(room).charAt(0).toUpperCase() }}</span>
             <span class="min-w-0 text-left">
-              <strong class="block truncate">{{ room.name }}</strong>
+              <strong class="block truncate">{{ roomName(room) }}</strong>
               <span class="block truncate text-sm opacity-60">{{ t('chat.roomNumber', { id: room.chatID }) }}</span>
             </span>
           </button>
         </nav>
       </aside>
 
-      <section v-if="selectedRoom" class="conversation-panel" :aria-label="selectedRoom.name">
+      <section v-if="selectedRoom" class="conversation-panel" :aria-label="roomName(selectedRoom)">
         <header class="conversation-header">
           <button class="back-button" type="button" :aria-label="t('chat.backToRooms')" @click="closeMobileRoom">
             <span aria-hidden="true">←</span>
           </button>
 
           <div class="min-w-0">
-            <h2 class="truncate">{{ chatName || selectedRoom.name }}</h2>
+            <h2 class="truncate">{{ chatName || roomName(selectedRoom) }}</h2>
             <p>{{ t('chat.roomNumber', { id: selectedRoom.chatID }) }}</p>
           </div>
 
@@ -177,7 +177,7 @@ import { getSocket } from '@/composables/socket'
 import "emoji-picker-element"
 import { polyfillCountryFlagEmojis } from 'country-flag-emoji-polyfill'
 
-interface ChatRoom { chatID: number; name: string }
+interface ChatRoom { chatID: number; name: string; isDirect: boolean; house: string; floor: number }
 interface ChatMessage { messageID: number; chatID: number; userID: number; username: string; msg: string; sentAt: string, reactions : MessageReactions[] }
 interface MessageReactions { messageID : number, emoji : string,  count : number, reacted : boolean }
 interface ChatHistory { chatID: number; logs: ChatMessage[]; name?: string, reactions: MessageReactions[] }
@@ -206,6 +206,7 @@ const roomMembers = ref<{ username: string}[]>([])
 const showMembersDropdown = ref(false)
 const membersDropdownRef = ref<HTMLElement | null>(null)
 const reactionPickerWrapper = ref<HTMLElement | null>(null)
+const roomName = (room: ChatRoom) => room.isDirect ? room.name : t('chat.generalName', { house: room.house, floor: room.floor })
 
 function handleClickOutsideMembersDropdown(event: MouseEvent) {
   if (
@@ -289,7 +290,7 @@ function selectRoom(room: ChatRoom, updateUrl = true) {
   if (selectedRoomID.value === room.chatID) return
   leaveCurrentRoom()
   selectedRoomID.value = room.chatID
-  chatName.value = room.name
+  chatName.value = roomName(room)
   messages.value = []
   chatError.value = ''
   loadingMessages.value = true
@@ -319,7 +320,7 @@ function handleHistory(data: ChatHistory) {
     !Array.isArray(data.logs)
   ) return
 
-  chatName.value = data.name || selectedRoom.value?.name || ''
+  chatName.value = selectedRoom.value?.isDirect ? (data.name || selectedRoom.value.name) : selectedRoom.value ? roomName(selectedRoom.value) : ''
 
   const reactions = Array.isArray(data.reactions)
     ? data.reactions

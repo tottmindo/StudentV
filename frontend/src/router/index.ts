@@ -31,21 +31,8 @@ const router = createRouter({
     {
       path: '/survey',
       name: 'survey',
-      component: () => import('../views/SurveyView.vue')
-    },
-
-    {
-      path: '/answerSurvey/:id',
-      name: 'answerSurvey',
-      component: () => import('../views/AnswerSurveyView.vue'),
-      meta: { requiresAuth: true }
-    },
-
-    {
-      path: '/createSurvey/:id?',
-      name: 'createSurvey',
-      component: () => import('../views/CreateSurveyView.vue'),
-      meta: { requiresAuth: true },
+      component: () => import('../views/SurveyView.vue'),
+      meta: { requiresAuth: true, requiresResearchAccess: true },
     },
 
     {
@@ -88,19 +75,19 @@ const router = createRouter({
       path: '/admin',
       name: 'admin',
       component: () => import('../views/AdminView.vue'),
-      meta: { requiresAuth: true, requiresAdmin: true },
+      meta: { requiresAuth: true, requiresResearchAccess: true },
     },
     {
       path: '/admin/water-analytics',
       name: 'admin-water-analytics',
       component: () => import('../views/AdminWaterStatsView.vue'),
-      meta: { requiresAuth: true, requiresAdmin: true },
+      meta: { requiresAuth: true, requiresResearchAccess: true },
     },
     {
       path: '/admin/app-usage',
       name: 'admin-app-usage',
       component: () => import('../views/AdminUsageView.vue'),
-      meta: { requiresAuth: true, requiresAdmin: true },
+      meta: { requiresAuth: true, requiresResearchAccess: true },
     },
     {
       path: '/admin/events',
@@ -141,17 +128,23 @@ router.beforeEach((to, from, next) => {
   const token = sessionStorage.getItem('authToken'); // Retrieve the token from sessionStorage
   const userRole = sessionStorage.getItem('userRole'); // Retrieve the user's role
   const mustChangePassword = sessionStorage.getItem('mustChangePassword') === 'true';
+  const normalizedRole = userRole?.toLowerCase();
+  const researcherRoutes = new Set(['admin', 'admin-water-analytics', 'admin-app-usage', 'survey', 'account', 'change-password']);
 
   if (to.meta.requiresAuth && !token) {
     // If the route requires authentication and no token is found, redirect to login
     next({ name: 'login', query: { redirect: to.fullPath } });
   } else if (to.name === 'login' && token) {
-    next({ name: mustChangePassword ? 'change-password' : 'home' });
+    next({ name: mustChangePassword ? 'change-password' : normalizedRole === 'researcher' || normalizedRole === 'admin' ? 'admin' : 'home' });
   } else if (mustChangePassword && to.name !== 'change-password') {
     next({ name: 'change-password' });
   } else if (to.meta.requiresAdmin && userRole?.toLowerCase() !== 'admin') {
     // If the user tries to access the AdminView but is not an admin, redirect to login
     next({ name: 'login' });
+  } else if (to.meta.requiresResearchAccess && !['admin', 'researcher'].includes(userRole?.toLowerCase() || '')) {
+    next({ name: 'login' });
+  } else if (normalizedRole === 'researcher' && !researcherRoutes.has(String(to.name))) {
+    next({ name: 'admin' });
   } else {
     next(); // Allow navigation
   }

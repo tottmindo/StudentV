@@ -4,7 +4,7 @@
     <!-- Form -->
     <form
       @submit.prevent="saveSurvey"
-      class="bg-surface dark:bg-surface-dark rounded-lg p-6 shadow-sm"
+      class="order-2 bg-surface dark:bg-surface-dark rounded-lg p-6 shadow-sm"
     >
 
       <div class="flex items-center justify-between mb-6">
@@ -99,7 +99,7 @@
               :key="dorm.dormID"
               :value="dorm.dormID"
             >
-              {{ dorm.address }} — {{ t('survey.floor', { floor: dorm.floor }) }}
+              {{ t('common.houseLabel', { house: dorm.address }) }} — {{ t('survey.floor', { floor: dorm.floor }) }}
             </option>
           </select>
 
@@ -249,7 +249,7 @@
     <!-- Answers -->
     <section
       v-if="props.survey"
-      class="bg-surface dark:bg-surface-dark rounded-lg p-6 shadow-sm"
+      class="order-1 bg-surface dark:bg-surface-dark rounded-lg p-6 shadow-sm"
     >
       <!-- Header -->
       <div class="flex justify-between items-center mb-6">
@@ -257,13 +257,14 @@
           {{ t('surveyBuilder.results') }}
         </h3>
 
-        <span
-          class="px-3 py-1 rounded-full
-                bg-secondary dark:bg-secondary-dark
-                text-sm"
-        >
-          {{ t('surveyBuilder.answerCount', { count: answers.length }) }}
-        </span>
+        <div class="flex flex-wrap items-center justify-end gap-2">
+          <span class="rounded-full bg-secondary px-3 py-1 text-sm dark:bg-secondary-dark">
+            {{ t('surveyBuilder.answerCount', { count: answers.length }) }}
+          </span>
+          <button type="button" class="rounded-lg border border-border-border px-3 py-2 text-sm font-bold transition hover:border-accent hover:text-accent" @click="downloadCSV">
+            ↓ {{ t('surveyBuilder.downloadCsv') }}
+          </button>
+        </div>
       </div>
 
       <!-- No answers -->
@@ -338,18 +339,30 @@ import { apiUrl } from '@/composables/api';
 import { getSocket } from '@/composables/socket'
 import type { SurveyAnswer } from '@/types';
 import { ref, watch, computed, onMounted } from 'vue';
-import { useRouter } from "vue-router";
 import { useI18n } from 'vue-i18n'
 
-const router = useRouter();
+const emit = defineEmits<{ deleted: [id: number]; created: [survey: any] }>()
 const { t } = useI18n()
 const socket = getSocket();
 const headers = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${sessionStorage.getItem('authToken')}` })
 
+    const formatDateInput = (value: Date | string) => {
+      if (typeof value === 'string') {
+        const datePart = value.match(/^\d{4}-\d{2}-\d{2}/)?.[0]
+        if (datePart) return datePart
+      }
+      const date = value instanceof Date ? value : new Date(value)
+      if (Number.isNaN(date.getTime())) return ''
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+
     const oneMonthFromNow = () => {
-        const date = new Date();
-        date.setMonth(date.getMonth() + 1)
-        return date
+      const date = new Date()
+      date.setMonth(date.getMonth() + 1)
+      return formatDateInput(date)
     }
 
   const props = defineProps<{
@@ -357,7 +370,7 @@ const headers = () => ({ 'Content-Type': 'application/json', Authorization: `Bea
       eID: number,
       question: string;
       active: boolean;
-      expiresAt: Date;
+      expiresAt: Date | string;
       multipleChoice: boolean;
       dormID: number | null;
       options: {
@@ -385,7 +398,7 @@ const headers = () => ({ 'Content-Type': 'application/json', Authorization: `Bea
         eID.value = survey.eID;
         question.value = survey.question;
         active.value = survey.active;
-        expiresAt.value = survey.expiresAt;
+        expiresAt.value = formatDateInput(survey.expiresAt);
         multipleChoice.value = survey.multipleChoice;
         selectedDorm.value = survey.dormID;
 
@@ -441,6 +454,7 @@ const headers = () => ({ 'Content-Type': 'application/json', Authorization: `Bea
           : t('surveyBuilder.created')
 
         if (!props.survey) {
+          emit('created', response)
           question.value = ""
           active.value = true
           multipleChoice.value = false
@@ -470,7 +484,8 @@ const headers = () => ({ 'Content-Type': 'application/json', Authorization: `Bea
         }
 
         if(response.success){
-          router.push("/survey");
+          const deletedID = props.survey?.eID
+          if (deletedID) emit('deleted', deletedID)
         }
       })
     }
@@ -505,7 +520,36 @@ const headers = () => ({ 'Content-Type': 'application/json', Authorization: `Bea
       count: counts.get(option.eID) ?? 0
     }));
   });
-const getAnswers = (eID: number) => {
+
+function csvCell(value: unknown) {
+  let text = value === null || value === undefined ? '' : String(value)
+  // Prevent spreadsheet software from interpreting exported content as a formula.
+  if (/^[=+\-@]/.test(text)) text = `'${text}`
+  return `"${text.replace(/"/g, '""')}"`
+}
+
+function downloadCSV() {
+  if (!props.survey) return
+  const columns = ['survey_id', 'question', 'answer_id', 'user_id', 'answered_at', 'answer', 'selected_options']
+  const rows = answers.value.map(answer => [
+    props.survey?.eID,
+    props.survey?.question,
+    answer.answerid,
+    answer.userid,
+    answer.answeredat,
+    answer.answer,
+    (answer.options ?? []).map(option => option.optiontext).join('; ')
+  ])
+  const csv = [columns, ...rows].map(row => row.map(csvCell).join(',')).join('\r\n')
+  const url = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `survey-${props.survey.eID}-results.csv`
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+function getAnswers(eID: number) {
 
   console.log("getAnswers called with:", eID);
 
@@ -522,7 +566,7 @@ const getAnswers = (eID: number) => {
 
     answers.value = response.answers;
   });
-};
+}
 
 async function loadDorms() {
   const response = await fetch(apiUrl('/api/auth/admin/dorms'), {

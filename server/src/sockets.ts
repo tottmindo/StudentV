@@ -14,10 +14,15 @@ import { Data } from "./data.js";
 import { generateCleaningWeekForDorm } from "./jobs/scheduler.js";
 import { getIO } from "./routes/socketManager.js";
 function sockets(socket: Socket, data: Data, dormID: number, userID: number, role: string): void {
-  if ((!dormID && role !== "ADMIN") || !userID) {
+  const hasResearchAccess = role === "ADMIN" || role === "RESEARCHER";
+  if ((!dormID && !hasResearchAccess) || !userID) {
     console.warn(`⚠️ Unauthorized socket (${socket.id}) attempted to access restricted features.`);
     socket.emit("unauthorized", { message: "Authentication required." });
     return;
+  }
+  if (role === "RESEARCHER") {
+    const researcherEvents = new Set(["createSurvey", "updateSurvey", "getSurveyAll", "getSurvey", "deleteSurvey", "getAnswers"]);
+    socket.use(([event], next) => researcherEvents.has(event) ? next() : next(new Error("unauthorized")));
   }
 
   socket.on("getWaterData", async ()=>{
@@ -249,7 +254,7 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
   socket.on("getDashboard", async () => {
     // Global administrators have no resident/dorm dashboard. Their landing
     // data is loaded by the dedicated administration endpoints instead.
-    if (role === "ADMIN") return;
+    if (hasResearchAccess) return;
     try {
       const dashboard = await data.getDashboard(userID, dormID);
       socket.emit("dashboard", dashboard);
@@ -273,7 +278,7 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
   //---------------SURVEYS-------------------
 
   socket.on("createSurvey", async(item: any, callback: any) => {
-    if (role !== "ADMIN"){
+    if (!hasResearchAccess){
       socket.emit("error", {message: "unauthorized"});
       return;
     }
@@ -295,7 +300,7 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
   });
 
   socket.on("updateSurvey", async(item: any, callback: any) => {
-    if (role !== "ADMIN"){
+    if (!hasResearchAccess){
       socket.emit("error", {message: "unauthorized"});
       return;
     }
@@ -318,7 +323,7 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
   });
 
   socket.on("getSurveyAll", async() => {
-    if (role !== "ADMIN"){ //Säkert nog?
+    if (!hasResearchAccess){
       socket.emit("error", {message: "unauthorized"});
       return;
     }
@@ -343,7 +348,7 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
   });
 
   socket.on("deleteSurvey", async(eID: number, callback: any) => {
-    if (role !== "ADMIN"){
+    if (!hasResearchAccess){
       callback({ error: "unauthorized" });
       return;
     }try{
@@ -387,7 +392,7 @@ function sockets(socket: Socket, data: Data, dormID: number, userID: number, rol
   });
 
   socket.on("getAnswers", async (eID: number, callback) => {
-  if (role !== "ADMIN") {
+  if (!hasResearchAccess) {
     callback({ error: "unauthorized" });
     return;
   }

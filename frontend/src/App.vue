@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 import AppTopBar from '@/components/AppTopBar.vue'
+import SurveyAnswerModal from '@/components/SurveyAnswerModal.vue'
 import '@fontsource/nunito-sans';
 import '@fontsource/fredoka';
 import { useI18n } from 'vue-i18n'
@@ -12,6 +13,9 @@ const { t } = useI18n()
 const isAuthenticated = ref(Boolean(sessionStorage.getItem('authToken')))
 const isOffline = ref(!navigator.onLine)
 const connectionLost = ref(false)
+const surveyModalOpen = ref(false)
+const surveyModalID = ref<number | null>(null)
+const surveyModalQueue = ref<number[]>([])
 const publicRoutes = new Set(['login', 'forgot-password', 'reset-password'])
 const showTopBar = computed(() => isAuthenticated.value && !publicRoutes.has(String(route.name)))
 const syncAuthentication = () => { isAuthenticated.value = Boolean(sessionStorage.getItem('authToken')) }
@@ -20,6 +24,20 @@ const markOffline = () => { isOffline.value = true }
 const markConnectionLost = () => { connectionLost.value = true }
 const markConnectionRestored = () => { connectionLost.value = false }
 const handleExpiredSession = () => router.replace({ name: 'login', query: { expired: '1' } })
+const openSurveyModal = (event: Event) => {
+  const detail = (event as CustomEvent<number | { surveyID: number; queue?: number[] }>).detail
+  const surveyID = Number(typeof detail === 'object' ? detail.surveyID : detail)
+  const requestedQueue = typeof detail === 'object' && Array.isArray(detail.queue) ? detail.queue.map(Number).filter(Boolean) : []
+  surveyModalQueue.value = [surveyID, ...requestedQueue.filter(id => id !== surveyID)]
+  surveyModalID.value = surveyID
+  surveyModalOpen.value = Boolean(surveyID)
+}
+const handleSurveySubmitted = (surveyID: number) => {
+  window.dispatchEvent(new Event('survey-answer-submitted'))
+  surveyModalQueue.value = surveyModalQueue.value.filter(id => id !== Number(surveyID))
+  const nextSurveyID = surveyModalQueue.value[0]
+  if (nextSurveyID) surveyModalID.value = nextSurveyID
+}
 
 watch(() => route.fullPath, syncAuthentication, { immediate: true })
 onMounted(() => {
@@ -30,6 +48,7 @@ onMounted(() => {
   window.addEventListener('connection-lost', markConnectionLost)
   window.addEventListener('connection-restored', markConnectionRestored)
   window.addEventListener('auth-expired', handleExpiredSession)
+  window.addEventListener('open-survey-answer', openSurveyModal)
 })
 onBeforeUnmount(() => {
   window.removeEventListener('auth-state-changed', syncAuthentication)
@@ -39,6 +58,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('connection-lost', markConnectionLost)
   window.removeEventListener('connection-restored', markConnectionRestored)
   window.removeEventListener('auth-expired', handleExpiredSession)
+  window.removeEventListener('open-survey-answer', openSurveyModal)
 })
 </script>
 
@@ -50,6 +70,7 @@ onBeforeUnmount(() => {
   <div :class="showTopBar ? 'app-with-top-bar' : ''">
     <router-view />
   </div>
+  <SurveyAnswerModal v-if="showTopBar" v-model="surveyModalOpen" :survey-id="surveyModalID" @submitted="handleSurveySubmitted" />
 </template>
 
 <style>

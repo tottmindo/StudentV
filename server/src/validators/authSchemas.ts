@@ -19,7 +19,7 @@ const requireStudentLocation = <T extends z.ZodTypeAny>(schema: T) => schema.sup
 export const registerSchema = requireStudentLocation(z.object({
   roomID: optionalRoomID,
   dormID: optionalDormID,
-  role: z.enum(["ADMIN", "STUDENT"]),
+  role: z.enum(["ADMIN", "RESEARCHER", "STUDENT"]),
   email: z.string().trim().email().transform(email => email.toLowerCase()),
   password: z.string().min(12).max(128),
   replaceExisting: z.boolean().optional(),
@@ -34,7 +34,7 @@ export const createResidentSchema = requireStudentLocation(z.object({
   dormID: optionalDormID,
   roomID: optionalRoomID,
   email: z.string().trim().email().transform(email => email.toLowerCase()),
-  role: z.enum(["ADMIN", "STUDENT"]).default("STUDENT"),
+  role: z.enum(["ADMIN", "RESEARCHER", "STUDENT"]).default("STUDENT"),
   replaceExisting: z.boolean().optional(),
 }));
 
@@ -46,7 +46,7 @@ export const adminResetPasswordSchema = z.object({
 export const adminUpdateUserSchema = requireStudentLocation(z.object({
   email: z.string().trim().email().transform(email => email.toLowerCase()),
   username: z.string().trim().min(3).max(50).nullable(),
-  role: z.enum(["ADMIN", "STUDENT"]),
+  role: z.enum(["ADMIN", "RESEARCHER", "STUDENT"]),
   dormID: optionalDormID,
   roomID: optionalRoomID,
   active: z.boolean(),
@@ -57,7 +57,7 @@ const roomIDsSchema = z.array(z.coerce.number().int().positive()).min(1).max(500
   .transform(roomIDs => [...new Set(roomIDs)]);
 
 export const createDormFloorSchema = z.object({
-  address: z.string().trim().min(2).max(255),
+  address: z.string().trim().regex(/^\d+$/, "House number must contain digits only.").max(255),
   floor: z.coerce.number().int().min(-10).max(200),
   roomIDs: roomIDsSchema,
 });
@@ -72,7 +72,7 @@ export const createAdminEventSchema = z.object({
   type: z.enum(["SAFETY", "MAINTENANCE", "MEETING", "OTHER"]),
   target: z.discriminatedUnion("scope", [
     z.object({ scope: z.literal("all") }),
-    z.object({ scope: z.literal("house"), address: z.string().trim().min(2).max(255) }),
+    z.object({ scope: z.literal("house"), address: z.string().trim().regex(/^\d+$/).max(255) }),
     z.object({ scope: z.literal("floor"), dormID: z.coerce.number().int().positive() }),
   ]),
 }).refine(data => data.endDate >= data.startDate, {

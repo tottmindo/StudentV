@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { getJwtSecret } from "../config/jwt.js";
 import pool from "../db.js";
-import { authenticate, requireAdmin, requireCompletedAccount } from "../middleware/authenticate.js";
+import { authenticate, requireAdmin, requireCompletedAccount, requireResearchAccess } from "../middleware/authenticate.js";
 import {
   importHistoricalSensorData,
   importAllHistoricalSensorData,
@@ -83,7 +83,7 @@ function csvCell(value: unknown): string {
   return `"${text.replace(/"/g, '""')}"`;
 }
 
-router.get("/admin/sensors", authenticate, requireCompletedAccount, requireAdmin, async (_req, res) => {
+router.get("/admin/sensors", authenticate, requireCompletedAccount, requireResearchAccess, async (_req, res) => {
   try {
     const [rows] = await pool.query(
       `SELECT s.sensorCode, s.type, s.location, s.dormID,
@@ -129,7 +129,7 @@ router.get("/admin/sensors", authenticate, requireCompletedAccount, requireAdmin
   }
 });
 
-router.post("/admin/export", authenticate, requireCompletedAccount, requireAdmin, async (req, res) => {
+router.post("/admin/export", authenticate, requireCompletedAccount, requireResearchAccess, async (req, res) => {
   try {
     const input = waterExportSchema.parse(req.body);
     const fields = [...new Set(input.fields)];
@@ -189,7 +189,7 @@ router.put("/admin/sensors/:sensorCode/note", authenticate, requireCompletedAcco
   }
 });
 
-router.get("/admin/stats/:dormID", authenticate, requireCompletedAccount, requireAdmin, async (req, res) => {
+router.get("/admin/stats/:dormID", authenticate, requireCompletedAccount, requireResearchAccess, async (req, res) => {
   const dormID = Number(req.params.dormID);
   const days = Number(req.query.days) || 30;
   if (!Number.isInteger(dormID) || dormID <= 0 || ![1, 7, 30, 90].includes(days)) {
@@ -209,7 +209,7 @@ router.get("/admin/stats/:dormID", authenticate, requireCompletedAccount, requir
   }
 });
 
-router.get("/admin/sensors/:sensorCode/stats", authenticate, requireCompletedAccount, requireAdmin, async (req, res) => {
+router.get("/admin/sensors/:sensorCode/stats", authenticate, requireCompletedAccount, requireResearchAccess, async (req, res) => {
   const sensorCode = String(req.params.sensorCode).toLowerCase();
   const days = Number(req.query.days) || 30;
   if (![1, 7, 30, 90].includes(days)) {

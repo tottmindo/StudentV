@@ -80,7 +80,7 @@ import ThemeToggle from '@/components/ThemeToggle.vue'
 import { useI18n } from 'vue-i18n'
 
 type PageInfo = { title: string; description: string }
-type UnreadChat = { chatID: number; name: string; unreadCount: number }
+type UnreadChat = { chatID: number; name: string; unreadCount: number; isDirect: boolean; house: string; floor: number }
 
 const route = useRoute()
 const router = useRouter()
@@ -94,15 +94,17 @@ const bellRinging = ref(false)
 const receivedAlertIDs = ref<Set<number>>(new Set())
 let bellTimer: ReturnType<typeof setTimeout> | undefined
 const dashboardUser = ref<DashboardPayload['user'] | null>(null)
+const pendingSurveyIDs = ref<number[]>([])
 const communitySummary = ref('')
 const notificationCloseButton = ref<HTMLButtonElement | null>(null)
 const isAdmin = computed(() => sessionStorage.getItem('userRole')?.toLowerCase() === 'admin')
-const userLabel = computed(() => dashboardUser.value?.name || sessionStorage.getItem('username') || sessionStorage.getItem('email') || t(isAdmin.value ? 'topbar.administrator' : 'topbar.resident'))
+const isResearcher = computed(() => sessionStorage.getItem('userRole')?.toLowerCase() === 'researcher')
+const userLabel = computed(() => dashboardUser.value?.name || sessionStorage.getItem('username') || sessionStorage.getItem('email') || t(isAdmin.value ? 'topbar.administrator' : isResearcher.value ? 'topbar.researcher' : 'topbar.resident'))
 const initials = computed(() => userLabel.value.split(/[\s@._-]+/).filter(Boolean).slice(0, 2).map(word => word[0]).join('').toUpperCase() || 'U')
 const unreadMessageTotal = computed(() => unreadChats.value.reduce((total, room) => total + Number(room.unreadCount), 0))
 const chatNotifications = computed<AlertItem[]>(() => unreadChats.value.map(room => ({
   id: 900000000 + room.chatID,
-  title: room.name,
+  title: room.isDirect ? room.name : t('chat.generalName', { house: room.house, floor: room.floor }),
   description: t('notifications.unreadChatMessages', { count: room.unreadCount }),
   route: `/chat?room=${room.chatID}`,
   actionLabel: t('notifications.openChat'),
@@ -120,7 +122,12 @@ const adminLinks = computed(() => [
   { label: t('nav.administration'), to: '/admin', icon: '⚙' },
   { label: t('nav.surveys'), to: '/survey', icon: '≡' },
 ])
-const navigationLinks = computed(() => isAdmin.value ? adminLinks.value : residentLinks.value)
+const researcherLinks = computed(() => [
+  { label: t('nav.waterAnalytics'), to: '/admin/water-analytics', icon: '📊' },
+  { label: t('nav.surveys'), to: '/survey', icon: '≡' },
+  { label: t('usageAdmin.title'), to: '/admin/app-usage', icon: '📈' },
+])
+const navigationLinks = computed(() => isAdmin.value ? adminLinks.value : isResearcher.value ? researcherLinks.value : residentLinks.value)
 const navigationVisible = ref(true)
 let lastScrollY = 0
 let scrollDistance = 0
@@ -136,16 +143,12 @@ const pages = computed<Record<string, PageInfo>>(() => ({
   admin: { title: t('nav.administration'), description: t('topbar.adminDescription') },
   'admin-water-analytics': { title: t('nav.waterAnalytics'), description: t('topbar.waterDescription') },
   survey: { title: t('nav.surveys'), description: t('topbar.surveyDescription') },
-  createSurvey: { title: t(route.params.id ? 'topbar.editSurvey' : 'topbar.createSurvey'), description: t('topbar.buildQuestions') },
-  answerSurvey: { title: t('topbar.survey'), description: t('topbar.shareExperience') },
   'change-password': { title: t('topbar.finishSetup'), description: t('topbar.setupDescription') },
 }))
 const homePage = computed<PageInfo>(() => {
-  const user = dashboardUser.value
   const hour = new Date().getHours()
   const greeting = t(hour < 12 ? 'topbar.morning' : hour < 18 ? 'topbar.afternoon' : 'topbar.evening')
-  const location = user ? t('topbar.location', { house: user.house, floor: user.floor, room: user.room }) : t('topbar.glance')
-  return { title: t('nav.home'), description: `${greeting}, ${userLabel.value} · ${location}` }
+  return { title: t('nav.home'), description: `${greeting}, ${userLabel.value}` }
 })
 const page = computed(() => route.name === 'home' ? homePage.value : pages.value[String(route.name)] || { title: 'DORMS', description: t('topbar.fallbackDescription') })
 
@@ -158,24 +161,30 @@ function readAlertIDs(userID?: number) {
 function markNotificationsRead() {
   const userID = dashboardUser.value?.id
   const readIDs = readAlertIDs(userID)
-  displayedNotifications.value.forEach(item => readIDs.add(item.id))
+  displayedNotifications.value.filter(item => item.dismissible !== false).forEach(item => readIDs.add(item.id))
   localStorage.setItem(notificationStorageKey(userID), JSON.stringify([...readIDs].slice(-500)))
-  notifications.value = []
+  notifications.value = notifications.value.filter(item => item.dismissible === false)
 }
 function openNotifications() {
   displayedNotifications.value = [...allNotifications.value]
   notificationsOpen.value = true
   markNotificationsRead()
 }
-function openNotification(notification: AlertItem) { closeNotifications(); router.push(notification.route || '/home') }
+function openNotification(notification: AlertItem) {
+  closeNotifications()
+  const surveyID = notification.id === 700000 ? pendingSurveyIDs.value[0] : 0
+  if (surveyID) { window.dispatchEvent(new CustomEvent('open-survey-answer', { detail: { surveyID, queue: pendingSurveyIDs.value } })); return }
+  router.push(notification.route || '/home')
+}
 function dashboardNotifications(dashboard: DashboardPayload) {
-  const surveyAlerts: AlertItem[] = (dashboard.pendingSurveys || []).map(survey => ({
-    id: 700000 + Number(survey.eID),
-    title: t('notifications.residentSurvey'),
-    description: survey.question,
-    route: `/answerSurvey/${survey.eID}`,
-    actionLabel: t('notifications.shareAnswer'),
-  }))
+  const pendingCount = dashboard.pendingSurveys?.length || 0
+  const surveyAlerts: AlertItem[] = pendingCount ? [{
+    id: 700000,
+    title: t('notifications.pendingSurveys'),
+    description: t('notifications.pendingSurveyCount', { count: pendingCount }),
+    actionLabel: t('notifications.answerSurveys'),
+    dismissible: false,
+  }] : []
   return [...(dashboard.alerts || []), ...surveyAlerts]
 }
 watch(notificationsOpen, async (modalIsOpen) => {
@@ -184,9 +193,10 @@ watch(notificationsOpen, async (modalIsOpen) => {
 })
 function receiveDashboard(dashboard: DashboardPayload) {
   dashboardUser.value = dashboard.user
+  pendingSurveyIDs.value = (dashboard.pendingSurveys || []).map(survey => Number(survey.eID))
   const alerts = dashboardNotifications(dashboard)
   const readIDs = readAlertIDs(dashboard.user.id)
-  notifications.value = alerts.filter(alert => !readIDs.has(alert.id))
+  notifications.value = alerts.filter(alert => alert.dismissible === false || !readIDs.has(alert.id))
   const hasNewArrival = receivedAlertIDs.value.size > 0 && alerts.some(alert => !receivedAlertIDs.value.has(alert.id) && !readIDs.has(alert.id))
   receivedAlertIDs.value = new Set(alerts.map(alert => alert.id))
   if (hasNewArrival) {
@@ -203,9 +213,10 @@ function loadCachedNotifications() {
   try {
     const cached = JSON.parse(sessionStorage.getItem('dashboard') || 'null') as DashboardPayload | null
     dashboardUser.value = cached?.user || null
+    pendingSurveyIDs.value = (cached?.pendingSurveys || []).map(survey => Number(survey.eID))
     const alerts = cached ? dashboardNotifications(cached) : []
     const readIDs = readAlertIDs(cached?.user?.id)
-    notifications.value = alerts.filter(alert => !readIDs.has(alert.id))
+    notifications.value = alerts.filter(alert => alert.dismissible === false || !readIDs.has(alert.id))
     receivedAlertIDs.value = new Set(alerts.map(alert => alert.id))
   } catch { notifications.value = [] }
 }
@@ -256,6 +267,7 @@ onMounted(() => {
   requestUnreadChats()
   window.addEventListener('keydown', handleKeydown)
   window.addEventListener('community-summary', receiveCommunitySummary)
+  window.addEventListener('survey-answer-submitted', requestDashboard)
   window.addEventListener('scroll', handleScroll, { passive: true })
 })
 onBeforeUnmount(() => {
@@ -269,6 +281,7 @@ onBeforeUnmount(() => {
   if (bellTimer) clearTimeout(bellTimer)
   window.removeEventListener('keydown', handleKeydown)
   window.removeEventListener('community-summary', receiveCommunitySummary)
+  window.removeEventListener('survey-answer-submitted', requestDashboard)
   window.removeEventListener('scroll', handleScroll)
   document.body.style.overflow = ''
 })

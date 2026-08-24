@@ -14,10 +14,9 @@
               <router-link :to="alert.route || '/home'" class="min-w-0 flex-1 pr-8 after:absolute after:inset-0 after:content-['']"><strong class="block text-lg">{{ alert.title }}</strong><span class="mt-1 block text-sm opacity-70">{{ alert.description }}</span><span class="mt-3 block text-sm font-bold text-accent">{{ alert.actionLabel || t('home.open') }} →</span></router-link>
               <button v-if="alert.dismissible !== false" type="button" class="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-lg text-xl opacity-60 transition hover:bg-background-light hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-accent dark:hover:bg-background-dark" :aria-label="t('home.dismiss', { title: alert.title })" :title="t('home.dismissNotification')" @click="dismissAttentionItem(alert.id)">×</button>
             </article>
-            <article v-for="survey in userSurveys" :key="survey.eID" class="relative flex min-h-32 items-start gap-4 rounded-2xl border border-border-border bg-background p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-accent dark:bg-surface-dark">
+            <article v-if="userSurveys.length" class="relative flex min-h-32 items-start gap-4 rounded-2xl border border-border-border bg-background p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-accent dark:bg-surface-dark">
               <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-accent/10 text-xl">≡</span>
-              <router-link :to="`/answerSurvey/${survey.eID}`" class="min-w-0 flex-1 pr-8 after:absolute after:inset-0 after:content-['']"><strong class="block text-lg">{{ t('notifications.residentSurvey') }}</strong><span class="mt-1 block text-sm opacity-70">{{ survey.question }}</span><span class="mt-3 block text-sm font-bold text-accent">{{ t('notifications.shareAnswer') }} →</span></router-link>
-              <button type="button" class="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-lg text-xl opacity-60 transition hover:bg-background-light hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-accent dark:hover:bg-background-dark" :aria-label="t('home.dismissSurvey')" :title="t('home.dismissNotification')" @click="dismissAttentionItem(surveyAlertID(survey.eID))">×</button>
+              <button type="button" class="survey-answer-trigger min-w-0 flex-1 text-left after:absolute after:inset-0 after:content-['']" @click="openSurvey(userSurveys[0].eID)"><strong class="block text-lg">{{ t('notifications.pendingSurveys') }}</strong><span class="mt-1 block text-sm opacity-70">{{ t('notifications.pendingSurveyCount', { count: userSurveys.length }) }}</span><span class="mt-3 block text-sm font-bold text-accent">{{ t('notifications.answerSurveys') }} →</span></button>
             </article>
           </div>
         </section>
@@ -71,8 +70,8 @@ const waterConsumption = ref<FloorWaterConsumption>({ available: false, latestRe
 const showEventModal = ref(false), selectedEvent = ref<HomeEventItem | null>(null)
 const isAdmin = computed(() => sessionStorage.getItem('userRole')?.toLowerCase() === 'admin')
 const alerts = computed(() => dashboardAlerts.value.filter(alert => alert.dismissible === false || !dismissedAttentionIDs.value.has(alert.id)))
-const userSurveys = computed(() => dashboardSurveys.value.filter(survey => !dismissedAttentionIDs.value.has(surveyAlertID(survey.eID))))
-const attentionCount = computed(() => alerts.value.length + userSurveys.value.length)
+const userSurveys = computed(() => dashboardSurveys.value)
+const attentionCount = computed(() => alerts.value.length + (userSurveys.value.length ? 1 : 0))
 const currentEvents = computed(() => events.value
   .filter(event => event.active !== false && !isCleaningEvent(event) && eventHasNotEnded(event))
   .sort((a, b) => (parseDate(a.startDate)?.getTime() || 0) - (parseDate(b.startDate)?.getTime() || 0)))
@@ -93,7 +92,11 @@ function formatCompactDate(value?: string) { const date = parseDate(value); retu
 function formatEventDateRange(start?: string, end?: string) { const a = formatCompactDate(start), b = formatCompactDate(end); return a && b ? `${a} — ${b}` : a }
 function eventsForDay(day: Date) { return currentEvents.value.filter(event => { const date = parseDate(event.startDate); return date && date.getFullYear() === day.getFullYear() && date.getMonth() === day.getMonth() && date.getDate() === day.getDate() }) }
 function openEventDetails(event: HomeEventItem) { selectedEvent.value = event; showEventModal.value = true }
-function surveyAlertID(eventID: number) { return 700000 + Number(eventID) }
+function openSurvey(surveyID: number) {
+  window.dispatchEvent(new CustomEvent('open-survey-answer', {
+    detail: { surveyID: Number(surveyID), queue: userSurveys.value.map(survey => Number(survey.eID)) }
+  }))
+}
 function dismissedStorageKey(userID: number) { return `dismissed-home-attention:${userID}` }
 function loadDismissedAttention(userID: number) {
   try { dismissedAttentionIDs.value = new Set(JSON.parse(localStorage.getItem(dismissedStorageKey(userID)) || '[]')) }
@@ -118,8 +121,8 @@ function requestDashboard() {
   socket.emit('getDashboard')
 }
 function loadCache() { try { const cached = JSON.parse(sessionStorage.getItem('dashboard') || 'null') as DashboardPayload | null; if (cached) applyDashboard(cached) } catch { sessionStorage.removeItem('dashboard') } }
-onMounted(() => { loadCache(); socket.on('dashboard', applyDashboard); socket.on('error', receiveError); socket.on('swapRequestUpdated', requestDashboard); requestDashboard() })
-onBeforeUnmount(() => { socket.off('dashboard', applyDashboard); socket.off('error', receiveError); socket.off('swapRequestUpdated', requestDashboard) })
+onMounted(() => { loadCache(); socket.on('dashboard', applyDashboard); socket.on('error', receiveError); socket.on('swapRequestUpdated', requestDashboard); window.addEventListener('survey-answer-submitted', requestDashboard); requestDashboard() })
+onBeforeUnmount(() => { socket.off('dashboard', applyDashboard); socket.off('error', receiveError); socket.off('swapRequestUpdated', requestDashboard); window.removeEventListener('survey-answer-submitted', requestDashboard) })
 </script>
 
 <style scoped>
@@ -143,7 +146,7 @@ onBeforeUnmount(() => { socket.off('dashboard', applyDashboard); socket.off('err
   font-size: 1rem;
 }
 
-.home-dashboard section[aria-labelledby="attention-heading"] article a > span:last-child {
+.home-dashboard section[aria-labelledby="attention-heading"] article :is(a, .survey-answer-trigger) > span:last-child {
   margin-top: .25rem;
 }
 
@@ -154,6 +157,11 @@ onBeforeUnmount(() => { socket.off('dashboard', applyDashboard); socket.off('err
 .home-dashboard section[aria-labelledby="attention-heading"] article button {
   width: 2rem;
   height: 2rem;
+}
+
+.home-dashboard section[aria-labelledby="attention-heading"] article .survey-answer-trigger {
+  width: auto;
+  height: auto;
 }
 
 @media (min-width: 1024px) {

@@ -60,3 +60,11 @@ export function requireAdmin(req: AuthenticatedRequest, res: Response, next: Nex
   }
   next();
 }
+
+export function requireResearchAccess(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  if (!req.authUser || !["ADMIN", "RESEARCHER"].includes(req.authUser.role)) {
+    res.status(403).json({ error: "Research access required." });
+    return;
+  }
+  next();
+}

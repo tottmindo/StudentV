@@ -14,7 +14,7 @@
     "test": "npm run test -w frontend"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^10.0.5"
   },
   "dependencies": {
     "country-flag-emoji-polyfill": "^0.1.10",

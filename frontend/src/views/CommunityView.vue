@@ -161,7 +161,7 @@ async function loadCommunity() {
     const data = await response.json()
     if (!response.ok) throw new Error(t('communityHub.loadError'))
     community.value = data
-    window.dispatchEvent(new CustomEvent('community-summary', { detail: t('communityHub.hubSummary', { address: data.dorm.address, floor: data.dorm.floor, count: data.residents.length }) }))
+    window.dispatchEvent(new CustomEvent('community-summary', { detail: t('communityHub.hubSummary', { house: data.dorm.address, floor: data.dorm.floor, count: data.residents.length }) }))
     const me = data.residents.find((resident: Resident) => resident.isCurrentUser)
     bio.value = me?.bio || ''; savedBio.value = bio.value
   } catch (error) { loadError.value = error instanceof Error ? error.message : t('communityHub.loadError') }

@@ -82,13 +82,13 @@ export const generateCleaningWeekForDorm = generateCleaningWeeksForDorm;
 
 if (process.env.CLEANING_SCHEDULE_ENABLED !== "false") {
   if (!cron.validate(cleaningSchedule)) throw new Error("CLEANING_SCHEDULE_CRON is not a valid cron expression");
-  cron.schedule(cleaningSchedule, async () => { try { console.log("Cleaning schedule check complete", await generateCleaningWeeks()) } catch (error) { console.error("Cleaning schedule check failed", error) } }, { scheduled: true, timezone: cleaningTimezone });
+  cron.schedule(cleaningSchedule, async () => { try { console.log("Cleaning schedule check complete", await generateCleaningWeeks()) } catch (error) { console.error("Cleaning schedule check failed", error) } }, { timezone: cleaningTimezone });
 }
 
 if (process.env.SENSOR_SYNC_ENABLED !== "false") {
   const schedule = process.env.SENSOR_SYNC_CRON || "*/15 * * * *", timezone = process.env.SENSOR_SYNC_TIMEZONE || "Europe/Stockholm";
   if (!cron.validate(schedule)) throw new Error("SENSOR_SYNC_CRON is not a valid cron expression");
-  cron.schedule(schedule, async () => { try { const result = await importLatestSensorData(); console.log(`Sensor data collected: ${result.snapshots} snapshots imported`) } catch (error) { console.error("Scheduled sensor data collection failed", error) } }, { scheduled: true, timezone });
+  cron.schedule(schedule, async () => { try { const result = await importLatestSensorData(); console.log(`Sensor data collected: ${result.snapshots} snapshots imported`) } catch (error) { console.error("Scheduled sensor data collection failed", error) } }, { timezone });
 }
 
 if (process.env.RESIDENT_DEACTIVATION_ENABLED !== "false") {
@@ -100,5 +100,5 @@ if (process.env.RESIDENT_DEACTIVATION_ENABLED !== "false") {
     } catch (error) {
       console.error("Resident account deactivation failed", error);
     }
-  }, { scheduled: true, timezone: residentDeactivationTimezone });
+  }, { timezone: residentDeactivationTimezone });
 }

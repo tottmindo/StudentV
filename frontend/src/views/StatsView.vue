@@ -6,7 +6,7 @@
           <button v-for="days in periods" :key="days" class="rounded-xl px-4 py-2 text-sm font-bold transition" :class="period === days ? 'bg-text text-white dark:bg-text-dark dark:text-primary-dark' : 'hover:bg-surface dark:hover:bg-black/20'" @click="period = days">{{ days === 1 ? t('stats.today') : t('stats.days', { count: days }) }}</button>
         </div>
         <div class="flex flex-wrap items-center justify-end gap-2 px-2 text-xs opacity-60">
-          <span v-if="stats">{{ stats.address || t('stats.yourResidence') }} · {{ t('stats.floor', { floor: stats.floor ?? '—' }) }}</span>
+          <span v-if="stats">{{ stats.address ? t('common.houseLabel', { house: stats.address }) : t('stats.yourResidence') }} · {{ t('stats.floor', { floor: stats.floor ?? '—' }) }}</span>
           <span v-if="stats?.latestReadingAt">{{ t('stats.updated', { date: formatUpdated(stats.latestReadingAt) }) }}</span>
         </div>
       </section>
