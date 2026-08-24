@@ -86,11 +86,16 @@
         <p v-if="scheduleError" class="mt-4 text-sm text-red-500">
           {{ scheduleError }}
         </p>
+        </div>
 
-        <!-- Pending Incoming Swap Requests -->
-        <div v-if="getPendingIncomingSwapRequests().length" class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-          <h3 class="text-lg font-semibold mb-3">{{ t('cleaningView.incoming') }}</h3>
-          <div class="space-y-3">
+        <div
+          v-if="getPendingIncomingSwapRequests().length || getPendingOutgoingSwapRequests().length"
+          class="mt-4 max-h-[45%] shrink-0 space-y-4 overflow-y-auto overscroll-contain border-t border-gray-200 pt-4 pr-1 dark:border-gray-700 [scrollbar-gutter:stable]"
+        >
+          <!-- Pending Incoming Swap Requests -->
+          <div v-if="getPendingIncomingSwapRequests().length">
+            <h3 class="text-lg font-semibold mb-3">{{ t('cleaningView.incoming') }}</h3>
+            <div class="space-y-3">
             <div
               v-for="request in getPendingIncomingSwapRequests()"
               :key="request.requestID"
@@ -112,13 +117,13 @@
                 </button>
               </div>
             </div>
+            </div>
           </div>
-        </div>
 
-        <!-- Pending Outgoing Swap Requests -->
-        <div v-if="getPendingOutgoingSwapRequests().length" class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-          <h3 class="text-lg font-semibold mb-3">{{ t('cleaningView.outgoing') }}</h3>
-          <div class="space-y-3">
+          <!-- Pending Outgoing Swap Requests -->
+          <div v-if="getPendingOutgoingSwapRequests().length">
+            <h3 class="text-lg font-semibold mb-3">{{ t('cleaningView.outgoing') }}</h3>
+            <div class="space-y-3">
             <div
               v-for="request in getPendingOutgoingSwapRequests()"
               :key="request.requestID"
@@ -137,9 +142,8 @@
                 <span class="opacity-70">{{ t('cleaningView.pendingResponse') }}</span>
               </div>
             </div>
+            </div>
           </div>
-        </div>
-
         </div>
 
       </section>
@@ -242,8 +246,6 @@
           <p v-if="selectedWeek && !isCurrentWeek(selectedWeek)" class="mt-4 text-sm opacity-70">
             {{ t('cleaningView.currentOnly') }}
           </p>
-
-          <a href="#task-votes" class="mt-4 inline-flex rounded-lg border border-accent px-4 py-2 text-sm font-bold text-accent hover:bg-accent/10">{{ t('cleaningView.communityTasks') }} →</a>
 
         </div>
 

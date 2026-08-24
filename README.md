@@ -2,6 +2,10 @@
 
 StudentV is a workspace with a Vue frontend and a TypeScript/Express backend.
 
+New maintainers should begin with [HANDOVER.md](HANDOVER.md), then use
+[ARCHITECTURE.md](ARCHITECTURE.md) for code placement and [RENDER.md](RENDER.md)
+for the current production deployment workflow.
+
 ## Layout
 
 - `frontend/` - Vue 3 + Vite app

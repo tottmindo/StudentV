@@ -50,6 +50,8 @@ import { ensureEventInvitationSchema } from "./modules/events/eventInvitationSer
 console.log('Scoring scheduler started...');
 
 const app = express();
+// These idempotent checks support databases deployed before the corresponding
+// migrations existed. The canonical schema remains generate-postgres.sql.
 await ensureCommunityGovernanceSchema();
 await ensureChatSchema();
 await ensureEventInvitationSchema();
@@ -97,6 +99,9 @@ io.on("connection", async (socket: Socket) => {
       userID = decoded.userID;
       role = decoded.role;
 
+      // JWT signature verification alone is insufficient: credentialVersion
+      // invalidates tokens after password/admin changes, and database flags
+      // enforce deactivation and the temporary-password gate immediately.
       const [authRows]: any = await pool.query(
         "SELECT credentialVersion, active, mustChangePassword FROM users WHERE userID = ? LIMIT 1",
         [userID]
@@ -108,6 +113,8 @@ io.on("connection", async (socket: Socket) => {
       }
 
       if (userID && (dormID || role === "ADMIN" || role === "RESEARCHER")) {
+        // Dorm rooms carry floor-wide updates; user rooms carry private chat
+        // notifications and allow account changes to disconnect one user.
         if (dormID) socket.join(`dorm-${dormID}`);
         socket.join(`user-${userID}`);
         console.log(`✅ Authenticated socket ${socket.id} for ${dormID ? `dorm-${dormID}` : role.toLowerCase()}`);

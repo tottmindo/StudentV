@@ -5,6 +5,9 @@ import "../config/env.js";
 type ResultHeader = { affectedRows: number; insertId?: number };
 type QueryResponse<T extends QueryResultRow = QueryResultRow> = [T[], ResultHeader];
 
+// PostgreSQL folds unquoted identifiers to lowercase. Preserve the historical
+// camel/ID-shaped API expected by Data and the frontend while repositories are
+// migrated away from the old MySQL-style access contract.
 const camelCaseColumns: Record<string, string> = {
   dormid: "dormID", roomid: "roomID", userid: "userID", eid: "eID",
   eventid: "eventID", chatid: "chatID", messageid: "messageID", tokenid: "tokenID",

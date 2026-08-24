@@ -115,6 +115,8 @@ router.afterEach((to) => {
   const token = sessionStorage.getItem('authToken');
   const page = typeof to.name === 'string' ? to.name : '';
   if (!token || !page || page === 'admin-app-usage') return;
+  // Analytics must never make navigation fail. keepalive also lets the final
+  // visit reach the server when navigation unloads the current document.
   void fetch(apiUrl('/api/usage/visit'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -123,12 +125,15 @@ router.afterEach((to) => {
   }).catch(() => undefined);
 });
 
-// Add a global navigation guard
+// This guard is for navigation/UX only. The server independently enforces the
+// same role and password-completion rules on every protected API operation.
 router.beforeEach((to, from, next) => {
   const token = sessionStorage.getItem('authToken'); // Retrieve the token from sessionStorage
   const userRole = sessionStorage.getItem('userRole'); // Retrieve the user's role
   const mustChangePassword = sessionStorage.getItem('mustChangePassword') === 'true';
   const normalizedRole = userRole?.toLowerCase();
+  // Researchers intentionally use the admin landing page for read-only
+  // analytics but must not enter resident-only routes.
   const researcherRoutes = new Set(['admin', 'admin-water-analytics', 'admin-app-usage', 'survey', 'account', 'change-password']);
 
   if (to.meta.requiresAuth && !token) {
