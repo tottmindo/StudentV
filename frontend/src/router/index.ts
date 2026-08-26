@@ -66,6 +66,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/information',
+      name: 'information',
+      component: () => import('@/features/information/informationView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/cleaning',
       name: 'cleaning',
       component: () => import('@/features/cleaning/views/CleaningView.vue'),
