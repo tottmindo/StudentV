@@ -117,6 +117,7 @@ const residentLinks = computed(() => [
   { label: t('nav.home'), to: '/home', icon: '⌂' },
   { label: t('nav.waterInsights'), to: '/stats', icon: '◒' },
   { label: t('nav.community'), to: '/community', icon: '◎' },
+  { label: t('nav.information'), to: '/information', icon: 'ℹ' },
 ])
 const adminLinks = computed(() => [
   { label: t('nav.administration'), to: '/admin', icon: '⚙' },

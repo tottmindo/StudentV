@@ -3,6 +3,7 @@ import "../config/env.js";
 import { Data } from "../data.js";
 import { importLatestSensorData } from "../modules/water/sensorDataImportService.js";
 import { deactivateExpiredResidents } from "../modules/auth/authService.js";
+import { deactivateExpiredSurveys } from "../modules/survey/surveyService.js";
 
 const data = new Data();
 
@@ -21,6 +22,8 @@ const cleaningSchedule = process.env.CLEANING_SCHEDULE_CRON || "0 8 * * *";
 const cleaningTimezone = process.env.CLEANING_SCHEDULE_TIMEZONE || "Europe/Stockholm";
 const residentDeactivationSchedule = process.env.RESIDENT_DEACTIVATION_CRON || "0 * * * *";
 const residentDeactivationTimezone = process.env.RESIDENT_DEACTIVATION_TIMEZONE || "Europe/Stockholm";
+const surveyDeactivationSchedule = process.env.SURVEY_DEACTIVATION_CRON || "0 3 * * *";
+const surveyDeactivationTimezone = process.env.SURVEY_DEACTIVATION_TIMEZONE || "Europe/Stockholm"
 
 export function getCleaningWeekStart(now: Date = new Date()): Date {
   // Convert to a date in the configured business timezone before finding
@@ -107,4 +110,28 @@ if (process.env.RESIDENT_DEACTIVATION_ENABLED !== "false") {
       console.error("Resident account deactivation failed", error);
     }
   }, { timezone: residentDeactivationTimezone });
+}
+
+if (process.env.SURVEY_DEACTIVATION_ENABLED !== "false") {
+  if (!cron.validate(surveyDeactivationSchedule)) {
+    throw new Error(
+      "SURVEY_DEACTIVATION_CRON is not a valid cron expression"
+    );
+  }
+
+  cron.schedule(
+    surveyDeactivationSchedule,
+    async () => {
+      try {
+        const count = await deactivateExpiredSurveys();
+
+        console.log(
+          `Survey expiration check complete: ${count} survey(s) deactivated`
+        );
+      } catch (error) {
+        console.error("Survey expiration check failed", error);
+      }
+    },
+    { timezone: surveyDeactivationTimezone }
+  );
 }
