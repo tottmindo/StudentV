@@ -30,12 +30,16 @@ export const loginSchema = z.object({
   password: z.string().min(6),
 });
 
-export const createResidentSchema = requireStudentLocation(z.object({
+const managedUserFields = {
   dormID: optionalDormID,
   roomID: optionalRoomID,
-  email: z.string().trim().email().transform(email => email.toLowerCase()),
   role: z.enum(["ADMIN", "RESEARCHER", "STUDENT"]).default("STUDENT"),
   replaceExisting: z.boolean().optional(),
+};
+
+export const createResidentSchema = requireStudentLocation(z.object({
+  ...managedUserFields,
+  email: z.string().trim().email().max(255).transform(email => email.toLowerCase()),
 }));
 
 export const adminResetPasswordSchema = z.object({
@@ -108,6 +112,7 @@ export const changePasswordSchema = z.object({
 
 export const updateAccountSchema = z.object({
   username: z.string().trim().min(3).max(50),
+  email: z.string().trim().email().max(255).transform(email => email.toLowerCase()),
 });
 
 export const updatePasswordSchema = z.object({

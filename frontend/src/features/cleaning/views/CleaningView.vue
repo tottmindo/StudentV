@@ -12,7 +12,7 @@
   </div>
 
   <main class="min-h-[calc(100dvh-4rem-env(safe-area-inset-top))] space-y-6 bg-background p-3 text-text dark:bg-background-dark dark:text-text-dark sm:p-6">
-    <div class="grid h-[calc(100dvh-7rem-env(safe-area-inset-top))] min-h-[38rem] grid-rows-2 gap-3 sm:gap-6 lg:grid-cols-[1.4fr_1fr] lg:grid-rows-1">
+    <div class="grid gap-3 sm:gap-6 lg:h-[calc(100dvh-7rem-env(safe-area-inset-top))] lg:min-h-[38rem] lg:grid-cols-[1.15fr_1fr_1.15fr] lg:grid-rows-1">
 
       <!-- =====================================================
            WEEKS LIST
@@ -24,30 +24,78 @@
         </div>
 
         <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable]">
-        <button
-          type="button"
-          class="mb-4 rounded-lg border border-gray-200 px-3 py-2 text-sm transition hover:border-accent hover:bg-accent/10 dark:border-gray-700"
-          @click="showHistoricalWeeks = !showHistoricalWeeks"
-        >
-          {{ t(showHistoricalWeeks ? 'cleaningView.hideHistory' : 'cleaningView.showHistory') }}
-        </button>
+        <div class="mb-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            class="rounded-lg border border-gray-200 px-3 py-2 text-sm transition hover:border-accent hover:bg-accent/10 dark:border-gray-700"
+            @click="showHistoricalWeeks = !showHistoricalWeeks"
+          >
+            {{ t(showHistoricalWeeks ? 'cleaningView.hideHistory' : 'cleaningView.showHistory') }}
+          </button>
+          <button
+            type="button"
+            class="rounded-lg bg-accent px-3 py-2 text-sm font-bold text-white transition hover:opacity-90"
+            @click="toggleSwapMode"
+          >
+            {{ t(swapMode ? 'cleaningView.cancelSwap' : 'cleaningView.swapWeeks') }}
+          </button>
+        </div>
+
+        <div v-if="swapMode" class="mb-4 rounded-lg border-2 border-accent/40 bg-accent/5 p-3">
+          <p class="text-sm font-bold">{{ t('cleaningView.swapSelectionTitle') }}</p>
+          <p class="mt-1 text-xs opacity-70">{{ t('cleaningView.swapSelectionHelp') }}</p>
+          <div class="mt-3 space-y-1 text-sm">
+            <p><span class="font-bold">1.</span> {{ swapSourceWeek ? t('cleaningView.week', { week: getWeekLabel(swapSourceWeek.startDate) }) : t('cleaningView.chooseYourWeek') }}</p>
+            <p><span class="font-bold">2.</span> {{ swapTargetWeek ? `${t('cleaningView.week', { week: getWeekLabel(swapTargetWeek.startDate) })} — ${swapTargetWeek.assignedUsername}` : t('cleaningView.chooseTheirWeek') }}</p>
+          </div>
+          <p v-if="swapError" class="mt-2 text-sm text-red-500">{{ swapError }}</p>
+          <button
+            type="button"
+            :disabled="!swapSourceWeek || !swapTargetWeek"
+            class="mt-3 w-full rounded-lg bg-accent px-3 py-2 text-sm font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+            @click="sendSelectedSwapRequest"
+          >
+            {{ t('cleaningView.sendSwapRequest') }}
+          </button>
+        </div>
 
         <div v-if="visibleWeeks.length" class="space-y-3">
           <button
             v-for="week in visibleWeeks"
             :key="week.weekID"
-            @click="selectWeek(week)"
+            @click="handleWeekClick(week)"
+            :aria-current="!swapMode && week.weekID === selectedWeek?.weekID ? 'true' : undefined"
             :class="[
               'w-full text-left rounded-lg border p-4 transition hover:border-accent hover:bg-accent/10',
-              week.weekID === selectedWeek?.weekID
-                ? 'border-accent bg-accent/10'
-                : 'border-gray-200 dark:border-gray-700'
+              isSwapWeekSelected(week)
+                ? 'border-accent bg-accent/20 shadow-lg ring-2 ring-accent'
+                : !swapMode && week.weekID === selectedWeek?.weekID
+                ? 'border-accent bg-accent/15 shadow-lg ring-2 ring-accent ring-offset-2 ring-offset-surface dark:ring-offset-surface-dark'
+                : isWeekAssignedToCurrentUser(week)
+                  ? 'border-accent/60 bg-accent/5'
+                  : 'border-gray-200 dark:border-gray-700',
+              isWeekAssignedToCurrentUser(week) ? 'border-l-4 border-l-accent' : '',
+              swapMode && !isWeekEligibleForSwapSelection(week) ? 'cursor-not-allowed opacity-45' : ''
             ]"
           >
             <div class="flex items-center justify-between gap-4">
+              <span
+                v-if="swapMode"
+                class="flex h-6 w-6 shrink-0 items-center justify-center rounded border-2 text-sm font-black"
+                :class="isSwapWeekSelected(week) ? 'border-accent bg-accent text-white' : 'border-gray-400'"
+                aria-hidden="true"
+              >
+                {{ isSwapWeekSelected(week) ? '✓' : '' }}
+              </span>
               <div class="flex-1">
                 <p class="font-semibold">
                   {{ t('cleaningView.week', { week: getWeekLabel(week.startDate) }) }}
+                  <span
+                    v-if="!swapMode && week.weekID === selectedWeek?.weekID"
+                    class="ml-2 inline-flex items-center rounded-md border border-accent bg-surface px-2 py-0.5 text-xs font-extrabold text-accent shadow-sm dark:bg-surface-dark"
+                  >
+                    ✓ {{ t('cleaningView.selected') }}
+                  </span>
                 </p>
                 <p class="text-sm opacity-70">
                   {{ formatDate(week.startDate) }}
@@ -58,20 +106,18 @@
 
               <div class="text-right">
                 <div class="text-sm opacity-80">
+                  <span
+                    v-if="isWeekAssignedToCurrentUser(week)"
+                    class="mb-1 inline-flex rounded-full bg-accent px-2.5 py-1 text-xs font-bold text-white"
+                  >
+                    {{ t('cleaningView.assignedToYou') }}
+                  </span>
                   <p>{{ week.assignedUsername }}</p>
                   <p>{{ t('cleaningView.done', { completed: week.completedTasks, total: week.totalTasks }) }}</p>
                 </div>
                 
-                <!-- Swap button for future weeks assigned to OTHER users -->
-                <button
-                  v-if="canRequestSwapWith(week)"
-                  @click.stop="selectedSwapTargetWeek = week; showSwapModal = true"
-                  class="mt-2 text-xs px-2 py-1 rounded bg-blue-500 text-white hover:bg-blue-600 transition"
-                >
-                  {{ t('cleaningView.swap') }}
-                </button>
                 <div
-                  v-else-if="hasPendingSwapForWeek(week.weekID)"
+                  v-if="hasPendingSwapForWeek(week.weekID)"
                   class="mt-2 text-xs px-2 py-1 rounded bg-gray-400 text-white opacity-60 cursor-not-allowed"
                 >
                   {{ t('cleaningView.pending') }}
@@ -260,9 +306,14 @@
 
       </section>
 
-    </div>
+      <!-- =====================================================
+           TASK ROTATION
+      ====================================================== -->
+      <div class="min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1 lg:[scrollbar-gutter:stable]">
+        <CleaningTaskGovernance />
+      </div>
 
-    <CleaningTaskGovernance />
+    </div>
 
     <!-- Cleaning rules apply to every resident, not only the assigned cleaner. -->
     <div
@@ -299,74 +350,6 @@
       </div>
     </div>
 
-    <!-- =====================================================
-         SWAP MODAL
-    ====================================================== -->
-    <div
-      v-if="showSwapModal && selectedSwapTargetWeek"
-      class="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50 p-3"
-      @click.self="showSwapModal = false"
-    >
-      <div class="max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto overscroll-contain rounded-lg border border-gray-200 bg-surface p-5 dark:border-gray-700 dark:bg-surface-dark sm:p-6">
-        <h3 class="text-xl font-bold mb-4">{{ t('cleaningView.swapTitle') }}</h3>
-
-        <p class="text-sm mb-4">
-          {{ t('cleaningView.swapIntro') }}
-        </p>
-
-        <div class="space-y-3 mb-4">
-          <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-3 bg-background-light dark:bg-background-dark">
-            <p class="text-xs opacity-70">{{ t('cleaningView.yourWeek') }}</p>
-            <p class="font-semibold">
-              {{ t('cleaningView.week', { week: selectedWeek ? getWeekLabel(selectedWeek.startDate) : '' }) }}
-            </p>
-            <p class="text-xs opacity-70">
-              {{ selectedWeek ? formatDate(selectedWeek.startDate) : '' }}
-              —
-              {{ selectedWeek ? formatDate(selectedWeek.endDate) : '' }}
-            </p>
-          </div>
-
-          <div class="text-center">
-            <p class="text-2xl">↔</p>
-          </div>
-
-          <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-3 bg-background-light dark:bg-background-dark">
-            <p class="text-xs opacity-70">{{ t('cleaningView.theirWeek') }}</p>
-            <p class="font-semibold">
-              {{ t('cleaningView.week', { week: selectedSwapTargetWeek ? getWeekLabel(selectedSwapTargetWeek.startDate) : '' }) }}
-            </p>
-            <p class="text-xs opacity-70">
-              {{ selectedSwapTargetWeek ? formatDate(selectedSwapTargetWeek.startDate) : '' }}
-              —
-              {{ selectedSwapTargetWeek ? formatDate(selectedSwapTargetWeek.endDate) : '' }}
-            </p>
-            <p class="text-sm font-semibold mt-2">
-              {{ selectedSwapTargetWeek?.assignedUsername }}
-            </p>
-          </div>
-        </div>
-
-        <p v-if="swapError" class="text-sm text-red-500 mb-4">
-          {{ swapError }}
-        </p>
-
-        <div class="flex gap-2">
-          <button
-            @click="showSwapModal = false"
-            class="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition"
-          >
-            {{ t('cleaningView.cancel') }}
-          </button>
-          <button
-            @click="requestSwap(selectedSwapTargetWeek)"
-            class="flex-1 px-4 py-2 rounded-lg bg-accent text-white text-sm hover:opacity-90 transition"
-          >
-            {{ t('cleaningView.requestSwap') }}
-          </button>
-        </div>
-      </div>
-    </div>
   </main>
 </template>
 
@@ -392,10 +375,11 @@ const swapRequests = ref<CleaningWeekSwapRequest[]>([])
 const scheduleError = ref('')
 const tasksError = ref('')
 const showHistoricalWeeks = ref(false)
-const showSwapModal = ref(false)
 const showCleaningRulesModal = ref(false)
 const cleaningRulesTitleId = 'cleaning-rules-title'
-const selectedSwapTargetWeek = ref<CleaningWeek | null>(null)
+const swapMode = ref(false)
+const swapSourceWeek = ref<CleaningWeek | null>(null)
+const swapTargetWeek = ref<CleaningWeek | null>(null)
 const swapError = ref('')
 const notification = ref<{ message: string; type: 'success' | 'error' } | null>(null)
 
@@ -455,8 +439,7 @@ const bindSocket = () => {
 
   socket.on('cleaningWeekSwapRequestCreated', () => {
     swapError.value = ''
-    showSwapModal.value = false
-    selectedSwapTargetWeek.value = null
+    resetSwapSelection()
     fetchSwapRequests()
   })
 
@@ -538,24 +521,25 @@ const toggleTask = (task: CleaningWeekTask) => {
   })
 }
 
-const requestSwap = (targetWeek: CleaningWeek) => {
-  if (!selectedWeek.value || !canRequestSwapWith(targetWeek)) return
+const sendSelectedSwapRequest = () => {
+  const sourceWeek = swapSourceWeek.value
+  const targetWeek = swapTargetWeek.value
+  if (!sourceWeek || !targetWeek || !canPairWeeksForSwap(sourceWeek, targetWeek)) return
   
-  if (hasOutgoingPendingSwapForWeek(selectedWeek.value.weekID)) {
+  if (hasOutgoingPendingSwapForWeek(sourceWeek.weekID)) {
     swapError.value = t('cleaningView.alreadyPending')
     return
   }
   
   swapError.value = ''
   socket.emit('requestCleaningWeekSwap', {
-    sourceWeekID: selectedWeek.value.weekID,
+    sourceWeekID: sourceWeek.weekID,
     targetWeekID: targetWeek.weekID
   }, (response: { success?: boolean; error?: string }) => {
     if (response?.error) {
       swapError.value = t('cleaningView.genericError')
     } else {
-      showSwapModal.value = false
-      selectedSwapTargetWeek.value = null
+      resetSwapSelection()
       fetchSwapRequests()
     }
   })
@@ -582,6 +566,29 @@ const respondToSwap = (request: CleaningWeekSwapRequest, accepted: boolean) => {
 
 const selectWeek = (week: CleaningWeek) => {
   selectedWeek.value = week
+}
+
+const resetSwapSelection = () => {
+  swapMode.value = false
+  swapSourceWeek.value = null
+  swapTargetWeek.value = null
+  swapError.value = ''
+}
+
+const toggleSwapMode = () => {
+  if (swapMode.value) resetSwapSelection()
+  else swapMode.value = true
+}
+
+const handleWeekClick = (week: CleaningWeek) => {
+  if (!swapMode.value) {
+    selectWeek(week)
+    return
+  }
+  if (!isWeekEligibleForSwapSelection(week)) return
+  if (isWeekAssignedToCurrentUser(week)) swapSourceWeek.value = swapSourceWeek.value?.weekID === week.weekID ? null : week
+  else swapTargetWeek.value = swapTargetWeek.value?.weekID === week.weekID ? null : week
+  swapError.value = ''
 }
 
 /* -------------------------
@@ -630,6 +637,10 @@ const isAssignedToCurrentUser = (task: CleaningWeekTask) => {
   return task.assignedUserID === userID
 }
 
+const isWeekAssignedToCurrentUser = (week: CleaningWeek) => {
+  return week.assignedUserID === userID
+}
+
 const isUserCreatedTask = (task: CleaningWeekTask) => {
   return task.createdByUserID !== null && task.createdByUserID !== undefined
 }
@@ -672,18 +683,20 @@ const hasOutgoingPendingSwapForWeek = (weekID: number) => {
   )
 }
 
-const canRequestSwapWith = (targetWeek: CleaningWeek) => {
-  const sourceWeek = selectedWeek.value
-  return Boolean(
-    sourceWeek &&
-    sourceWeek.assignedUserID === userID &&
-    sourceWeek.weekID !== targetWeek.weekID &&
+const isWeekEligibleForSwapSelection = (week: CleaningWeek) => {
+  return new Date(week.startDate) > new Date() && !hasPendingSwapForWeek(week.weekID)
+}
+
+const isSwapWeekSelected = (week: CleaningWeek) => {
+  return swapSourceWeek.value?.weekID === week.weekID || swapTargetWeek.value?.weekID === week.weekID
+}
+
+const canPairWeeksForSwap = (sourceWeek: CleaningWeek, targetWeek: CleaningWeek) => {
+  return sourceWeek.assignedUserID === userID &&
     targetWeek.assignedUserID !== userID &&
-    new Date(sourceWeek.startDate) > new Date() &&
-    new Date(targetWeek.startDate) > new Date() &&
-    !hasPendingSwapForWeek(sourceWeek.weekID) &&
-    !hasPendingSwapForWeek(targetWeek.weekID)
-  )
+    sourceWeek.weekID !== targetWeek.weekID &&
+    isWeekEligibleForSwapSelection(sourceWeek) &&
+    isWeekEligibleForSwapSelection(targetWeek)
 }
 
 /* -------------------------

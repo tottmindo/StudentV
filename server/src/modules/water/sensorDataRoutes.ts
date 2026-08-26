@@ -43,9 +43,18 @@ const sensorDetailsSchema = z.object({
   dormID: z.number().int().positive(),
 });
 
-const createSensorsSchema = sensorDetailsSchema.extend({
+const legacyCreateSensorsSchema = sensorDetailsSchema.extend({
   sensorCodes: z.array(z.string().trim().min(1).max(100)).min(1),
 });
+
+const createSensorsSchema = z.union([
+  legacyCreateSensorsSchema,
+  z.object({
+    sensors: z.array(sensorDetailsSchema.extend({
+      sensorCode: z.string().trim().min(1).max(100),
+    })).min(1).max(500),
+  }),
+]);
 
 const updateSensorSchema = sensorDetailsSchema;
 const sensorNoteSchema = z.object({ note: z.string().trim().max(2000) });
@@ -233,7 +242,17 @@ router.get("/admin/sensors/:sensorCode/stats", authenticate, requireCompletedAcc
 router.post("/admin/sensors", authenticate, requireCompletedAccount, requireAdmin, async (req, res) => {
   try {
     const input = createSensorsSchema.parse(req.body);
-    const sensorCodes = [...new Set(input.sensorCodes.map(code => code.toLowerCase()))];
+    const requestedSensors = "sensors" in input
+      ? input.sensors.map(sensor => ({ ...sensor, sensorCode: sensor.sensorCode.toLowerCase() }))
+      : input.sensorCodes.map(sensorCode => ({
+          sensorCode: sensorCode.toLowerCase(),
+          type: input.type,
+          location: input.location,
+          dormID: input.dormID,
+        }));
+    const sensorsByCode = new Map(requestedSensors.map(sensor => [sensor.sensorCode, sensor]));
+    const sensors = [...sensorsByCode.values()];
+    const sensorCodes = sensors.map(sensor => sensor.sensorCode);
     const connection = await pool.getConnection();
 
     try {
@@ -246,9 +265,10 @@ router.post("/admin/sensors", authenticate, requireCompletedAccount, requireAdmi
       const newCodes = sensorCodes.filter(code => !existingCodes.has(code));
 
       for (const sensorCode of newCodes) {
+        const sensor = sensorsByCode.get(sensorCode)!;
         await connection.query(
           "INSERT INTO sensor (sensorCode, type, location, dormID) VALUES (?, ?, ?, ?)",
-          [sensorCode, input.type, input.location, input.dormID]
+          [sensorCode, sensor.type, sensor.location, sensor.dormID]
         );
       }
 

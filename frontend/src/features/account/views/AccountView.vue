@@ -16,7 +16,7 @@
         <form class="mt-6 space-y-4" @submit.prevent="save">
         <label class="block">
           <span class="text-sm font-semibold">{{ t('account.loginEmail') }}</span>
-          <input :value="email" type="email" disabled class="mt-1 w-full rounded border border-border p-3 opacity-70" />
+          <input v-model.trim="email" type="email" required maxlength="255" autocomplete="email" class="mt-1 w-full rounded border border-border p-3 focus:ring-2 focus:ring-accent" />
         </label>
         <label class="block">
           <span class="text-sm font-semibold">{{ t('account.publicUsername') }}</span>
@@ -24,7 +24,7 @@
             class="mt-1 w-full rounded border border-border p-3 focus:ring-2 focus:ring-accent" />
         </label>
         <button :disabled="saving" class="w-full rounded-lg bg-accent p-3 font-semibold text-white disabled:opacity-50">
-          {{ saving ? t('account.saving') : t('account.saveUsername') }}
+          {{ saving ? t('account.saving') : t('account.saveProfile') }}
         </button>
         </form>
         <p v-if="message" class="mt-4 text-center" :class="failed ? 'text-red-500' : 'text-green-600'" role="status">{{ message }}</p>
@@ -101,11 +101,13 @@ async function save() {
   saving.value = true
   message.value = ''
   try {
-    const response = await fetch(apiUrl('/api/auth/account'), { method: 'PATCH', headers: headers(), body: JSON.stringify({ username: username.value }) })
+    const response = await fetch(apiUrl('/api/auth/account'), { method: 'PATCH', headers: headers(), body: JSON.stringify({ username: username.value, email: email.value }) })
     const data = await response.json()
-    if (!response.ok) throw new Error(t('account.updateError'))
+    if (!response.ok) throw new Error(data.error || t('account.updateError'))
     username.value = data.username
+    email.value = data.email
     sessionStorage.setItem('username', data.username)
+    sessionStorage.setItem('email', data.email)
     failed.value = false
     message.value = t('account.updated')
   } catch (error) {

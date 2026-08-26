@@ -47,17 +47,29 @@
 
     <template v-else-if="activeSection === 'users'">
       <div class="grid gap-6 lg:grid-cols-2">
-        <section class="rounded-2xl bg-surface p-8 shadow-lg dark:bg-surface-dark">
-          <h2 class="text-2xl font-bold">{{ t('adminMain.addUser') }}</h2>
-          <p class="mt-2 text-sm opacity-75">{{ t('adminMain.addUserHelp') }}</p>
-          <form class="mt-6 space-y-4" @submit.prevent="createResident(false)">
-            <input v-model.trim="email" type="email" required class="w-full rounded border border-border p-3" placeholder="resident@example.com" />
-            <select v-if="createRole === 'STUDENT'" v-model.number="dormID" required class="w-full rounded border border-border p-3"><option disabled value="">{{ t('adminMain.selectDorm') }}</option><option v-for="dorm in dorms" :key="dorm.dormID" :value="dorm.dormID">{{ dormLabel(dorm) }}</option></select>
-            <select v-if="createRole === 'STUDENT'" v-model.number="roomID" required class="w-full rounded border border-border p-3"><option disabled value="">{{ t('adminMain.selectRoom') }}</option><option v-for="room in selectedRooms(dormID)" :key="room" :value="room">{{ t('adminMain.room', { room }) }}</option></select>
-            <select v-model="createRole" class="w-full rounded border border-border p-3"><option value="STUDENT">{{ t('adminMain.student') }}</option><option value="RESEARCHER">{{ t('adminMain.researcher') }}</option><option value="ADMIN">{{ t('adminMain.administrator') }}</option></select>
-            <button :disabled="isSubmitting" class="w-full rounded-lg bg-accent p-3 font-semibold text-white disabled:opacity-50">{{ t(isSubmitting ? 'adminMain.creating' : 'adminMain.createAccount') }}</button>
-          </form>
-          <p v-if="feedbackMessage" class="mt-4 text-center" :class="feedbackClass">{{ feedbackMessage }}</p>
+        <section class="overflow-hidden rounded-2xl bg-surface shadow-lg dark:bg-surface-dark">
+          <div class="border-b border-border p-6 sm:p-8">
+            <p class="text-xs font-bold uppercase tracking-[.14em] text-accent">{{ t('adminMain.accountCreation') }}</p>
+            <h2 class="mt-1 text-2xl font-bold">{{ t('adminMain.addUser') }}</h2>
+            <p class="mt-2 text-sm opacity-75">{{ t('adminMain.addUserHelp') }}</p>
+          </div>
+
+          <div class="p-6 sm:p-8">
+            <form class="space-y-5" @submit.prevent="createResident(false)">
+              <label class="block text-sm font-semibold">{{ t('adminMain.emailAddress') }}<input v-model.trim="newUserEmail" type="email" required maxlength="255" autocomplete="off" class="mt-1 w-full rounded-lg border border-border p-3 font-normal" placeholder="resident@example.com" /><span class="mt-1 block text-xs font-normal opacity-65">{{ t('adminMain.emailDeliveryExplanation') }}</span></label>
+
+              <label class="block text-sm font-semibold">{{ t('adminMain.role') }}<select v-model="createRole" class="mt-1 w-full rounded-lg border border-border p-3 font-normal"><option value="STUDENT">{{ t('adminMain.student') }}</option><option value="RESEARCHER">{{ t('adminMain.researcher') }}</option><option value="ADMIN">{{ t('adminMain.administrator') }}</option></select></label>
+
+              <div v-if="createRole === 'STUDENT'" class="grid gap-4 sm:grid-cols-2">
+                <label class="block text-sm font-semibold">{{ t('adminMain.houseAndFloor') }}<select v-model.number="dormID" required class="mt-1 w-full rounded-lg border border-border p-3 font-normal"><option disabled value="">{{ t('adminMain.selectDorm') }}</option><option v-for="dorm in dorms" :key="dorm.dormID" :value="dorm.dormID">{{ dormLabel(dorm) }}</option></select></label>
+                <label class="block text-sm font-semibold">{{ t('adminMain.roomLabel') }}<select v-model.number="roomID" required :disabled="dormID === ''" class="mt-1 w-full rounded-lg border border-border p-3 font-normal disabled:cursor-not-allowed disabled:opacity-50"><option disabled value="">{{ t('adminMain.selectRoom') }}</option><option v-for="room in availableCreateRooms" :key="room" :value="room">{{ t('adminMain.room', { room }) }}</option></select></label>
+              </div>
+
+              <button :disabled="isSubmitting || !canCreateUser" class="w-full rounded-lg bg-accent p-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">{{ t(isSubmitting ? 'adminMain.creating' : 'adminMain.createAndEmail') }}</button>
+            </form>
+
+            <p v-if="feedbackMessage" class="mt-4 rounded-lg p-3 text-center text-sm font-semibold" :class="feedbackClass">{{ feedbackMessage }}</p>
+          </div>
         </section>
 
         <section class="rounded-2xl bg-surface p-8 shadow-lg dark:bg-surface-dark">
@@ -74,7 +86,7 @@
 
       <section class="rounded-2xl bg-surface p-6 shadow-lg dark:bg-surface-dark">
         <div class="flex flex-wrap items-center justify-between gap-3"><div><h2 class="text-2xl font-bold">{{ t('adminMain.manageUsers') }}</h2><p class="text-sm opacity-75">{{ t('adminMain.manageUsersHelp') }}</p></div><select v-model="filterDorm" class="rounded border border-border p-2"><option value="all">{{ t('adminMain.allDorms') }}</option><option v-for="dorm in dorms" :key="dorm.dormID" :value="String(dorm.dormID)">{{ dormLabel(dorm) }}</option></select></div>
-        <div class="mt-5 max-h-[32rem] overflow-auto rounded-lg border border-border/60"><table class="w-full text-left text-sm"><thead class="sticky top-0 z-10 bg-surface shadow-sm dark:bg-surface-dark"><tr class="border-b border-border"><th class="p-3">{{ t('adminMain.emailUsername') }}</th><th class="p-3">{{ t('adminMain.dormRoom') }}</th><th class="p-3">{{ t('adminMain.role') }}</th><th class="p-3">{{ t('adminMain.status') }}</th><th class="p-3"></th></tr></thead><tbody><tr v-for="user in filteredUsers" :key="user.userID" class="border-b border-border/50"><td class="p-3"><div class="font-semibold">{{ user.email }}</div><div class="opacity-70">{{ user.username || t('adminMain.setupIncomplete') }}</div></td><td class="p-3">{{ user.role === 'ADMIN' ? t('adminMain.globalAccess') : `${user.dormID} / ${user.roomID}` }}</td><td class="p-3">{{ t(user.role === 'ADMIN' ? 'adminMain.administrator' : 'adminMain.student') }}</td><td class="p-3">{{ user.active ? (user.mustChangePassword ? t('adminMain.temporaryPassword') : t('common.active')) : t('common.inactive') }}</td><td class="p-3"><button class="rounded bg-accent px-3 py-2 text-white" @click="startEdit(user)">{{ t('adminMain.edit') }}</button></td></tr></tbody></table></div>
+        <div class="mt-5 max-h-[32rem] overflow-auto rounded-lg border border-border/60"><table class="w-full text-left text-sm"><thead class="sticky top-0 z-10 bg-surface shadow-sm dark:bg-surface-dark"><tr class="border-b border-border"><th class="p-3">{{ t('adminMain.emailUsername') }}</th><th class="p-3">{{ t('adminMain.roomLabel') }}</th><th class="p-3">{{ t('adminMain.role') }}</th><th class="p-3">{{ t('adminMain.status') }}</th><th class="p-3"></th></tr></thead><tbody><tr v-for="user in filteredUsers" :key="user.userID" class="border-b border-border/50"><td class="p-3"><div class="font-semibold">{{ user.email }}</div><div class="opacity-70">{{ user.username || t('adminMain.setupIncomplete') }}</div></td><td class="p-3">{{ user.role === 'ADMIN' ? t('adminMain.globalAccess') : user.roomID }}</td><td class="p-3">{{ t(user.role === 'ADMIN' ? 'adminMain.administrator' : 'adminMain.student') }}</td><td class="p-3">{{ user.active ? (user.mustChangePassword ? t('adminMain.temporaryPassword') : t('common.active')) : t('common.inactive') }}</td><td class="p-3"><button class="rounded bg-accent px-3 py-2 text-white" @click="startEdit(user)">{{ t('adminMain.edit') }}</button></td></tr></tbody></table></div>
       </section>
 
       <section class="flex flex-wrap items-center justify-between gap-5 rounded-2xl bg-surface p-6 shadow-lg dark:bg-surface-dark">
@@ -162,14 +174,27 @@
       <section class="rounded-2xl bg-surface p-6 shadow-lg dark:bg-surface-dark">
         <h2 class="text-2xl font-bold">{{ t('adminMain.registerSensors') }}</h2>
         <p class="mt-2 text-sm opacity-75">{{ t('adminMain.registerHelp') }}</p>
-        <form class="mt-5 grid gap-4 lg:grid-cols-2" @submit.prevent="addSensors">
-          <textarea v-model="newSensorCodes" required rows="7" class="rounded border border-border p-3 font-mono" placeholder="8c1f6461900015c1&#10;8c1f6461900015ed&#10;8c1f64619000170a"></textarea>
-          <div class="space-y-4">
-            <input v-model.trim="newSensorType" required class="w-full rounded border border-border p-3" :placeholder="t('adminMain.sensorType')" />
-            <input v-model.trim="newSensorLocation" required class="w-full rounded border border-border p-3" :placeholder="t('adminMain.locationPlaceholder')" />
-            <select v-model.number="newSensorDormID" required class="w-full rounded border border-border p-3"><option disabled value="">{{ t('adminMain.selectDorm') }}</option><option v-for="dorm in dorms" :key="dorm.dormID" :value="dorm.dormID">{{ dormLabel(dorm) }}</option></select>
-            <button :disabled="isAddingSensors" class="w-full rounded-lg bg-accent p-3 font-semibold text-white disabled:opacity-50">{{ t(isAddingSensors ? 'adminMain.registering' : 'adminMain.registerCount', { count: parsedSensorCodes.length || '' }) }}</button>
-          </div>
+        <div class="mt-5 flex gap-2" role="tablist">
+          <button type="button" class="rounded-lg px-4 py-2 font-semibold" :class="sensorEntryMode === 'single' ? 'bg-accent text-white' : 'border border-border'" @click="sensorEntryMode = 'single'">{{ t('adminMain.oneSensor') }}</button>
+          <button type="button" class="rounded-lg px-4 py-2 font-semibold" :class="sensorEntryMode === 'bulk' ? 'bg-accent text-white' : 'border border-border'" @click="sensorEntryMode = 'bulk'">{{ t('adminMain.multipleSensors') }}</button>
+        </div>
+        <form v-if="sensorEntryMode === 'single'" class="mt-5 grid gap-4 md:grid-cols-2" @submit.prevent="addSensors">
+          <label class="text-sm font-semibold">{{ t('adminMain.devEui') }}<input v-model.trim="singleSensorDevEUI" required maxlength="16" pattern="[0-9A-Fa-f]{16}" class="mt-1 w-full rounded border border-border p-3 font-mono" placeholder="8C1F64619000228D" /></label>
+          <label class="text-sm font-semibold">{{ t('adminMain.houseAndFloor') }}<select v-model.number="singleSensorDormID" required class="mt-1 w-full rounded border border-border p-3 font-normal"><option disabled value="">{{ t('adminMain.selectDorm') }}</option><option v-for="dorm in dorms" :key="dorm.dormID" :value="dorm.dormID">{{ dormLabel(dorm) }}</option></select></label>
+          <label class="text-sm font-semibold">{{ t('adminMain.placement') }}<select v-model="singleSensorPlacement" class="mt-1 w-full rounded border border-border p-3 font-normal"><option>Kitchen</option><option>Left Shower</option><option>Right Shower</option></select></label>
+          <label class="text-sm font-semibold">{{ t('adminMain.waterType') }}<select v-model="singleSensorWaterType" class="mt-1 w-full rounded border border-border p-3 font-normal"><option value="Cold Water">{{ t('adminMain.coldWater') }}</option><option value="Warm Water">{{ t('adminMain.warmWater') }}</option></select></label>
+          <p class="text-xs opacity-65 md:col-span-2">{{ t('adminMain.singleExample') }}</p>
+          <button :disabled="isAddingSensors" class="rounded-lg bg-accent p-3 font-semibold text-white disabled:opacity-50 md:col-span-2">{{ t(isAddingSensors ? 'adminMain.registering' : 'adminMain.registerOne') }}</button>
+        </form>
+        <form v-else class="mt-5 space-y-4" @submit.prevent="addSensors">
+          <div class="rounded-lg border border-border bg-black/[.03] p-4 text-sm dark:bg-white/[.03]"><p class="font-semibold">{{ t('adminMain.csvInstructions') }}</p><code class="mt-2 block overflow-x-auto whitespace-pre font-mono text-xs">House Number,Floor Number,Sensor Placement,Water Type,DevEUI
+14,3,Left Shower,Cold Water,8C1F64619000228D
+14,3,Left Shower,Warm Water,8C1F646190001BEA</code></div>
+          <label class="block text-sm font-semibold">{{ t('adminMain.csvFile') }}<input type="file" accept=".csv,text/csv" class="mt-1 block w-full rounded border border-border p-3 font-normal" @change="loadSensorCsvFile" /></label>
+          <label class="block text-sm font-semibold">{{ t('adminMain.csvData') }}<textarea v-model="sensorCsv" required rows="10" class="mt-1 w-full rounded border border-border p-3 font-mono text-sm" :placeholder="sensorCsvExample"></textarea></label>
+          <p v-if="sensorCsvError" class="text-sm font-semibold text-red-500">{{ sensorCsvError }}</p>
+          <p v-else-if="parsedCsvSensors.length" class="text-sm text-green-700 dark:text-green-400">{{ t('adminMain.csvReady', { count: parsedCsvSensors.length }) }}</p>
+          <button :disabled="isAddingSensors || !!sensorCsvError || !parsedCsvSensors.length" class="w-full rounded-lg bg-accent p-3 font-semibold text-white disabled:opacity-50">{{ t(isAddingSensors ? 'adminMain.registering' : 'adminMain.registerCount', { count: parsedCsvSensors.length }) }}</button>
         </form>
         <p v-if="sensorFeedback" class="mt-4" :class="sensorFeedbackClass">{{ sensorFeedback }}</p>
       </section>
@@ -207,12 +232,14 @@ const { t, locale } = useI18n()
 const isResearcher = computed(() => sessionStorage.getItem('userRole')?.toLowerCase() === 'researcher')
 const activeSection = ref<'users' | 'sensors' | 'buildings' | null>(null)
 const dorms = ref<Dorm[]>([]), users = ref<User[]>([]), sensors = ref<Sensor[]>([])
-const email = ref(''), dormID = ref<number | ''>(''), roomID = ref<number | ''>(''), createRole = ref<'STUDENT' | 'RESEARCHER' | 'ADMIN'>('STUDENT'), filterDorm = ref('all')
+const newUserEmail = ref(''), dormID = ref<number | ''>(''), roomID = ref<number | ''>(''), createRole = ref<'STUDENT' | 'RESEARCHER' | 'ADMIN'>('STUDENT'), filterDorm = ref('all')
 const resetEmail = ref(''), resetDormID = ref<number | ''>(''), isSubmitting = ref(false), isResetting = ref(false), isSaving = ref(false)
 const isGeneratingCleaning = ref(false), cleaningFeedback = ref(''), cleaningFeedbackClass = ref('')
 const feedbackMessage = ref(''), feedbackClass = ref(''), resetFeedback = ref(''), resetFeedbackClass = ref(''), editFeedback = ref('')
 const editing = ref<User | null>(null), pendingReplacement = ref<User | null>(null), replacementAction = ref<null | (() => Promise<void>)>(null)
-const newSensorCodes = ref(''), newSensorType = ref('Water Meter'), newSensorLocation = ref(''), newSensorDormID = ref<number | ''>(''), isAddingSensors = ref(false)
+type NewSensor = { sensorCode: string; type: string; location: string; dormID: number }
+const sensorEntryMode = ref<'single' | 'bulk'>('single'), singleSensorDevEUI = ref(''), singleSensorDormID = ref<number | ''>(''), singleSensorPlacement = ref('Kitchen'), singleSensorWaterType = ref<'Cold Water' | 'Warm Water'>('Cold Water')
+const sensorCsv = ref(''), isAddingSensors = ref(false)
 const sensorFeedback = ref(''), sensorFeedbackClass = ref(''), editingSensor = ref<Sensor | null>(null), editSensorFeedback = ref(''), isSavingSensor = ref(false)
 const isImportingHistory = ref(false), historicalImportFeedback = ref(''), historicalImportFeedbackClass = ref('')
 const sensorSortKey = ref<SensorSortKey>('sensorCode'), sensorSortDirection = ref<1 | -1>(1)
@@ -234,8 +261,42 @@ function parseRoomIDs(value: string) {
 const parsedFloorRooms = computed(() => parseRoomIDs(newFloorRooms.value))
 const validFloorSelection = computed(() => newFloor.value !== '' && (floorCreationMode.value === 'single' || (newFloorTo.value !== '' && newFloorTo.value >= newFloor.value && newFloorTo.value - newFloor.value < 50)))
 const parsedNewRooms = computed(() => parseRoomIDs(newRooms.value))
-const parsedSensorCodes = computed(() => [...new Set(newSensorCodes.value.split(/[\s,;]+/).map(code => code.trim().toLowerCase()).filter(Boolean))])
+const sensorCsvExample = 'House Number,Floor Number,Sensor Placement,Water Type,DevEUI\n14,3,Left Shower,Cold Water,8C1F64619000228D'
+function parseCsvLine(line: string) {
+  const values: string[] = []; let value = ''; let quoted = false
+  for (let index = 0; index < line.length; index++) { const char = line[index]; if (char === '"' && quoted && line[index + 1] === '"') { value += '"'; index++ } else if (char === '"') quoted = !quoted; else if (char === ',' && !quoted) { values.push(value.trim()); value = '' } else value += char }
+  values.push(value.trim()); return quoted ? null : values
+}
+const csvParseResult = computed<{ sensors: NewSensor[]; error: string }>(() => {
+  if (!sensorCsv.value.trim()) return { sensors: [], error: '' }
+  const lines = sensorCsv.value.replace(/^\uFEFF/, '').split(/\r?\n/).filter(line => line.trim())
+  const header = parseCsvLine(lines[0])?.map(value => value.toLowerCase())
+  const expected = ['house number', 'floor number', 'sensor placement', 'water type', 'deveui']
+  if (!header || header.length !== expected.length || expected.some((value, index) => header[index] !== value)) return { sensors: [], error: t('adminMain.csvHeaderError') }
+  const sensors: NewSensor[] = []; const seen = new Set<string>()
+  for (let index = 1; index < lines.length; index++) {
+    const row = parseCsvLine(lines[index]); if (!row || row.length !== 5) return { sensors: [], error: t('adminMain.csvColumnError', { row: index + 1 }) }
+    const [house, floor, rawPlacement, rawWaterType, rawDevEUI] = row
+    const dorm = dorms.value.find(item => item.address.trim().toLowerCase() === house.trim().toLowerCase() && item.floor === Number(floor))
+    if (!dorm) return { sensors: [], error: t('adminMain.csvDormError', { row: index + 1, house, floor }) }
+    const placement = ({ kitchen: 'Kitchen', 'left shower': 'Left Shower', 'right shower': 'Right Shower', 'shower right': 'Right Shower' } as Record<string, string>)[rawPlacement.toLowerCase()]
+    if (!placement) return { sensors: [], error: t('adminMain.csvPlacementError', { row: index + 1 }) }
+    const waterType = ({ cw: 'Cold Water', 'cold water': 'Cold Water', ww: 'Warm Water', 'warm water': 'Warm Water' } as Record<string, string>)[rawWaterType.toLowerCase()]
+    if (!waterType) return { sensors: [], error: t('adminMain.csvWaterError', { row: index + 1 }) }
+    const sensorCode = rawDevEUI.toLowerCase(); if (!/^[0-9a-f]{16}$/.test(sensorCode)) return { sensors: [], error: t('adminMain.csvDevEuiError', { row: index + 1 }) }
+    if (seen.has(sensorCode)) return { sensors: [], error: t('adminMain.csvDuplicateError', { row: index + 1, devEui: rawDevEUI }) }; seen.add(sensorCode)
+    sensors.push({ sensorCode, type: `${waterType} Meter`, location: placement, dormID: dorm.dormID })
+  }
+  return sensors.length ? { sensors, error: '' } : { sensors: [], error: t('adminMain.csvNoRows') }
+})
+const parsedCsvSensors = computed(() => csvParseResult.value.sensors)
+const sensorCsvError = computed(() => csvParseResult.value.error)
 const selectedRooms = (id: number | '' | null) => dorms.value.find(dorm => dorm.dormID === Number(id))?.rooms || []
+const availableCreateRooms = computed(() => selectedRooms(dormID.value))
+const canCreateUser = computed(() => {
+  if (!newUserEmail.value.trim()) return false
+  return createRole.value !== 'STUDENT' || (dormID.value !== '' && roomID.value !== '' && availableCreateRooms.value.includes(Number(roomID.value)))
+})
 const dormLabel = (dorm: Dorm) => `${t('common.houseLabel', { house: dorm.address })}, ${t('survey.floor', { floor: dorm.floor })}`
 const dormName = (sensor: Sensor) => `${t('common.houseLabel', { house: sensor.dormAddress })}, ${t('survey.floor', { floor: sensor.dormFloor })}`
 const filteredUsers = computed(() => users.value.filter(user => filterDorm.value === 'all' || String(user.dormID) === filterDorm.value))
@@ -268,12 +329,51 @@ function sensorStatus(sensor: Sensor) { if (sensor.leakStatus) return { label: t
 async function createFloor() { isSavingBuilding.value = true; buildingFeedback.value = ''; try { const payload = { address: newAddress.value, floor: newFloor.value, ...(floorCreationMode.value === 'range' ? { floorTo: newFloorTo.value } : {}), roomNumbers: parsedFloorRooms.value, roomNumberFormat: newFloorRoomFormat.value }; const response = await fetch(apiUrl('/api/auth/admin/dorms'), { method: 'POST', headers: headers(), body: JSON.stringify(payload) }); const data = await response.json(); if (!response.ok) throw new Error(data.error || t('adminMain.createFloorError')); buildingFeedback.value = data.floors.length === 1 ? t('adminMain.floorCreated', { house: data.address, floor: data.floorFrom, count: data.totalRooms }) : t('adminMain.floorRangeCreated', { house: data.address, from: data.floorFrom, to: data.floorTo, floors: data.floors.length, rooms: data.totalRooms }); buildingFeedbackClass.value = 'text-green-600'; newAddress.value = ''; newFloor.value = ''; newFloorTo.value = ''; newFloorRooms.value = ''; await loadDorms() } catch (error) { buildingFeedback.value = error instanceof Error ? error.message : t('adminMain.createFloorError'); buildingFeedbackClass.value = 'text-red-500' } finally { isSavingBuilding.value = false } }
 async function addRooms() { isSavingBuilding.value = true; buildingFeedback.value = ''; try { const response = await fetch(apiUrl(`/api/auth/admin/dorms/${roomDormID.value}/rooms`), { method: 'POST', headers: headers(), body: JSON.stringify({ roomNumbers: parsedNewRooms.value, roomNumberFormat: newRoomFormat.value }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error || t('adminMain.addRoomsError')); buildingFeedback.value = t('adminMain.roomsAdded', { created: data.created.length, skipped: data.skipped.length }); buildingFeedbackClass.value = 'text-green-600'; newRooms.value = ''; await loadDorms() } catch (error) { buildingFeedback.value = error instanceof Error ? error.message : t('adminMain.addRoomsError'); buildingFeedbackClass.value = 'text-red-500' } finally { isSavingBuilding.value = false } }
 
-async function addSensors() { isAddingSensors.value = true; sensorFeedback.value = ''; try { const response = await fetch(apiUrl('/api/sensor-data/admin/sensors'), { method: 'POST', headers: headers(), body: JSON.stringify({ sensorCodes: parsedSensorCodes.value, type: newSensorType.value, location: newSensorLocation.value, dormID: newSensorDormID.value }) }); const data = await response.json(); if (!response.ok) throw new Error(t('adminMain.addSensorsError')); sensorFeedback.value = t('adminMain.sensorsRegistered', { created: data.created.length, skipped: data.skipped.length }); sensorFeedbackClass.value = 'text-green-600'; newSensorCodes.value = ''; await loadSensors() } catch (error) { sensorFeedback.value = error instanceof Error ? error.message : t('adminMain.addSensorsError'); sensorFeedbackClass.value = 'text-red-500' } finally { isAddingSensors.value = false } }
+async function loadSensorCsvFile(event: Event) { const file = (event.target as HTMLInputElement).files?.[0]; if (file) sensorCsv.value = await file.text() }
+async function addSensors() { const sensors: NewSensor[] = sensorEntryMode.value === 'single' ? [{ sensorCode: singleSensorDevEUI.value.toLowerCase(), type: `${singleSensorWaterType.value} Meter`, location: singleSensorPlacement.value, dormID: Number(singleSensorDormID.value) }] : parsedCsvSensors.value; if (!sensors.length) return; isAddingSensors.value = true; sensorFeedback.value = ''; try { const response = await fetch(apiUrl('/api/sensor-data/admin/sensors'), { method: 'POST', headers: headers(), body: JSON.stringify({ sensors }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error || t('adminMain.addSensorsError')); sensorFeedback.value = t('adminMain.sensorsRegistered', { created: data.created.length, skipped: data.skipped.length }); sensorFeedbackClass.value = 'text-green-600'; if (sensorEntryMode.value === 'single') singleSensorDevEUI.value = ''; else sensorCsv.value = ''; await loadSensors() } catch (error) { sensorFeedback.value = error instanceof Error ? error.message : t('adminMain.addSensorsError'); sensorFeedbackClass.value = 'text-red-500' } finally { isAddingSensors.value = false } }
 async function importHistoricalData() { if (!confirm(t('adminMain.recoveryConfirm'))) return; isImportingHistory.value = true; historicalImportFeedback.value = t('adminMain.importStarting'); historicalImportFeedbackClass.value = ''; try { const response = await fetch(apiUrl('/api/sensor-data/admin/import-historical'), { method: 'POST', headers: headers() }); if (!response.ok && response.status !== 409) throw new Error(t('adminMain.importStartError')); while (true) { const statusResponse = await fetch(apiUrl('/api/sensor-data/admin/import-historical'), { headers: headers() }); const statusData = await statusResponse.json(); if (!statusResponse.ok) throw new Error(t('adminMain.importProgressError')); const job = statusData.job; const progress = job.progress; if (progress) historicalImportFeedback.value = t('adminMain.importProgress', { completed: progress.batchesCompleted, total: progress.totalBatches, date: formatDate(new Date(progress.startedFrom * 1000).toISOString()), snapshots: progress.snapshots, retries: progress.retries || 0 }); if (job.status === 'completed') { historicalImportFeedback.value = t('adminMain.importComplete', { snapshots: progress.snapshots, batches: progress.totalBatches }); historicalImportFeedbackClass.value = 'text-green-700 dark:text-green-400'; await loadSensors(); break } if (job.status === 'failed') throw new Error(t('adminMain.importFailed')); await new Promise(resolve => setTimeout(resolve, 2000)) } } catch (error) { historicalImportFeedback.value = error instanceof Error ? error.message : t('adminMain.importError'); historicalImportFeedbackClass.value = 'text-red-600' } finally { isImportingHistory.value = false } }
 function startSensorEdit(sensor: Sensor) { editingSensor.value = { ...sensor, adminNote: sensor.adminNote || '' }; editSensorFeedback.value = '' }
 async function saveSensor() { if (!editingSensor.value) return; isSavingSensor.value = true; editSensorFeedback.value = ''; try { const sensorCode = encodeURIComponent(editingSensor.value.sensorCode); const response = await fetch(apiUrl(`/api/sensor-data/admin/sensors/${sensorCode}`), { method: 'PATCH', headers: headers(), body: JSON.stringify({ type: editingSensor.value.type, location: editingSensor.value.location, dormID: editingSensor.value.dormID }) }); if (!response.ok) throw new Error(t('adminMain.updateSensorError')); const noteResponse = await fetch(apiUrl(`/api/sensor-data/admin/sensors/${sensorCode}/note`), { method: 'PUT', headers: headers(), body: JSON.stringify({ note: editingSensor.value.adminNote }) }); if (!noteResponse.ok) throw new Error(t('adminMain.saveNoteError')); editingSensor.value = null; await loadSensors() } catch (error) { editSensorFeedback.value = error instanceof Error ? error.message : t('adminMain.updateSensorError') } finally { isSavingSensor.value = false } }
 
-async function createResident(replaceExisting: boolean) { isSubmitting.value = true; try { const response = await fetch(apiUrl('/api/auth/residents'), { method: 'POST', headers: headers(), body: JSON.stringify({ email: email.value, dormID: dormID.value, roomID: roomID.value, role: createRole.value, replaceExisting }) }); const data = await response.json(); if (!response.ok) { if (response.status === 409 && data.code === 'ROOM_OCCUPIED') { pendingReplacement.value = data.existingUser; replacementAction.value = () => createResident(true); return } throw new Error(t('adminMain.createError')) } feedbackMessage.value = t('adminMain.accountCreated', { email: data.email }); feedbackClass.value = 'text-green-600'; email.value = ''; createRole.value = 'STUDENT'; await loadUsers() } catch (error) { feedbackMessage.value = error instanceof Error ? error.message : t('adminMain.createError'); feedbackClass.value = 'text-red-500' } finally { isSubmitting.value = false } }
+type CreateUserRequest = { email: string; dormID: number | null; roomID: number | null; role: User['role']; replaceExisting: boolean }
+function createUserRequest(replaceExisting: boolean): CreateUserRequest {
+  const isStudent = createRole.value === 'STUDENT'
+  return {
+    email: newUserEmail.value.trim(),
+    dormID: isStudent ? Number(dormID.value) : null,
+    roomID: isStudent ? Number(roomID.value) : null,
+    role: createRole.value,
+    replaceExisting,
+  }
+}
+async function createResident(replaceExisting: boolean) {
+  if (isSubmitting.value || (!replaceExisting && !canCreateUser.value)) return
+  const request = createUserRequest(replaceExisting)
+  isSubmitting.value = true
+  feedbackMessage.value = ''
+  try {
+    const response = await fetch(apiUrl('/api/auth/residents'), { method: 'POST', headers: headers(), body: JSON.stringify(request) })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      if (response.status === 409 && data.code === 'ROOM_OCCUPIED') {
+        pendingReplacement.value = data.existingUser
+        replacementAction.value = () => createResident(true)
+        return
+      }
+      throw new Error(data.error || t('adminMain.createError'))
+    }
+    feedbackMessage.value = t('adminMain.accountCreated', { email: data.email })
+    newUserEmail.value = ''
+    feedbackClass.value = 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-300'
+    if (request.role === 'STUDENT') roomID.value = ''
+    await loadUsers()
+  } catch (error) {
+    feedbackMessage.value = error instanceof Error ? error.message : t('adminMain.createError')
+    feedbackClass.value = 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300'
+  } finally {
+    isSubmitting.value = false
+  }
+}
 async function resetResidentPassword() { if (!confirm(t('adminMain.resetConfirm', { email: resetEmail.value }))) return; isResetting.value = true; try { const response = await fetch(apiUrl('/api/auth/admin/reset-resident-password'), { method: 'POST', headers: headers(), body: JSON.stringify({ email: resetEmail.value, dormID: resetDormID.value }) }); if (!response.ok) throw new Error(t('adminMain.resetError')); resetFeedback.value = t('adminMain.resetSuccess'); resetFeedbackClass.value = 'text-green-600'; resetEmail.value = ''; await loadUsers() } catch (error) { resetFeedback.value = error instanceof Error ? error.message : t('adminMain.resetError'); resetFeedbackClass.value = 'text-red-500' } finally { isResetting.value = false } }
 async function generateCleaningSchedule() { isGeneratingCleaning.value = true; cleaningFeedback.value = ''; try { const response = await fetch(apiUrl('/api/auth/admin/cleaning-weeks/generate'), { method: 'POST', headers: headers() }); const data = await response.json(); if (!response.ok) throw new Error(t('adminMain.scheduleError')); const summary = data.summary; cleaningFeedback.value = t('adminMain.scheduleSummary', { created: summary.weeksCreated, reassigned: summary.weeksReassigned, unchanged: summary.weeksUnchanged }); cleaningFeedbackClass.value = 'text-green-600' } catch (error) { cleaningFeedback.value = error instanceof Error ? error.message : t('adminMain.scheduleError'); cleaningFeedbackClass.value = 'text-red-500' } finally { isGeneratingCleaning.value = false } }
 function startEdit(user: User) { editing.value = { ...user }; editFeedback.value = '' }
@@ -288,6 +388,16 @@ watch(() => [editing.value?.dormID, editing.value?.role], () => {
   } else if (editing.value.dormID != null && (editing.value.roomID == null || !selectedRooms(editing.value.dormID).includes(editing.value.roomID))) {
     editing.value.roomID = selectedRooms(editing.value.dormID)[0]
   }
+})
+watch(dormID, () => {
+  if (!availableCreateRooms.value.includes(Number(roomID.value))) roomID.value = ''
+})
+watch(createRole, role => {
+  if (role !== 'STUDENT') {
+    dormID.value = ''
+    roomID.value = ''
+  }
+  feedbackMessage.value = ''
 })
 watch(sensorHouses, houses => { if (sensorHouseFilter.value !== 'all' && !houses.includes(sensorHouseFilter.value)) sensorHouseFilter.value = 'all' })
 watch(sensorFloors, floors => { if (sensorFloorFilter.value !== 'all' && !floors.includes(Number(sensorFloorFilter.value))) sensorFloorFilter.value = 'all' })

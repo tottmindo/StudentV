@@ -22,7 +22,13 @@ function createSocket(token?: string) {
 
   createdSocket.on('connect', () => window.dispatchEvent(new Event('connection-restored')));
   createdSocket.on('connect_error', () => window.dispatchEvent(new Event('connection-lost')));
-  createdSocket.on('disconnect', () => window.dispatchEvent(new Event('connection-lost')));
+  createdSocket.on('disconnect', reason => {
+    // socket.disconnect() is an intentional local shutdown and Socket.IO will
+    // not reconnect it. Do not present that state as a network interruption.
+    if (reason !== 'io client disconnect') {
+      window.dispatchEvent(new Event('connection-lost'));
+    }
+  });
   createdSocket.on('auth-error', () => {
     clearSession();
     createdSocket.disconnect();
@@ -65,6 +71,9 @@ export function disconnectSocket(): void {
 
 export function restoreSocket(): Socket | undefined {
   const token = sessionStorage.getItem('authToken');
-  if (!token) return;
+  // Temporary accounts may call only the account-completion endpoint. Opening
+  // a socket here would correctly be rejected by the server and could be
+  // mistaken by the client for an expired login.
+  if (!token || sessionStorage.getItem('mustChangePassword') === 'true') return;
   return getSocket();
 }

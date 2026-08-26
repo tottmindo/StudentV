@@ -26,7 +26,7 @@ import "../../config/env.js";
 import pool from "../../database/pool.js";
 import type { StringValue } from "ms";
 import { getJwtSecret } from "../../config/jwt.js";
-import { createHash, randomBytes } from "crypto";
+import { createHash, randomBytes, randomInt } from "crypto";
 import { sendPasswordResetEmail, sendTemporaryPasswordEmail } from "../../integrations/email/emailService.js";
 import { getIO } from "../../infrastructure/socketManager.js";
 import { syncDormGeneralChat, syncDormGeneralChatByID } from "../chat/chatService.js";
@@ -160,7 +160,14 @@ export async function registerUser(
     }
 
     if (beforeCommit) {
-      await beforeCommit();
+      try {
+        await beforeCommit();
+      } catch (cause) {
+        const deliveryError: any = new Error("Account credentials could not be delivered.");
+        deliveryError.code = "ACCOUNT_DELIVERY_FAILED";
+        deliveryError.cause = cause;
+        throw deliveryError;
+      }
     }
 
     await connection.commit();
@@ -184,10 +191,10 @@ export async function registerUser(
 }
 
 export function generateTemporaryPassword() {
-  // Ten easy-to-type characters. Ambiguous characters (0/O, 1/l/I) are
+  // Twelve easy-to-type characters. Ambiguous characters (0/O, 1/l/I) are
   // excluded; the password remains random and is valid for one login only.
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
-  return Array.from(randomBytes(10), byte => alphabet[byte % alphabet.length]).join("");
+  return Array.from({ length: 12 }, () => alphabet[randomInt(alphabet.length)]).join("");
 }
 
 function disconnectUser(userID: number) {
@@ -227,16 +234,24 @@ export async function getAccount(userID: number) {
   return rows[0];
 }
 
-export async function updateUsername(userID: number, username: string) {
+export async function updateAccount(userID: number, username: string, email: string) {
   try {
+    const [existing]: [RowDataPacket[], any] = await pool.query(
+      "SELECT userID FROM users WHERE email = ? AND userID <> ? LIMIT 1",
+      [email, userID]
+    );
+    if (existing.length) throw new Error("That email address is already in use.");
     const [result]: any = await pool.query(
-      "UPDATE users SET username = ? WHERE userID = ? AND active = TRUE",
-      [username, userID]
+      "UPDATE users SET username = ?, email = ? WHERE userID = ? AND active = TRUE",
+      [username, email, userID]
     );
     if (!result.affectedRows) throw new Error("Account not found.");
     return getAccount(userID);
   } catch (error: any) {
-    if (error?.code === "23505") throw new Error("That username is already in use.");
+    if (error?.code === "23505") {
+      if (String(error.constraint || "").toLowerCase().includes("email")) throw new Error("That email address is already in use.");
+      throw new Error("That username is already in use.");
+    }
     throw error;
   }
 }

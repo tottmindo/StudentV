@@ -16,8 +16,11 @@ const connectionLost = ref(false)
 const surveyModalOpen = ref(false)
 const surveyModalID = ref<number | null>(null)
 const surveyModalQueue = ref<number[]>([])
-const publicRoutes = new Set(['login', 'forgot-password', 'reset-password'])
-const showTopBar = computed(() => isAuthenticated.value && !publicRoutes.has(String(route.name)))
+// Account setup is authenticated, but it must not mount the normal app shell.
+// AppTopBar and its children open a socket, while the server intentionally
+// refuses real-time access until the temporary password has been replaced.
+const routesWithoutAppShell = new Set(['login', 'forgot-password', 'reset-password', 'change-password'])
+const showTopBar = computed(() => isAuthenticated.value && !routesWithoutAppShell.has(String(route.name)))
 const syncAuthentication = () => { isAuthenticated.value = Boolean(sessionStorage.getItem('authToken')) }
 const markOnline = () => { isOffline.value = false }
 const markOffline = () => { isOffline.value = true }
@@ -63,7 +66,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div v-if="isOffline || (isAuthenticated && connectionLost)" class="connection-banner" role="status">
+  <div v-if="isOffline || (showTopBar && connectionLost)" class="connection-banner" role="status">
     {{ isOffline ? t('connection.offline') : t('connection.reconnecting') }}
   </div>
   <AppTopBar v-if="showTopBar" />

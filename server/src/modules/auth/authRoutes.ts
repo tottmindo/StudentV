@@ -23,7 +23,7 @@
  * @throws {401} - Authentication failed
  */
 import express from "express";
-import { addRoomsToDorm, adminResetResidentPassword, completeTemporaryPassword, createDormFloors, generateTemporaryPassword, getAccount, registerUser, loginUser, requestPasswordReset, resetPasswordWithToken, updatePassword, updateUsername, listDormsForAdmin, listUsersForAdmin, updateUserForAdmin } from "./authService.js";
+import { addRoomsToDorm, adminResetResidentPassword, completeTemporaryPassword, createDormFloors, generateTemporaryPassword, getAccount, registerUser, loginUser, requestPasswordReset, resetPasswordWithToken, updateAccount, updatePassword, listDormsForAdmin, listUsersForAdmin, updateUserForAdmin } from "./authService.js";
 import { addDormRoomsSchema, adminResetPasswordSchema, adminUpdateUserSchema, changePasswordSchema, createAdminEventSchema, createDormFloorSchema, createResidentSchema, emailSchema, registerSchema, loginSchema, resetPasswordSchema, updateAccountSchema, updatePasswordSchema } from "./authSchemas.js";
 import { validate } from "../../shared/middleware/validate.js";
 import { authenticate, AuthenticatedRequest, requireAdmin, requireCompletedAccount, requireResearchAccess } from "../../shared/middleware/authenticate.js";
@@ -58,7 +58,7 @@ router.post("/register", authenticate, requireCompletedAccount, requireAdmin, va
 });
 
 router.post("/residents", authenticate, requireCompletedAccount, requireAdmin, validate(createResidentSchema), async (req: AuthenticatedRequest, res) => {
-  const { dormID, roomID, email, role, replaceExisting = false } = req.body;
+  const { dormID, roomID, role, email, replaceExisting = false } = req.body;
   const temporaryPassword = generateTemporaryPassword();
   try {
     const result = await registerUser(
@@ -79,8 +79,8 @@ router.post("/residents", authenticate, requireCompletedAccount, requireAdmin, v
       res.status(409).json({ code: err.code, error: err.message, existingUser: err.existingUser });
     } else if (err.message === "Room does not exist.") {
       res.status(404).json({ error: err.message });
-    } else if (err.message === "Email delivery is not configured." || err?.code?.startsWith?.("E")) {
-      console.error("Resident welcome email failed:", err);
+    } else if (err.code === "ACCOUNT_DELIVERY_FAILED") {
+      console.error("Resident welcome email failed:", err.cause ?? err);
       res.status(502).json({ error: "The email could not be sent, so the account was not created." });
     } else {
       console.error("Resident creation failed:", err);
@@ -242,7 +242,7 @@ router.get("/account", authenticate, async (req: AuthenticatedRequest, res) => {
 });
 
 router.patch("/account", authenticate, requireCompletedAccount, validate(updateAccountSchema), async (req: AuthenticatedRequest, res) => {
-  try { res.json(await updateUsername(req.authUser!.userID, req.body.username)); }
+  try { res.json(await updateAccount(req.authUser!.userID, req.body.username, req.body.email)); }
   catch (err: any) { res.status(err.message.includes("already in use") ? 409 : 400).json({ error: err.message }); }
 });
 
