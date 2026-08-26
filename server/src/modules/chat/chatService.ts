@@ -4,6 +4,9 @@ type Queryable = { query: (sql: string, values?: unknown[]) => Promise<any> };
 
 /** Ensure every floor has one shared chat and every active resident can access it. */
 export async function syncDormGeneralChat(connection: Queryable, dormID: number, address: string, floor: number) {
+  // Serialize initialization for this floor. This prevents two concurrent
+  // resident/location operations from both creating a general chat.
+  await connection.query("SELECT pg_advisory_xact_lock(?)", [dormID]);
   const [rooms] = await connection.query(
     `SELECT c.chatID FROM chat c
      LEFT JOIN chatDirectConversations direct ON direct.chatID = c.chatID
@@ -20,6 +23,23 @@ export async function syncDormGeneralChat(connection: Queryable, dormID: number,
     chatID = Number(created[0]?.chatID);
   }
   if (!chatID) throw new Error("Could not create the floor's general chat.");
+  await connection.query("UPDATE chat SET name = ? WHERE chatID = ?", [
+    `${address} · Floor ${floor} · General`, chatID,
+  ]);
+  // Moving, deactivating, or promoting a resident must also revoke access to
+  // the old floor chat. Direct-chat membership is deliberately unaffected.
+  await connection.query(
+    `DELETE FROM chatMembers membership
+     WHERE membership.chatID = ?
+       AND NOT EXISTS (
+         SELECT 1 FROM users
+         WHERE users.userID = membership.userID
+           AND users.dormID = ?
+           AND users.role = 'STUDENT'
+           AND users.active = TRUE
+       )`,
+    [chatID, dormID]
+  );
   await connection.query(
     `INSERT INTO chatMembers (chatID, userID)
      SELECT ?, userID FROM users
@@ -28,6 +48,15 @@ export async function syncDormGeneralChat(connection: Queryable, dormID: number,
     [chatID, dormID]
   );
   return chatID;
+}
+
+/** Synchronize a floor by ID when its address/floor metadata is not already loaded. */
+export async function syncDormGeneralChatByID(connection: Queryable, dormID: number) {
+  const [dorms] = await connection.query(
+    "SELECT address, floor FROM dorms WHERE dormID = ?", [dormID]
+  );
+  if (!dorms[0]) throw new Error("Dorm floor not found.");
+  return syncDormGeneralChat(connection, dormID, dorms[0].address, dorms[0].floor);
 }
 
 let chatSchemaReady: Promise<void> | null = null;

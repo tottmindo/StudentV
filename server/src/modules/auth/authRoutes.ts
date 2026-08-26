@@ -23,7 +23,7 @@
  * @throws {401} - Authentication failed
  */
 import express from "express";
-import { addRoomsToDorm, adminResetResidentPassword, completeTemporaryPassword, createDormFloor, generateTemporaryPassword, getAccount, registerUser, loginUser, requestPasswordReset, resetPasswordWithToken, updatePassword, updateUsername, listDormsForAdmin, listUsersForAdmin, updateUserForAdmin } from "./authService.js";
+import { addRoomsToDorm, adminResetResidentPassword, completeTemporaryPassword, createDormFloors, generateTemporaryPassword, getAccount, registerUser, loginUser, requestPasswordReset, resetPasswordWithToken, updatePassword, updateUsername, listDormsForAdmin, listUsersForAdmin, updateUserForAdmin } from "./authService.js";
 import { addDormRoomsSchema, adminResetPasswordSchema, adminUpdateUserSchema, changePasswordSchema, createAdminEventSchema, createDormFloorSchema, createResidentSchema, emailSchema, registerSchema, loginSchema, resetPasswordSchema, updateAccountSchema, updatePasswordSchema } from "./authSchemas.js";
 import { validate } from "../../shared/middleware/validate.js";
 import { authenticate, AuthenticatedRequest, requireAdmin, requireCompletedAccount, requireResearchAccess } from "../../shared/middleware/authenticate.js";
@@ -117,12 +117,24 @@ router.post("/admin/events", authenticate, requireCompletedAccount, requireAdmin
 });
 
 router.post("/admin/dorms", authenticate, requireCompletedAccount, requireAdmin, validate(createDormFloorSchema), async (req, res) => {
-  try { res.status(201).json(await createDormFloor(req.body.address, req.body.floor, req.body.roomIDs)); }
+  try {
+    const floorTo = req.body.floorTo ?? req.body.floor;
+    const roomNumbers = req.body.roomNumbers ?? req.body.roomIDs;
+    const format = req.body.roomNumbers ? (req.body.roomNumberFormat ?? "local") : "full";
+    const floors = await createDormFloors(req.body.address, req.body.floor, floorTo, roomNumbers, format);
+    // Keep the original single-floor fields for existing API clients while
+    // exposing the complete result for range-aware clients.
+    res.status(201).json({ ...floors[0], floorFrom: req.body.floor, floorTo, floors, totalRooms: floors.reduce((sum, floor) => sum + floor.rooms.length, 0) });
+  }
   catch (error: any) { res.status(error.message?.includes("already exists") ? 409 : 400).json({ error: error.message || "Could not create dorm floor." }); }
 });
 
 router.post("/admin/dorms/:dormID/rooms", authenticate, requireCompletedAccount, requireAdmin, validate(addDormRoomsSchema), async (req, res) => {
-  try { res.status(201).json(await addRoomsToDorm(Number(req.params.dormID), req.body.roomIDs)); }
+  try {
+    const roomNumbers = req.body.roomNumbers ?? req.body.roomIDs;
+    const format = req.body.roomNumbers ? (req.body.roomNumberFormat ?? "local") : "full";
+    res.status(201).json(await addRoomsToDorm(Number(req.params.dormID), roomNumbers, format));
+  }
   catch (error: any) { res.status(error.message === "Dorm floor not found." ? 404 : 400).json({ error: error.message || "Could not add rooms." }); }
 });
 

@@ -53,16 +53,37 @@ export const adminUpdateUserSchema = requireStudentLocation(z.object({
   replaceExisting: z.boolean().optional(),
 }));
 
-const roomIDsSchema = z.array(z.coerce.number().int().positive()).min(1).max(500)
-  .transform(roomIDs => [...new Set(roomIDs)]);
+const roomNumbersSchema = z.array(z.coerce.number().int().positive()).min(1).max(500)
+  .transform(roomNumbers => [...new Set(roomNumbers)]);
+const roomInputFields = {
+  roomNumbers: roomNumbersSchema.optional(),
+  roomNumberFormat: z.enum(["local", "full"]).optional(),
+  // Backwards-compatible name for clients that already send complete IDs.
+  roomIDs: roomNumbersSchema.optional(),
+};
 
 export const createDormFloorSchema = z.object({
   address: z.string().trim().regex(/^\d+$/, "House number must contain digits only.").max(255),
   floor: z.coerce.number().int().min(-10).max(200),
-  roomIDs: roomIDsSchema,
+  floorTo: z.coerce.number().int().min(-10).max(200).optional(),
+  ...roomInputFields,
+}).superRefine((data, context) => {
+  if (!data.roomNumbers?.length && !data.roomIDs?.length) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["roomNumbers"], message: "At least one room number is required." });
+  }
+  if (data.floorTo !== undefined && data.floorTo < data.floor) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["floorTo"], message: "The last floor must be greater than or equal to the first floor." });
+  }
+  if (data.floorTo !== undefined && data.floorTo - data.floor >= 50) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["floorTo"], message: "A maximum of 50 floors can be created at once." });
+  }
 });
 
-export const addDormRoomsSchema = z.object({ roomIDs: roomIDsSchema });
+export const addDormRoomsSchema = z.object(roomInputFields).superRefine((data, context) => {
+  if (!data.roomNumbers?.length && !data.roomIDs?.length) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["roomNumbers"], message: "At least one room number is required." });
+  }
+});
 
 export const createAdminEventSchema = z.object({
   title: z.string().trim().min(1).max(255),

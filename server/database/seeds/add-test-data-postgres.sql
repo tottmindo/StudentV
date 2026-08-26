@@ -4,8 +4,8 @@ BEGIN;
 TRUNCATE TABLE externalevents, page_visit_stats RESTART IDENTITY CASCADE;
 TRUNCATE TABLE dorms RESTART IDENTITY CASCADE;
 
--- A room number is house + floor + room, for example 1251 means
--- house 12, floor 5, room 1. Each house/floor has eight rooms.
+-- A room number is house + floor + a one-digit room position. For example,
+-- 1251 means house 12, floor 5, room 1. Each floor has eight rooms.
 INSERT INTO dorms (floor, address) VALUES
   (1, '12'), (2, '12'), (3, '12'), (4, '12'), (5, '12'),
   (1, '14'), (2, '14'), (3, '14'), (4, '14'), (5, '14');
@@ -184,20 +184,16 @@ INSERT INTO sensor_notes (sensorcode, note, updatedat) VALUES
   ('8c1f646190001ebd', 'Test fixture: a recent reading reports a leak.', now() - interval '30 minutes'),
   ('8c1f646190001592', 'Kitchen warm-water meter verified after installation.', now() - interval '2 days');
 
-INSERT INTO chat (name, dormid) VALUES ('Dorm 1 General', 1), ('Dorm 2 General', 2), ('Dorm 3 General', 3);
 INSERT INTO chat (name, dormid)
-SELECT address || ' floor ' || floor || ' General', dormid
-FROM dorms
-WHERE dormid > 3;
-INSERT INTO chatmembers (chatid, userid) VALUES (1, 1), (1, 2), (1, 3), (2, 4), (2, 5), (2, 6), (3, 7), (3, 8), (3, 9);
+SELECT address || ' · Floor ' || floor || ' · General', dormid
+FROM dorms;
 INSERT INTO chatmembers (chatid, userid)
-SELECT chat.chatid, MIN(users.userid)
+SELECT chat.chatid, users.userid
 FROM chat
 JOIN users ON users.dormid = chat.dormid
-WHERE chat.dormid > 3
-GROUP BY chat.chatid;
+WHERE users.role = 'STUDENT' AND users.active = true;
 INSERT INTO chathistory (msg, chatid, userid) VALUES
-  ('Welcome everyone!', 1, 1), ('Thanks for adding me.', 1, 2), ('Hello from Dorm 2.', 2, 4),
+  ('Welcome everyone!', 1, 2), ('Thanks for adding me.', 1, 3), ('Hello from Dorm 2.', 2, 5),
   ('Anyone want to get coffee?', 1, 3), ('Sure, lets meet at the cafe', 1, 2), ('Count me in!', 3, 8);
 
 -- Scraper and anonymous usage-statistics fixtures cover the remaining features.

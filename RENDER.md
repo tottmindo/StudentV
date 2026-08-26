@@ -51,8 +51,14 @@ npm ci
 npm run db:schema -w server
 ```
 
-The schema command is safe to run again on an existing database. It creates
-the tables and indexes in `server/database/migrations/generate-postgres.sql`.
+The schema command rebuilds the target database and deletes its existing data.
+Use it only for initial setup or an intentional reset, never as a routine
+production migration. It creates the tables, bootstrap administrator, and base
+cleaning tasks in `server/database/migrations/generate-postgres.sql`.
+
+Before exposing the service, sign in as `admin@studentv.local` with temporary
+password `ChangeMe-StudentV-2026!`, complete the required password change, and
+replace the placeholder email with an address you control.
 
 ## 4. Add test data (optional)
 

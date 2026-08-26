@@ -198,6 +198,18 @@ createdb dorms_db
 psql -d dorms_db -f server/database/migrations/generate-postgres.sql
 ```
 
+The generated database includes one bootstrap administrator and the global
+base cleaning tasks:
+
+```text
+Email:              admin@studentv.local
+Temporary password: ChangeMe-StudentV-2026!
+```
+
+The administrator is required to choose a username and new password on first
+login. Do this before exposing a production deployment to the internet, then
+replace the placeholder email with an address controlled by the administrator.
+
 For a local connection, configure the root `.env` like this:
 
 ```sh
@@ -232,8 +244,8 @@ real email and are used to prevent accidental delivery.
 The frontend also has a local `frontend/.env` for Vite-specific values.
 
 The PostgreSQL development seed includes houses 12 and 14, floors 1–5, and
-eight rooms per floor. Room numbers use `house-floor-room` notation: `1251`
-is house 12, floor 5, room 1. It seeds an occupied resident in rooms 1–7 of
+eight rooms per floor. Complete room numbers use `house + floor + one-digit
+room` notation: `1251` is house 12, floor 5, room 1. It seeds an occupied resident in rooms 1–7 of
 each floor (leaving room 8 vacant), plus events, sensors, and chats on every
 floor. Generated residents use `resident-<room-number>@example.test`, username
 `resident<room-number>`, and password `test123`.
@@ -241,6 +253,29 @@ floor. Generated residents use `resident-<room-number>@example.test`, username
 Administrators are global accounts with no dorm or room assignment. This keeps
 physical locations exclusive to residents and allows administrators to manage
 all dorms.
+
+### Fresh production database checklist
+
+After generating a new production database:
+
+1. Sign in with the bootstrap administrator, change its password immediately,
+   and replace its placeholder email.
+2. Create the real houses/floors and rooms before inviting residents. Confirm
+   room numbers follow the application's house-floor-room convention.
+3. Review the global cleaning templates and mark any rules that do not apply to
+   the property inactive before generating cleaning weeks.
+4. Set a long random `JWT_SECRET`, production database credentials/TLS,
+   `CORS_ORIGINS`, `APP_URL`, and SMTP credentials. Disable sensor sync until
+   valid IoT Open credentials and sensor mappings are present.
+5. Run a backup and restore test, configure automated backups and retention,
+   and restrict the database/network account to the access the application
+   actually needs.
+6. Verify password email delivery, administrator login and forced password
+   change, resident provisioning, scheduled jobs, timezone, and frontend API
+   connectivity before launch.
+7. Monitor failed jobs and database capacity, and define a migration process
+   before making later schema changes. The schema-generation command rebuilds
+   the target database and must not be used as a routine production migration.
 
 ## Notes
 

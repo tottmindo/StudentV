@@ -278,3 +278,28 @@ CREATE TABLE page_visit_stats (
   visits integer NOT NULL DEFAULT 0 CHECK (visits >= 0),
   PRIMARY KEY (visitdate, page)
 );
+
+-- Bootstrap account for the first production login.
+-- Email: admin@studentv.local
+-- Temporary password: ChangeMe-StudentV-2026!
+-- The application requires this password to be replaced immediately after login.
+INSERT INTO users
+  (email, username, passwordhash, role, roomid, dormid, active,
+   mustchangepassword, credentialversion)
+VALUES
+  ('admin@studentv.local', NULL,
+   '$2b$10$qOhrafY.yqwPzMPH1k4iI.dI24iS/saX8tJ4kITZRGkwSHDZISyM.',
+   'ADMIN', NULL, NULL, true, true, 0);
+
+-- Global cleaning templates. A NULL dormid makes them available to every dorm.
+INSERT INTO cleaningtasktemplate
+  (taskname, description, active, createdbyuserid, isimportant, dormid)
+VALUES
+  ('Sink', 'Clean the sink with cleaning spray, remove food residue, and unclog it if needed.', true, NULL, true, NULL),
+  ('Floors', 'Vacuum and mop shared floors as needed.', true, NULL, false, NULL),
+  ('Trash and recycling', 'Always empty bins on Sunday evening. Sort recycling and deposit-return cans and bottles, replace bin bags, and clean dirty bins and the area under the sink.', true, NULL, true, NULL),
+  ('Tables and counters', 'Wipe tables and kitchen counters with cleaning spray and scrape away anything stuck to them.', true, NULL, false, NULL),
+  ('Stove and oven', 'Clean the stove with cleaning spray, scrape away burnt residue, and clean the oven when needed, especially the bottom.', true, NULL, true, NULL),
+  ('Microwave', 'Clean the microwave inside and outside, including the microwave cover.', true, NULL, false, NULL),
+  ('Drying rack', 'Put dry dishes in the shared cupboards and clean the area around and underneath the drying rack with cleaning spray.', true, NULL, false, NULL),
+  ('Refrigerator', 'Clean the shared refrigerator and check its contents.', true, NULL, false, NULL);
