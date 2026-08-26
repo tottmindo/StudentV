@@ -104,13 +104,16 @@ these settings:
 
 ```text
 Runtime:       Node
-Build command: npm ci && npm run build -w server
+Build command: npm ci --include=dev && npm run build -w server
 Start command: npm run start -w server
 ```
 
 Do not use `npm run dev` on Render: it starts Vite and nodemon instead of the
 compiled API service. Also remove any local `HOST=127.0.0.1` or
 `PG_DB_HOST=localhost` value from the Render service environment.
+The explicit `--include=dev` is required because TypeScript, Vite, and their
+type declarations are build-time development dependencies. Render builds with
+`NODE_ENV=production`, which can otherwise cause npm to omit them.
 
 Set `DATABASE_URL` and `JWT_SECRET` in the Blueprint's environment prompt (or
 on the service after its first sync). The Blueprint also sets the frontend

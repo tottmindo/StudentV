@@ -2,7 +2,7 @@ services:
   - type: web
     name: StudentV-client
     runtime: static
-    buildCommand: npm ci && npm run build -w frontend
+    buildCommand: npm ci --include=dev && npm run build -w frontend
     staticPublishPath: frontend/dist
     envVars:
       - key: VITE_API_BASE_URL
@@ -17,7 +17,7 @@ services:
   - type: web
     name: StudentV
     runtime: node
-    buildCommand: npm ci && npm run build -w server
+    buildCommand: npm ci --include=dev && npm run build -w server
     startCommand: npm run start -w server
     envVars:
       - key: NODE_ENV
