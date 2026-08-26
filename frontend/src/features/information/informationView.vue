@@ -22,6 +22,36 @@
       <!-- Information sections -->
       <div class="grid gap-6 md:grid-cols-2">
 
+        <section class="rounded-2xl border border-accent/30 bg-accent/5 p-6 shadow-sm md:col-span-2">
+          <span class="text-3xl">📘</span>
+
+          <h2 class="mt-4 text-xl font-bold">
+            {{ t('information.houseGuide') }}
+          </h2>
+
+          <p class="mt-2 text-sm leading-6 opacity-70">
+            {{ t('information.houseGuideText') }}
+          </p>
+
+          <div v-if="houseGuides.length" class="mt-5 grid gap-3 sm:grid-cols-2">
+            <a
+              v-for="guide in houseGuides"
+              :key="guide.house"
+              :href="guide.href"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="info-link bg-surface dark:bg-surface-dark"
+            >
+              <span class="block">{{ t('information.houseGuideLink', { house: guide.house }) }}</span>
+              <span class="mt-1 block text-xs font-normal opacity-60">{{ t('information.pdfDocument') }}</span>
+            </a>
+          </div>
+
+          <p v-else class="mt-5 text-sm opacity-70">
+            {{ t('information.loadingHouseGuide') }}
+          </p>
+        </section>
+
         <section class="rounded-2xl border border-border-border bg-surface p-6 shadow-sm dark:bg-surface-dark">
           <span class="text-3xl">🏠</span>
 
@@ -156,9 +186,48 @@
 </template>
 
 <script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { getSocket } from '@/shared/composables/socket'
+import type { DashboardPayload } from '@/types'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const house = ref<number | null>(null)
+const role = sessionStorage.getItem('role')
+const isResident = role === 'STUDENT'
+const socket = getSocket()
+
+function applyDashboard(dashboard: DashboardPayload) {
+  house.value = [12, 14].includes(Number(dashboard.user?.house)) ? Number(dashboard.user.house) : null
+}
+
+function loadCachedDashboard() {
+  try {
+    const dashboard = JSON.parse(sessionStorage.getItem('dashboard') || 'null') as DashboardPayload | null
+    if (dashboard) applyDashboard(dashboard)
+  } catch {
+    sessionStorage.removeItem('dashboard')
+  }
+}
+
+const houseGuides = computed(() => {
+  const houses = isResident ? (house.value ? [house.value] : []) : [12, 14]
+  const language = locale.value === 'sv' ? 'sv' : 'en'
+  return houses.map(houseNumber => ({
+    house: houseNumber,
+    href: `/documents/studentvagen-${houseNumber}-${language}.pdf`,
+  }))
+})
+
+onMounted(() => {
+  loadCachedDashboard()
+  if (isResident) {
+    socket.on('dashboard', applyDashboard)
+    socket.emit('getDashboard')
+  }
+})
+
+onBeforeUnmount(() => socket.off('dashboard', applyDashboard))
 </script>
 
 <style scoped>
