@@ -7,6 +7,7 @@ The scraper runs independently from the web application. It does not communicate
 Currently supported sources:
 
 - Destination Uppsala events
+- Nationsguiden events
 
 
 ## Architecture
@@ -137,10 +138,17 @@ This makes it possible to detect stale events that are no longer available from 
 
 ## Running the Scraper
 
-Run the scraper manually:
+Run both scrapers manually:
 
 ```bash
 python main.py
+```
+
+Run one source (the commands used by the Render cron jobs):
+
+```bash
+python main.py destinationuppsala
+python main.py nationsguiden
 ```
 
 Example output:
@@ -179,9 +187,18 @@ db.toDB(events)
 ```
 
 
-## Automation
+## Automation and Render
 
-The scraper is designed to run automatically, for example once per day.
+The repository's root `render.yaml` defines one daily Render cron job for each
+source. When creating the Blueprint, provide each job with the same
+`DATABASE_URL` used by the backend. Render cron schedules are UTC; the supplied
+schedules run at 02:15 and 02:45 UTC. `NATIONSGUIDEN_DAYS` controls how many
+dates that job imports and defaults to 7.
+
+The jobs deliberately run separately: a temporary failure at one source does
+not prevent the other source from being imported. Both commands return a
+non-zero exit status on an HTTP, parsing, or database error so Render records
+the run as failed.
 
 ## Adding New Scrapers
 
@@ -233,21 +250,9 @@ pip freeze > requirements.txt
 
 The scraper can be deployed separately from the main application.
 
-Example production setup:
-
-```
-Server
-
-├── StudentV Backend
-|
-├── StudentV Frontend
-|
-├── PostgreSQL Database
-|
-└── External Events Scraper
-        |
-        └── Scheduled execution
-```
+The scraper accepts either Render's `DATABASE_URL` or the split local variables
+`PG_DB_USER`, `PG_DB_HOST` (or `PG_DB_HOST_PYTHON`), `PG_DB_PASSWORD`,
+`PG_DB_DATABASE`, and optionally `PG_DB_PORT` and `PG_SSLMODE`.
 
 The scraper only requires:
 

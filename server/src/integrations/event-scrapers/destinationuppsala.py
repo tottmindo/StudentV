@@ -1,14 +1,20 @@
 import requests
 from bs4 import BeautifulSoup
 
+DESTINATION_UPPSALA_URL = "https://destinationuppsala.se/event/page/{page}"
+HEADERS = {"User-Agent": "StudentV event importer/1.0"}
+
 def destUppScraper():
     events = []
     page = 1
 
     while True:
-        URL = f"https://destinationuppsala.se/event/page/{page}"
+        URL = DESTINATION_UPPSALA_URL.format(page=page)
         print(f"Currently scraping page {page}")
-        response = requests.get(URL, timeout=10)
+        response = requests.get(URL, headers=HEADERS, timeout=20)
+        if page > 1 and response.status_code == 404:
+            break
+        response.raise_for_status()
 
         soup = BeautifulSoup(response.content, "html.parser")
 
@@ -24,7 +30,9 @@ def destUppScraper():
 
             if textArea:
                 title = textArea.get_text(strip=True)
-                url = textArea["href"]
+                url = textArea.get("href")
+                if not url:
+                    continue
 
                 foundEvents = True
                 start_date = None
@@ -56,4 +64,3 @@ def destUppScraper():
             break
 
     return events
-

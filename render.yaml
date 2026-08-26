@@ -1,0 +1,24 @@
+services:
+  - type: cron
+    name: studentv-destination-uppsala-events
+    runtime: python
+    rootDir: server/src/integrations/event-scrapers
+    schedule: "15 2 * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py destinationuppsala
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+
+  - type: cron
+    name: studentv-nationsguiden-events
+    runtime: python
+    rootDir: server/src/integrations/event-scrapers
+    schedule: "45 2 * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py nationsguiden
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: NATIONSGUIDEN_DAYS
+        value: "7"

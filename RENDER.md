@@ -98,3 +98,15 @@ After adding the environment variables, deploy the service. For future schema
 changes, run `npm run db:schema -w server` as a Render pre-deploy command on a
 paid web service, or run it from your computer against the external URL before
 deploying the application.
+
+## 6. Deploy the event scraper cron jobs
+
+The root `render.yaml` also defines independent daily cron jobs for Destination
+Uppsala and Nationsguiden. Create or update a Render Blueprint from this
+repository, then set `DATABASE_URL` on both cron services to the database's
+Internal Database URL. The jobs install their Python requirements during the
+build and run the individual source commands from the scraper directory.
+
+Render interprets cron schedules as UTC. The committed schedules are 02:15 UTC
+and 02:45 UTC, staggered so they do not write concurrently. A failed source or
+database request exits non-zero and appears as a failed cron run in Render.

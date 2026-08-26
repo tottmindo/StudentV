@@ -2,11 +2,14 @@ import json
 import re
 import requests
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 NATIONSGUIDEN_URL = "https://www.nationsguiden.se/"
+HEADERS = {"User-Agent": "StudentV event importer/1.0"}
+STOCKHOLM = ZoneInfo("Europe/Stockholm")
 
 def getNationsguidenConfig():
-    response = requests.get(NATIONSGUIDEN_URL)
+    response = requests.get(NATIONSGUIDEN_URL, headers=HEADERS, timeout=20)
     response.raise_for_status()
 
     match = re.search(
@@ -32,7 +35,9 @@ def scrapeDate(selected_date: str, ajax_url: str, nonce: str):
 
     response = requests.post(
         ajax_url,
-        data=data
+        data=data,
+        headers=HEADERS,
+        timeout=20,
     )
 
     response.raise_for_status()
@@ -98,7 +103,7 @@ def parseSchedule(event: dict):
     event_date = datetime.strptime(
         date,
         "%Y-%m-%d"
-    )
+    ).replace(tzinfo=STOCKHOLM)
 
     start = event_date.replace(
         hour=start_hour,
@@ -125,23 +130,31 @@ def parseEvent(event: dict):
     if start is None:
         return None
 
+    url = event.get("url")
+    if not url:
+        return None
+
     return {
         "title": event.get("title"),
         "startDate": start,
         "endDate": end,
         "category": event.get("category"),
-        "url": event.get("url"),
+        "url": url,
         "organiser": event.get("organiser"),
     }
 
 def parseEvents(events: list):
     parsed_events = []
+    seen = set()
 
     for event in events:
         parsed = parseEvent(event)
 
         if parsed is not None:
+            identity = (parsed["url"], parsed["startDate"])
+            if identity in seen:
+                continue
+            seen.add(identity)
             parsed_events.append(parsed)
 
     return parsed_events
-
