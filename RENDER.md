@@ -80,9 +80,27 @@ admin3@example.test     emma@example.test
 `emma@example.test` is intentionally provisioned with a temporary password
 to exercise the first-login flow.
 
-## 5. Deploy the backend
+## 5. Deploy the frontend
 
-Create a Render **Web Service** from this repository with these settings:
+The `studentv-client` static site is defined in the root `render.yaml`. Set its
+`VITE_API_BASE_URL` environment variable to the public URL of the backend, then
+sync the Blueprint and deploy it. The committed `/*` to `/index.html` rewrite
+is required for Vue Router history-mode URLs: without it, refreshing a route
+such as `/events` asks Render for a literal file at that path and returns 404.
+
+If the frontend was created manually instead of from the Blueprint, add the
+same rule under **Redirects/Rewrites** in the Render dashboard:
+
+```text
+Source:      /*
+Destination: /index.html
+Action:      Rewrite
+```
+
+## 6. Deploy the backend
+
+The `studentv-server` web service is defined in the root `render.yaml` with
+these settings:
 
 ```text
 Runtime:       Node
@@ -94,12 +112,19 @@ Do not use `npm run dev` on Render: it starts Vite and nodemon instead of the
 compiled API service. Also remove any local `HOST=127.0.0.1` or
 `PG_DB_HOST=localhost` value from the Render service environment.
 
+Set `DATABASE_URL` and `JWT_SECRET` in the Blueprint's environment prompt (or
+on the service after its first sync). The Blueprint also sets the frontend
+origin used by CORS and email links. If either service gets a different public
+hostname, update `CORS_ORIGINS`, `APP_URL`, and `VITE_API_BASE_URL` together.
+Optional SMTP and IoT Open credentials remain dashboard-managed; sensor sync
+is disabled in the Blueprint until its IoT Open credentials are configured.
+
 After adding the environment variables, deploy the service. For future schema
 changes, run `npm run db:schema -w server` as a Render pre-deploy command on a
 paid web service, or run it from your computer against the external URL before
 deploying the application.
 
-## 6. Deploy the event scraper cron jobs
+## 7. Deploy the event scraper cron jobs
 
 The root `render.yaml` also defines independent daily cron jobs for Destination
 Uppsala and Nationsguiden. Create or update a Render Blueprint from this

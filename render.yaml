@@ -1,4 +1,41 @@
 services:
+  - type: web
+    name: StudentV-client
+    runtime: static
+    buildCommand: npm ci && npm run build -w frontend
+    staticPublishPath: frontend/dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        sync: false
+    routes:
+      # Vue Router uses history mode, so direct requests such as /events must
+      # load the SPA entry point before the client-side router can take over.
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+  - type: web
+    name: StudentV
+    runtime: node
+    buildCommand: npm ci && npm run build -w server
+    startCommand: npm run start -w server
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: CORS_ORIGINS
+        value: https://studentv-client.onrender.com
+      - key: APP_URL
+        value: https://studentv-client.onrender.com
+      - key: TRUST_PROXY
+        value: "true"
+      # Enable only after adding the required IoT Open credentials.
+      - key: SENSOR_SYNC_ENABLED
+        value: "false"
+
   - type: cron
     name: studentv-destination-uppsala-events
     runtime: python
