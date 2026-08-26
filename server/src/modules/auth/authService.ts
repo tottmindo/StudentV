@@ -572,6 +572,17 @@ export async function deactivateExpiredResidents(now: Date = new Date()): Promis
   }
 }
 
+/** Start the normal grace-period timer without assigning a replacement resident. */
+export async function scheduleVacantRoomDeactivation(roomID: number, dormID: number): Promise<number> {
+  const [result]: any = await pool.query(
+    `UPDATE users SET scheduledDeactivationAt = ?
+     WHERE roomID = ? AND dormID = ? AND role = 'STUDENT'
+       AND active = TRUE AND scheduledDeactivationAt IS NULL`,
+    [residentDeactivationDeadline(), roomID, dormID]
+  );
+  return Number(result.affectedRows ?? 0);
+}
+
 export async function updateUserForAdmin(
   actingAdminID: number,
   userID: number,

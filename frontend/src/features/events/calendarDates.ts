@@ -27,3 +27,28 @@ export function dateIsInRange(dateKey: string, start: string, end: string): bool
   const day = startOfLocalDay(dateKey).getTime()
   return day >= startOfLocalDay(start).getTime() && day <= startOfLocalDay(end).getTime()
 }
+
+/**
+ * Whether an event is still current/upcoming at the supplied instant.
+ * Date-only values represent whole calendar days, so their effective end is
+ * the end of that local day rather than midnight at its start.
+ */
+export function eventHasNotEnded(
+  start: string,
+  end?: string,
+  now: Date = new Date()
+): boolean {
+  const value = end || start
+  if (!value) return false
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const endOfDay = startOfLocalDay(value)
+    endOfDay.setDate(endOfDay.getDate() + 1)
+    return endOfDay.getTime() > now.getTime()
+  }
+
+  // PostgreSQL timestamps are ISO strings with an explicit offset. Preserve
+  // that offset; stripping the trailing Z changes the represented instant.
+  const parsed = new Date(value.includes(' ') ? value.replace(' ', 'T') : value)
+  return !Number.isNaN(parsed.getTime()) && parsed.getTime() >= now.getTime()
+}

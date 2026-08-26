@@ -47,6 +47,15 @@ export const adminResetPasswordSchema = z.object({
   dormID: z.coerce.number().int().positive(),
 });
 
+export const residentImportApplySchema = z.object({
+  rows: z.array(z.object({
+    roomID: z.number().int().positive(),
+    dormID: z.number().int().positive(),
+    email: z.string().trim().email().max(255).transform(email => email.toLowerCase()),
+    vacant: z.boolean(),
+  })).min(1).max(500),
+});
+
 export const adminUpdateUserSchema = requireStudentLocation(z.object({
   email: z.string().trim().email().transform(email => email.toLowerCase()),
   username: z.string().trim().min(3).max(50).nullable(),

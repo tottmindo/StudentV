@@ -1,10 +1,7 @@
 <template>
-  <div class="min-h-screen bg-background p-6 text-text dark:bg-background-dark dark:text-text-dark">
+  <div class="events-page min-h-screen bg-background p-6 text-text dark:bg-background-dark dark:text-text-dark lg:min-h-0 lg:overflow-hidden">
     <div class="events-workspace grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-      <section class="flex h-[32rem] min-h-0 flex-col overflow-hidden rounded-lg border border-gray-200 bg-surface p-5 dark:border-gray-700 dark:bg-surface-dark">
-        <div class="mb-4 flex items-center">
-          <h2 class="text-2xl font-bold">{{ t('eventsView.calendar') }}</h2>
-        </div>
+      <section class="flex h-[32rem] min-h-0 flex-col overflow-hidden rounded-lg border border-gray-200 bg-surface p-5 dark:border-gray-700 dark:bg-surface-dark lg:h-full">
         <div class="min-h-0 w-full max-w-full flex-1">
                 <CalendarComponent
                   :marked-dates="filteredEventDates"
@@ -12,10 +9,27 @@
                   :external-dates="filteredExternalDates"
                   :nation-dates="filteredNationDates"
                   @day-click="onCalendarDayClick"
+                  @month-change="onCalendarMonthChange"
                   class="w-full h-full"
                 />
         </div>
-        <div class="mt-4 flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-background/60 p-2 dark:border-gray-700 dark:bg-background-dark/60" role="group" :aria-label="t('eventsView.filter')">
+        <div class="mt-4 flex flex-wrap items-center justify-end gap-2">
+          <button
+            type="button"
+            class="cursor-pointer rounded-lg border px-3 py-2 text-sm font-semibold transition-colors"
+            :class="showHistoricalEvents ? 'border-gray-700 bg-gray-700 text-white dark:border-gray-200 dark:bg-gray-200 dark:text-gray-900' : 'border-gray-300 bg-surface text-text hover:bg-gray-100 dark:border-gray-600 dark:bg-surface-dark dark:text-text-dark dark:hover:bg-gray-800'"
+            :aria-pressed="showHistoricalEvents"
+            @click="showHistoricalEvents = !showHistoricalEvents"
+          >
+            {{ t(showHistoricalEvents ? 'eventsView.hideHistory' : 'eventsView.showHistory') }}
+          </button>
+
+          <button type="button" class="cursor-pointer rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90" @click="openCreateEvent()">
+            {{ t('eventsView.add') }}
+          </button>
+        </div>
+
+        <div class="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-background/60 p-2 dark:border-gray-700 dark:bg-background-dark/60" role="group" :aria-label="t('eventsView.filter')">
           <span class="px-1 text-xs font-bold uppercase tracking-wide opacity-60">{{ t('eventsView.filter') }}</span>
 
           <button type="button" @click="filters.events = !filters.events" class="cursor-pointer rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors" :class="filters.events ? 'border-accent bg-accent text-white' : 'border-gray-300 bg-surface text-text opacity-60 dark:border-gray-600 dark:bg-surface-dark dark:text-text-dark'" :aria-pressed="filters.events">
@@ -34,18 +48,28 @@
             {{ t('eventsView.nationEvent') }}
           </button>
 
-          <button type="button" @click="showHistoricalEvents = !showHistoricalEvents" class="cursor-pointer rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors" :class="showHistoricalEvents ? 'border-gray-700 bg-gray-700 text-white dark:border-gray-200 dark:bg-gray-200 dark:text-gray-900' : 'border-gray-300 bg-surface text-text opacity-60 dark:border-gray-600 dark:bg-surface-dark dark:text-text-dark'" :aria-pressed="showHistoricalEvents">
-            {{ t(showHistoricalEvents ? 'eventsView.hideHistory' : 'eventsView.showHistory') }}
-          </button>
         </div>
       </section>
 
-      <section class="flex min-h-0 flex-col overflow-hidden rounded-lg border border-gray-200 bg-surface p-5 dark:border-gray-700 dark:bg-surface-dark">
-        <h2 class="shrink-0 text-xl font-semibold" :class="showHistoricalEvents ? 'mb-1' : 'mb-4'">{{ t(showHistoricalEvents ? 'eventsView.all' : 'eventsView.upcoming') }}</h2>
-        <p v-if="showHistoricalEvents" class="mb-4 text-sm opacity-65">{{ t('eventsView.historyHelp') }}</p>
-        <ul v-if="filteredEvents.length" class="min-h-0 flex-1 list-none overflow-y-auto pr-2 [scrollbar-gutter:stable]">
+      <section class="flex h-[32rem] min-h-0 flex-col overflow-hidden rounded-lg border border-gray-200 bg-surface p-5 dark:border-gray-700 dark:bg-surface-dark lg:h-full">
+        <div class="mb-4 flex shrink-0 items-start justify-between gap-3">
+          <h2 class="text-xl font-semibold">
+            {{ showMultiDayEvents ? t('eventsView.multiDayEventsTitle', { month: selectedMonthLabel }) : t(showHistoricalEvents ? 'eventsView.all' : 'eventsView.upcoming') }}
+          </h2>
+          <button
+            type="button"
+            class="inline-flex h-10 w-52 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-accent px-3 text-center text-sm font-semibold leading-tight text-accent transition-colors hover:bg-accent hover:text-white disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-text disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-text dark:disabled:border-gray-600 dark:disabled:text-text-dark dark:disabled:hover:text-text-dark"
+            :disabled="!showMultiDayEvents && !monthlyMultiDayEvents.length"
+            @click="showMultiDayEvents = !showMultiDayEvents"
+          >
+            {{ showMultiDayEvents ? t('eventsView.backToUpcoming') : t('eventsView.multiDayEvents', { count: monthlyMultiDayEvents.length }) }}
+          </button>
+        </div>
+        <p v-if="showMultiDayEvents" class="mb-4 text-sm opacity-65">{{ t('eventsView.multiDayEventsHelp') }}</p>
+        <p v-else-if="showHistoricalEvents" class="mb-4 text-sm opacity-65">{{ t('eventsView.historyHelp') }}</p>
+        <ul v-if="displayedEvents.length" class="min-h-0 flex-1 list-none overflow-y-auto pr-2 [scrollbar-gutter:stable]">
           <li
-            v-for="event in filteredEvents"
+            v-for="event in displayedEvents"
             :key="event.id"
             @click="openEventDetail(event)"
             class="cursor-pointer flex flex-col gap-2 py-3 border-b border-gray-100 dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800"
@@ -65,7 +89,7 @@
               <!-- Date + type -->
               <div class="text-sm opacity-70 text-right">
                 <div>
-                  {{ formatDateRange(event.startDate, event.endDate) }}
+                  {{ showMultiDayEvents ? formatDateRange(event.startDate, event.endDate) : isMultiDayEvent(event) ? formatDate(event.startDate, false) : formatDateRange(event.startDate, event.endDate) }}
                 </div>
 
                 <div class="uppercase text-xs mt-1">
@@ -105,14 +129,19 @@
         </ul>
 
         <p v-else class="text-sm opacity-70">
-          {{ t(showHistoricalEvents ? 'eventsView.none' : 'eventsView.noneUpcoming') }}
+          {{ showMultiDayEvents ? t('eventsView.noneMultiDay') : t(showHistoricalEvents ? 'eventsView.none' : 'eventsView.noneUpcoming') }}
         </p>
       </section>
     </div>
 
     <ModalComponent v-model="showEventDetailsModal">
       <div class="space-y-4">
-        <h3 class="text-xl font-semibold">{{ eventModalTitle }}</h3>
+        <div class="flex items-center justify-between gap-4">
+          <h3 class="text-xl font-semibold">{{ eventModalTitle }}</h3>
+          <button v-if="selectedEventDay" type="button" class="shrink-0 cursor-pointer rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90" @click="openCreateEvent(selectedEventDay)">
+            {{ t('eventsView.addOnThisDay') }}
+          </button>
+        </div>
         <template v-if="selectedEvents.length || selectedCleaningWeeks.length || selectedExternalEvents.length || selectedNationEvents.length">
           <div
             v-for="event in selectedEvents"
@@ -264,8 +293,9 @@
       </div>
     </ModalComponent>
 
-    <section class="bg-surface dark:bg-surface-dark rounded-lg p-5 border border-gray-200 dark:border-gray-700 mt-6">
-      <h2 class="text-xl font-semibold mb-4">{{ t('eventsView.create') }}</h2>
+    <ModalComponent v-model="showCreateEventModal">
+      <div class="space-y-4">
+      <h2 class="text-xl font-semibold">{{ t('eventsView.create') }}</h2>
       <form @submit.prevent="addEvent" class="grid gap-4">
         <label class="grid gap-1">
           <span class="font-semibold">{{ t('eventsView.title') }}</span>
@@ -350,7 +380,8 @@
 
         <button type="submit" class="w-fit px-4 py-2 bg-accent text-background-light rounded cursor-pointer hover:opacity-90">{{ t('eventsView.add') }}</button>
       </form>
-    </section>
+      </div>
+    </ModalComponent>
   </div>
 </template>
 
@@ -359,7 +390,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import CalendarComponent from '@/features/events/components/CalendarComponent.vue'
 import ModalComponent from '@/shared/components/ModalComponent.vue'
 import { getSocket } from '@/shared/composables/socket'
-import { dateIsInRange, getDateKeysInRange, startOfLocalDay, toDateKey } from '@/features/events/calendarDates'
+import { dateIsInRange, eventHasNotEnded, getDateKeysInRange, startOfLocalDay, toDateKey } from '@/features/events/calendarDates'
 import { useRoute } from 'vue-router'
 import type { CalendarEvent } from '@/types'
 import type { CleaningWeek } from '@/features/cleaning/types'
@@ -381,6 +412,9 @@ const filters = ref({
   nation: true
 })
 const showHistoricalEvents = ref(false)
+const showMultiDayEvents = ref(false)
+const today = new Date()
+const selectedCalendarMonth = ref({ year: today.getFullYear(), month: today.getMonth() + 1 })
 
 const externalEvents = ref<ExternalEvent[]>([]);
 const nationEvents = ref<NationEvent[]>([])
@@ -430,7 +464,7 @@ const externalEventDates = computed(() => {
   const dates = new Set<string>()
 
   externalEvents.value
-    .filter((event) => showHistoricalEvents.value || displayEventHasNotEnded(event))
+    .filter((event) => !isMultiDayEvent(event) && (showHistoricalEvents.value || eventHasNotEnded(event.startDate, event.endDate)))
     .forEach((event) => {
       if (!event.startDate) return
 
@@ -449,7 +483,7 @@ const nationEventDates = computed(() => {
   const dates = new Set<string>()
 
   nationEvents.value
-    .filter((event) => showHistoricalEvents.value || displayEventHasNotEnded(event))
+    .filter((event) => !isMultiDayEvent(event) && (showHistoricalEvents.value || eventHasNotEnded(event.startDate, event.endDate)))
     .forEach((event) => {
       if (!event.startDate) return
 
@@ -467,26 +501,18 @@ const nationEventDates = computed(() => {
 const parseEventDate = (dateString?: string) => {
   if (!dateString) return undefined
 
-  const normalized = dateString
-    .replace(' ', 'T')
-    .replace('Z', '')
+  const normalized = dateString.replace(' ', 'T')
 
   return new Date(normalized)
 }
 
-const eventHasNotEnded = (event: CalendarEvent) => {
-  const end = parseEventDate(event.endDate || event.startDate)
-  if (!end) return false
-  return end.getTime() >= Date.now()
-}
-
-const displayEventHasNotEnded = (event: { startDate: string; endDate?: string }) => {
-  const end = parseEventDate(event.endDate || event.startDate)
-  return Boolean(end && end.getTime() >= Date.now())
+const isMultiDayEvent = (event: { startDate: string; endDate?: string }) => {
+  if (!event.endDate) return false
+  return event.startDate.slice(0, 10) !== event.endDate.slice(0, 10)
 }
 
 const allEvents = computed(() => {
-  return upcomingEvents.value.filter((event) => showHistoricalEvents.value || eventHasNotEnded(event)).sort((a, b) => {
+  return upcomingEvents.value.filter((event) => showHistoricalEvents.value || eventHasNotEnded(event.startDate, event.endDate)).sort((a, b) => {
     const aStart = parseEventDate(a.startDate)
     const bStart = parseEventDate(b.startDate)
     if (!aStart || !bStart) return 0
@@ -497,7 +523,7 @@ const allEvents = computed(() => {
 const allEventDates = computed(() => {
   const dates = new Set<string>()
 
-  allEvents.value.forEach((event) => {
+  allEvents.value.filter((event) => !isMultiDayEvent(event)).forEach((event) => {
     if (!event.startDate) return
 
     const start = event.startDate
@@ -538,7 +564,7 @@ const filteredEvents = computed<DisplayEvent[]>(() => {
   // 1. Process Internal Events (if filter is active)
   if (filters.value.events) {
     upcomingEvents.value.forEach((event, index) => {
-      if (showHistoricalEvents.value || eventHasNotEnded(event)) {
+      if (showHistoricalEvents.value || eventHasNotEnded(event.startDate, event.endDate)) {
         const uniqueKey = `${event.title}-${event.startDate}`
         if (!seenEventKeys.has(uniqueKey)) {
           seenEventKeys.add(uniqueKey)
@@ -560,8 +586,7 @@ const filteredEvents = computed<DisplayEvent[]>(() => {
   // 2. Process External Events (if filter is active)
   if (filters.value.external) {
     externalEvents.value.forEach((event, index) => {
-      const end = parseEventDate(event.endDate || event.startDate)
-      if (end && (showHistoricalEvents.value || end.getTime() >= now)) {
+      if (showHistoricalEvents.value || eventHasNotEnded(event.startDate, event.endDate, new Date(now))) {
         const uniqueKey = `${event.title}-${event.startDate}`
         if (!seenEventKeys.has(uniqueKey)) {
           seenEventKeys.add(uniqueKey)
@@ -584,9 +609,7 @@ const filteredEvents = computed<DisplayEvent[]>(() => {
   // 3. Process Nationsguiden Events
   if (filters.value.nation) {
     nationEvents.value.forEach((event, index) => {
-      const end = parseEventDate(event.endDate || event.startDate)
-
-      if (end && (showHistoricalEvents.value || end.getTime() >= now)) {
+      if (showHistoricalEvents.value || eventHasNotEnded(event.startDate, event.endDate, new Date(now))) {
         const uniqueKey = `nation-${event.title}-${event.startDate}`
 
         if (!seenEventKeys.has(uniqueKey)) {
@@ -620,7 +643,32 @@ const filteredEvents = computed<DisplayEvent[]>(() => {
     })
 })
 
+const monthlyMultiDayEvents = computed(() => {
+  const { year, month } = selectedCalendarMonth.value
+  const monthStart = new Date(year, month - 1, 1).getTime()
+  const monthEnd = new Date(year, month, 1).getTime()
+
+  return filteredEvents.value.filter((event) => {
+    if (!isMultiDayEvent(event)) return false
+    const start = startOfLocalDay(event.startDate).getTime()
+    const end = startOfLocalDay(event.endDate || event.startDate).getTime()
+    return start < monthEnd && end >= monthStart
+  })
+})
+
+const displayedEvents = computed(() => showMultiDayEvents.value ? monthlyMultiDayEvents.value : filteredEvents.value)
+
+const selectedMonthLabel = computed(() => new Intl.DateTimeFormat(locale.value, {
+  month: 'long',
+  year: 'numeric'
+}).format(new Date(selectedCalendarMonth.value.year, selectedCalendarMonth.value.month - 1, 1)))
+
+const onCalendarMonthChange = (value: { year: number; month: number }) => {
+  selectedCalendarMonth.value = value
+}
+
 const showEventDetailsModal = ref(false)
+const showCreateEventModal = ref(false)
 const selectedEvents = ref<CalendarEvent[]>([])
 const selectedCleaningWeeks = ref<CleaningWeek[]>([])
 const selectedEventDay = ref('')
@@ -647,7 +695,7 @@ const openEventDetails = (events: CalendarEvent[], dayKey = '', forceEvents = fa
 
     selectedExternalEvents.value = (dayKey && filters.value.external)
       ? externalEvents.value.filter((event) =>
-          dateIsInRange(
+          !isMultiDayEvent(event) && (showHistoricalEvents.value || eventHasNotEnded(event.startDate, event.endDate)) && dateIsInRange(
             dayKey,
             event.startDate,
             event.endDate || event.startDate
@@ -657,7 +705,7 @@ const openEventDetails = (events: CalendarEvent[], dayKey = '', forceEvents = fa
 
     selectedNationEvents.value = (dayKey && filters.value.nation)
       ? nationEvents.value.filter((event) =>
-          dateIsInRange(
+          !isMultiDayEvent(event) && (showHistoricalEvents.value || eventHasNotEnded(event.startDate, event.endDate)) && dateIsInRange(
             dayKey,
             event.startDate,
             event.endDate || event.startDate
@@ -671,7 +719,7 @@ const openEventDetails = (events: CalendarEvent[], dayKey = '', forceEvents = fa
 
 const onCalendarDayClick = (dateKey: string) => {
   const matchingEvents = allEvents.value.filter((event) => {
-    if (!event.startDate) return false
+    if (!event.startDate || isMultiDayEvent(event)) return false
 
     return dateIsInRange(
       dateKey,
@@ -794,6 +842,23 @@ const newEvent = ref<Partial<CalendarEvent> & {
   inviteFloor: false
 })
 
+const openCreateEvent = (date = '') => {
+  newEvent.value = {
+    title: '',
+    description: '',
+    active: true,
+    type: 'SOCIAL',
+    startDateLocal: date,
+    endDateLocal: '',
+    startTime: '',
+    endTime: '',
+    hasTime: false,
+    inviteFloor: false
+  }
+  showEventDetailsModal.value = false
+  showCreateEventModal.value = true
+}
+
 const toDbDatetime = (date: string, time?: string) => {
   if (!date) return ''
 
@@ -881,6 +946,7 @@ const end = newEvent.value.endDateLocal
   newEvent.value.active = true
   newEvent.value.type = 'SOCIAL'
   newEvent.value.inviteFloor = false
+  showCreateEventModal.value = false
 }
 
 const respondToInvitation = (event: CalendarEvent, accepted: boolean) => {
@@ -1049,8 +1115,18 @@ const filteredNationDates = computed(() => {
 
 <style scoped>
 @media (min-width: 1024px) {
+  .events-page {
+    height: calc(100dvh - 7.75rem - env(safe-area-inset-top));
+  }
+
   .events-workspace {
-    height: calc(100dvh - 7rem);
+    height: 100%;
+  }
+}
+
+@media (min-width: 1280px) {
+  .events-page {
+    height: calc(100dvh - 4rem - env(safe-area-inset-top));
   }
 }
 </style>

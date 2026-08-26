@@ -78,7 +78,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['day-click'])
+const emit = defineEmits(['day-click', 'month-change'])
 
 const today = new Date()
 const viewDate = ref(new Date(today.getFullYear(), today.getMonth(), 1))
@@ -170,6 +170,7 @@ function goToPrevMonth() {
     viewDate.value.getMonth() - 1,
     1
   )
+  emitMonthChange()
 }
 
 function goToNextMonth() {
@@ -178,5 +179,13 @@ function goToNextMonth() {
     viewDate.value.getMonth() + 1,
     1
   )
+  emitMonthChange()
+}
+
+function emitMonthChange() {
+  emit('month-change', {
+    year: viewDate.value.getFullYear(),
+    month: viewDate.value.getMonth() + 1
+  })
 }
 </script>

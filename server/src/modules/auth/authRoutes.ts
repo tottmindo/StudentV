@@ -23,16 +23,23 @@
  * @throws {401} - Authentication failed
  */
 import express from "express";
-import { addRoomsToDorm, adminResetResidentPassword, completeTemporaryPassword, createDormFloors, generateTemporaryPassword, getAccount, registerUser, loginUser, requestPasswordReset, resetPasswordWithToken, updateAccount, updatePassword, listDormsForAdmin, listUsersForAdmin, updateUserForAdmin } from "./authService.js";
-import { addDormRoomsSchema, adminResetPasswordSchema, adminUpdateUserSchema, changePasswordSchema, createAdminEventSchema, createDormFloorSchema, createResidentSchema, emailSchema, registerSchema, loginSchema, resetPasswordSchema, updateAccountSchema, updatePasswordSchema } from "./authSchemas.js";
+import multer from "multer";
+import { addRoomsToDorm, adminResetResidentPassword, completeTemporaryPassword, createDormFloors, generateTemporaryPassword, getAccount, registerUser, loginUser, requestPasswordReset, resetPasswordWithToken, scheduleVacantRoomDeactivation, updateAccount, updatePassword, listDormsForAdmin, listUsersForAdmin, updateUserForAdmin } from "./authService.js";
+import { addDormRoomsSchema, adminResetPasswordSchema, adminUpdateUserSchema, changePasswordSchema, createAdminEventSchema, createDormFloorSchema, createResidentSchema, emailSchema, registerSchema, loginSchema, resetPasswordSchema, residentImportApplySchema, updateAccountSchema, updatePasswordSchema } from "./authSchemas.js";
 import { validate } from "../../shared/middleware/validate.js";
 import { authenticate, AuthenticatedRequest, requireAdmin, requireCompletedAccount, requireResearchAccess } from "../../shared/middleware/authenticate.js";
 import { sendResidentWelcomeEmail } from "../../integrations/email/emailService.js";
 import { generateCleaningWeeks } from "../../jobs/scheduler.js";
 import { createTargetedAdminEvent } from "../events/eventService.js";
 import { getIO } from "../../infrastructure/socketManager.js";
+import { previewResidentWorkbook } from "./residentImportService.js";
 
 const router = express.Router();
+const residentWorkbookUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  fileFilter: (_req, file, callback) => callback(null, /\.xlsx$/i.test(file.originalname)),
+});
 
 router.post("/register", authenticate, requireCompletedAccount, requireAdmin, validate(registerSchema), async (req: AuthenticatedRequest, res) => {
   try {
@@ -141,6 +148,35 @@ router.post("/admin/dorms/:dormID/rooms", authenticate, requireCompletedAccount,
 router.get("/admin/users", authenticate, requireCompletedAccount, requireAdmin, async (_req, res) => {
   try { res.json(await listUsersForAdmin()); }
   catch { res.status(500).json({ error: "Could not load users." }); }
+});
+
+router.post("/admin/resident-import/preview", authenticate, requireCompletedAccount, requireAdmin, residentWorkbookUpload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) { res.status(400).json({ error: "Select an .xlsx workbook." }); return; }
+    res.json(await previewResidentWorkbook(req.file.buffer));
+  } catch (error: any) {
+    res.status(400).json({ error: error.message || "Could not read the workbook." });
+  }
+});
+
+router.post("/admin/resident-import/apply", authenticate, requireCompletedAccount, requireAdmin, validate(residentImportApplySchema), async (req, res) => {
+  const results = [];
+  for (const row of req.body.rows) {
+    try {
+      if (row.vacant) {
+        const scheduled = await scheduleVacantRoomDeactivation(row.roomID, row.dormID);
+        results.push({ roomID: row.roomID, status: "vacant", scheduled });
+      } else {
+        const temporaryPassword = generateTemporaryPassword();
+        await registerUser(row.roomID, row.dormID, "STUDENT", row.email, temporaryPassword, true, true,
+          () => sendResidentWelcomeEmail(row.email, row.roomID, temporaryPassword));
+        results.push({ roomID: row.roomID, email: row.email, status: "created" });
+      }
+    } catch (error: any) {
+      results.push({ roomID: row.roomID, email: row.email, status: "failed", error: error.message || "Update failed." });
+    }
+  }
+  res.json({ results, succeeded: results.filter(result => result.status !== "failed").length, failed: results.filter(result => result.status === "failed").length });
 });
 
 router.post("/admin/cleaning-weeks/generate", authenticate, requireCompletedAccount, requireAdmin, async (_req, res) => {
