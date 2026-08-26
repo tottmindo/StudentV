@@ -77,7 +77,8 @@
     "chats": "Chattar",
     "waterAnalytics": "Vattenanalys",
     "surveys": "Enkäter",
-    "account": "Kontoinställningar"
+    "account": "Kontoinställningar",
+    "information" : "information"
   },
   "notifications": {
     "noneLabel": "Inga aviseringar",
@@ -885,5 +886,26 @@
     "changing": "Byter…",
     "mismatch": "De nya lösenorden stämmer inte överens.",
     "passwordError": "Det gick inte att byta lösenord."
+  },
+  "information": {
+    "information": "Information",
+    "communityInformation": "Information för boende",
+    "communityInformationText": "Här hittar du viktig information, regler och användbara länkar för dig som bor här.",
+    "livingHere": "Att bo här",
+    "livingHereText": "Information om boendet, regler, inflyttning och utflyttning.",
+    "generalLivingInfo": "Allmän boendeinformation",
+    "rulesOfProcedure": "Ordningsregler",
+    "movingIn": "Inflyttning",
+    "movingOut": "Utflyttning",
+    "emergencies": "Akuta ärenden",
+    "emergenciesText": "Information om vad du ska göra vid akuta problem eller om något behöver åtgärdas snabbt.",
+    "urgentMatters": "Akuta ärenden",
+    "errorReport": "Felanmälan",
+    "contact": "Kontakt",
+    "contactText": "Hitta kontaktuppgifter, telefonnummer och öppettider för Norrlandsgårdarna.",
+    "numberOpeningHours": "Telefonnummer och öppettider",
+    "usefullLinks": "Användbara länkar",
+    "usefullLinksText": "Här hittar du länkar till andra webbplatser och resurser som kan vara användbara.",
+    "getInvolved": "Engagera dig"
   }
 }

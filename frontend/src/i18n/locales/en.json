@@ -77,7 +77,8 @@
     "chats": "Chats",
     "waterAnalytics": "Water analytics",
     "surveys": "Surveys",
-    "account": "Account settings"
+    "account": "Account settings",
+    "information" : "information"
   },
   "notifications": {
     "noneLabel": "No notifications",
@@ -885,5 +886,26 @@
     "changing": "Changing…",
     "mismatch": "The new passwords do not match.",
     "passwordError": "Could not change your password."
+  },
+  "information": {
+    "information": "Information",
+    "communityInformation": "Resident Information",
+    "communityInformationText": "Here you can find important information, rules, and useful links for residents.",
+    "livingHere": "Living Here",
+    "livingHereText": "Information about your accommodation, rules, moving in, and moving out.",
+    "generalLivingInfo": "General Resident Information",
+    "rulesOfProcedure": "House Rules",
+    "movingIn": "Moving In",
+    "movingOut": "Moving Out",
+    "emergencies": "Urgent Matters",
+    "emergenciesText": "Information about what to do in case of urgent problems or when something needs immediate attention.",
+    "urgentMatters": "Urgent Matters",
+    "errorReport": "Report a Fault",
+    "contact": "Contact",
+    "contactText": "Find contact details, phone numbers, and opening hours for Norrlandsgårdarna.",
+    "numberOpeningHours": "Phone Number and Opening Hours",
+    "usefullLinks": "Useful Links",
+    "usefullLinksText": "Here you can find links to other websites and resources that may be useful.",
+    "getInvolved": "Get Involved"
   }
 }
