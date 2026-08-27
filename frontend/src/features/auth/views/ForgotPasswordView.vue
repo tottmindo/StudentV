@@ -1,16 +1,16 @@
 <template>
-  <main class="flex min-h-screen items-center justify-center px-4">
-    <form class="w-full max-w-md space-y-4 rounded-2xl bg-surface p-8 shadow-lg dark:bg-surface-dark" @submit.prevent="submit">
-      <h1 class="text-2xl font-bold">{{ t('auth.forgotTitle') }}</h1>
-      <p class="text-sm opacity-75">{{ t('auth.forgotHelp') }}</p>
+  <main class="flex min-h-screen items-center justify-center px-4 py-6 sm:px-6">
+    <form class="w-full min-w-0 max-w-md space-y-4 rounded-2xl bg-surface p-5 shadow-lg dark:bg-surface-dark sm:p-8" @submit.prevent="submit">
+      <h1 class="break-words text-2xl font-bold">{{ t('auth.forgotTitle') }}</h1>
+      <p class="break-words text-sm opacity-75">{{ t('auth.forgotHelp') }}</p>
       <input v-model.trim="email" type="email" autocomplete="email" required
         class="w-full rounded border border-border p-3" placeholder="resident@example.com" />
       <button :disabled="submitting" class="w-full rounded bg-accent p-3 font-semibold text-white disabled:opacity-50">
         {{ submitting ? t('auth.sending') : t('auth.sendReset') }}
       </button>
-      <p v-if="message" class="text-center text-green-600" role="status">{{ message }}</p>
-      <p v-if="error" class="text-center text-red-500" role="alert">{{ error }}</p>
-      <router-link to="/" class="block text-center text-sm text-accent hover:underline">{{ t('auth.backToLogin') }}</router-link>
+      <p v-if="message" class="break-words text-center text-green-600" role="status">{{ message }}</p>
+      <p v-if="error" class="break-words text-center text-red-500" role="alert">{{ error }}</p>
+      <router-link to="/" class="flex min-h-11 items-center justify-center text-center text-sm text-accent hover:underline">{{ t('auth.backToLogin') }}</router-link>
     </form>
   </main>
 </template>

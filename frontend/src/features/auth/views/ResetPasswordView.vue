@@ -1,7 +1,7 @@
 <template>
-  <main class="flex min-h-screen items-center justify-center px-4">
-    <form class="w-full max-w-md space-y-4 rounded-2xl bg-surface p-8 shadow-lg dark:bg-surface-dark" @submit.prevent="submit">
-      <h1 class="text-2xl font-bold">{{ t('auth.resetTitle') }}</h1>
+  <main class="flex min-h-screen items-center justify-center px-4 py-6 sm:px-6">
+    <form class="w-full min-w-0 max-w-md space-y-4 rounded-2xl bg-surface p-5 shadow-lg dark:bg-surface-dark sm:p-8" @submit.prevent="submit">
+      <h1 class="break-words text-2xl font-bold">{{ t('auth.resetTitle') }}</h1>
       <input v-model="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required
         class="w-full rounded border border-border p-3" :placeholder="t('auth.newPasswordPlaceholder')" />
       <input v-model="confirmation" type="password" autocomplete="new-password" minlength="12" maxlength="128" required
@@ -9,9 +9,9 @@
       <button :disabled="submitting || !token" class="w-full rounded bg-accent p-3 font-semibold text-white disabled:opacity-50">
         {{ submitting ? t('common.saving') : t('auth.setPassword') }}
       </button>
-      <p v-if="message" class="text-center text-green-600" role="status">{{ message }}</p>
-      <p v-if="error" class="text-center text-red-500" role="alert">{{ error }}</p>
-      <router-link v-if="message" to="/" class="block text-center text-accent hover:underline">{{ t('auth.continueLogin') }}</router-link>
+      <p v-if="message" class="break-words text-center text-green-600" role="status">{{ message }}</p>
+      <p v-if="error" class="break-words text-center text-red-500" role="alert">{{ error }}</p>
+      <router-link v-if="message" to="/" class="flex min-h-11 items-center justify-center text-center text-accent hover:underline">{{ t('auth.continueLogin') }}</router-link>
     </form>
   </main>
 </template>

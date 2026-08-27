@@ -1,6 +1,6 @@
 <template>
-  <div class="relative h-56 w-full xl:h-64">
-    <canvas ref="canvas" :aria-label="t('charts.dailyFloorAria')"></canvas>
+  <div class="relative h-56 w-full min-w-0 max-w-full overflow-hidden xl:h-64">
+    <canvas ref="canvas" class="max-w-full" :aria-label="t('charts.dailyFloorAria')"></canvas>
   </div>
 </template>
 

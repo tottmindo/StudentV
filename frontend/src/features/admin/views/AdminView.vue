@@ -1,66 +1,66 @@
 <template>
-  <main class="mx-auto min-h-screen max-w-7xl space-y-6 px-4 py-6">
+  <main class="mx-auto min-h-screen w-full min-w-0 max-w-7xl space-y-6 px-4 py-6">
     <header v-if="activeSection" class="flex flex-wrap items-center justify-between gap-4">
       <div>
-        <h1 class="text-3xl font-bold">{{ sectionTitle }}</h1>
+        <h1 class="break-words text-2xl font-bold sm:text-3xl">{{ sectionTitle }}</h1>
       </div>
       <button class="rounded-lg border border-border px-4 py-2 font-semibold" @click="activeSection = null">{{ t('adminMain.back') }}</button>
     </header>
 
     <div v-if="isResearcher" class="grid gap-6 md:grid-cols-2">
-      <router-link to="/admin/water-analytics" class="rounded-2xl bg-surface p-8 text-left shadow-lg transition hover:-translate-y-1 hover:shadow-xl dark:bg-surface-dark"><div class="text-4xl">📊</div><h2 class="mt-5 text-2xl font-bold">{{ t('nav.waterAnalytics') }}</h2><p class="mt-2 opacity-75">{{ t('adminMain.waterHelp') }}</p></router-link>
-      <router-link to="/survey" class="rounded-2xl bg-surface p-8 text-left shadow-lg transition hover:-translate-y-1 hover:shadow-xl dark:bg-surface-dark"><div class="text-4xl">≡</div><h2 class="mt-5 text-2xl font-bold">{{ t('nav.surveys') }}</h2><p class="mt-2 opacity-75">{{ t('topbar.surveyDescription') }}</p></router-link>
-      <router-link to="/admin/app-usage" class="rounded-2xl bg-surface p-8 text-left shadow-lg transition hover:-translate-y-1 hover:shadow-xl dark:bg-surface-dark"><div class="text-4xl">📈</div><h2 class="mt-5 text-2xl font-bold">{{ t('usageAdmin.title') }}</h2><p class="mt-2 opacity-75">{{ t('adminMain.usageHelp') }}</p></router-link>
+      <router-link to="/admin/water-analytics" class="min-w-0 break-words rounded-2xl bg-surface p-5 text-left shadow-lg transition hover:-translate-y-1 hover:shadow-xl dark:bg-surface-dark sm:p-8"><div class="text-4xl">📊</div><h2 class="mt-5 text-xl font-bold sm:text-2xl">{{ t('nav.waterAnalytics') }}</h2><p class="mt-2 opacity-75">{{ t('adminMain.waterHelp') }}</p></router-link>
+      <router-link to="/survey" class="min-w-0 break-words rounded-2xl bg-surface p-5 text-left shadow-lg transition hover:-translate-y-1 hover:shadow-xl dark:bg-surface-dark sm:p-8"><div class="text-4xl">≡</div><h2 class="mt-5 text-xl font-bold sm:text-2xl">{{ t('nav.surveys') }}</h2><p class="mt-2 opacity-75">{{ t('topbar.surveyDescription') }}</p></router-link>
+      <router-link to="/admin/app-usage" class="min-w-0 break-words rounded-2xl bg-surface p-5 text-left shadow-lg transition hover:-translate-y-1 hover:shadow-xl dark:bg-surface-dark sm:p-8"><div class="text-4xl">📈</div><h2 class="mt-5 text-xl font-bold sm:text-2xl">{{ t('usageAdmin.title') }}</h2><p class="mt-2 opacity-75">{{ t('adminMain.usageHelp') }}</p></router-link>
     </div>
     <div v-else-if="!activeSection" class="grid gap-6 md:grid-cols-2">
-      <router-link to="/admin/water-analytics" class="rounded-2xl bg-surface p-8 text-left shadow-lg transition hover:-translate-y-1 hover:shadow-xl dark:bg-surface-dark">
+      <router-link to="/admin/water-analytics" class="min-w-0 break-words rounded-2xl bg-surface p-5 text-left shadow-lg transition hover:-translate-y-1 hover:shadow-xl dark:bg-surface-dark sm:p-8">
         <div class="text-4xl">📊</div>
-        <h2 class="mt-5 text-2xl font-bold">{{ t('nav.waterAnalytics') }}</h2>
+        <h2 class="mt-5 text-xl font-bold sm:text-2xl">{{ t('nav.waterAnalytics') }}</h2>
         <p class="mt-2 opacity-75">{{ t('adminMain.waterHelp') }}</p>
       </router-link>
-      <router-link to="/admin/app-usage" class="rounded-2xl bg-surface p-8 text-left shadow-lg transition hover:-translate-y-1 hover:shadow-xl dark:bg-surface-dark">
+      <router-link to="/admin/app-usage" class="min-w-0 break-words rounded-2xl bg-surface p-5 text-left shadow-lg transition hover:-translate-y-1 hover:shadow-xl dark:bg-surface-dark sm:p-8">
         <div class="text-4xl">📈</div>
-        <h2 class="mt-5 text-2xl font-bold">{{ t('usageAdmin.title') }}</h2>
+        <h2 class="mt-5 text-xl font-bold sm:text-2xl">{{ t('usageAdmin.title') }}</h2>
         <p class="mt-2 opacity-75">{{ t('adminMain.usageHelp') }}</p>
       </router-link>
-      <router-link to="/admin/events" class="rounded-2xl bg-surface p-8 text-left shadow-lg transition hover:-translate-y-1 hover:shadow-xl dark:bg-surface-dark">
+      <router-link to="/admin/events" class="min-w-0 break-words rounded-2xl bg-surface p-5 text-left shadow-lg transition hover:-translate-y-1 hover:shadow-xl dark:bg-surface-dark sm:p-8">
         <div class="text-4xl">📅</div>
-        <h2 class="mt-5 text-2xl font-bold">{{ t('adminEvents.title') }}</h2>
+        <h2 class="mt-5 text-xl font-bold sm:text-2xl">{{ t('adminEvents.title') }}</h2>
         <p class="mt-2 opacity-75">{{ t('adminEvents.cardHelp') }}</p>
       </router-link>
-      <button class="rounded-2xl bg-surface p-8 text-left shadow-lg transition hover:-translate-y-1 hover:shadow-xl dark:bg-surface-dark" @click="openSection('users')">
+      <button class="min-w-0 break-words rounded-2xl bg-surface p-5 text-left shadow-lg transition hover:-translate-y-1 hover:shadow-xl dark:bg-surface-dark sm:p-8" @click="openSection('users')">
         <div class="text-4xl">👥</div>
-        <h2 class="mt-5 text-2xl font-bold">{{ t('adminMain.users') }}</h2>
+        <h2 class="mt-5 text-xl font-bold sm:text-2xl">{{ t('adminMain.users') }}</h2>
         <p class="mt-2 opacity-75">{{ t('adminMain.usersHelp') }}</p>
       </button>
-      <button class="rounded-2xl bg-surface p-8 text-left shadow-lg transition hover:-translate-y-1 hover:shadow-xl dark:bg-surface-dark" @click="openSection('sensors')">
+      <button class="min-w-0 break-words rounded-2xl bg-surface p-5 text-left shadow-lg transition hover:-translate-y-1 hover:shadow-xl dark:bg-surface-dark sm:p-8" @click="openSection('sensors')">
         <div class="text-4xl">📡</div>
-        <h2 class="mt-5 text-2xl font-bold">{{ t('adminMain.sensors') }}</h2>
+        <h2 class="mt-5 text-xl font-bold sm:text-2xl">{{ t('adminMain.sensors') }}</h2>
         <p class="mt-2 opacity-75">{{ t('adminMain.sensorsHelp') }}</p>
       </button>
-      <button class="rounded-2xl bg-surface p-8 text-left shadow-lg transition hover:-translate-y-1 hover:shadow-xl dark:bg-surface-dark" @click="openSection('buildings')">
+      <button class="min-w-0 break-words rounded-2xl bg-surface p-5 text-left shadow-lg transition hover:-translate-y-1 hover:shadow-xl dark:bg-surface-dark sm:p-8" @click="openSection('buildings')">
         <div class="text-4xl">🏠</div>
-        <h2 class="mt-5 text-2xl font-bold">{{ t('adminMain.buildings') }}</h2>
+        <h2 class="mt-5 text-xl font-bold sm:text-2xl">{{ t('adminMain.buildings') }}</h2>
         <p class="mt-2 opacity-75">{{ t('adminMain.buildingsHelp') }}</p>
       </button>
     </div>
 
     <template v-else-if="activeSection === 'users'">
-      <section class="rounded-2xl bg-surface p-6 shadow-lg dark:bg-surface-dark">
-        <div class="flex flex-wrap items-center justify-between gap-3"><div><h2 class="text-2xl font-bold">{{ t('adminMain.manageUsers') }}</h2><p class="text-sm opacity-75">{{ t('adminMain.manageUsersHelp') }}</p></div><div class="flex flex-wrap gap-3"><button class="rounded border border-accent px-4 py-2 font-semibold text-accent" @click="openResidentImport">{{ t('adminMain.updateResidents') }}</button><button class="rounded bg-accent px-4 py-2 font-semibold text-white" @click="openAddUserModal">{{ t('adminMain.addUser') }}</button><button class="rounded border border-border px-4 py-2 font-semibold" :aria-pressed="!showInactiveUsers" @click="showInactiveUsers = !showInactiveUsers">{{ t(showInactiveUsers ? 'adminMain.hideInactive' : 'adminMain.showInactive') }}</button><select v-model="filterDorm" class="rounded border border-border p-2"><option value="all">{{ t('adminMain.allDorms') }}</option><option v-for="dorm in dorms" :key="dorm.dormID" :value="String(dorm.dormID)">{{ dormLabel(dorm) }}</option></select></div></div>
-        <div class="mt-5 max-h-[32rem] overflow-auto rounded-lg border border-border/60"><table class="w-full text-left text-sm"><thead class="sticky top-0 z-10 bg-surface shadow-sm dark:bg-surface-dark"><tr class="border-b border-border"><th class="p-3">{{ t('adminMain.emailUsername') }}</th><th class="p-3">{{ t('adminMain.roomLabel') }}</th><th class="p-3">{{ t('adminMain.role') }}</th><th class="p-3">{{ t('adminMain.status') }}</th><th class="p-3"></th></tr></thead><tbody><tr v-for="user in filteredUsers" :key="user.userID" class="border-b border-border/50"><td class="p-3"><div class="font-semibold">{{ user.email }}</div><div class="opacity-70">{{ user.username || t('adminMain.setupIncomplete') }}</div></td><td class="p-3">{{ user.role === 'ADMIN' ? t('adminMain.globalAccess') : user.roomID }}</td><td class="p-3">{{ t(user.role === 'ADMIN' ? 'adminMain.administrator' : 'adminMain.student') }}</td><td class="p-3">{{ user.active ? (user.mustChangePassword ? t('adminMain.temporaryPassword') : t('common.active')) : t('common.inactive') }}</td><td class="p-3"><button class="rounded bg-accent px-3 py-2 text-white" @click="startEdit(user)">{{ t('adminMain.edit') }}</button></td></tr></tbody></table></div>
+      <section class="min-w-0 rounded-2xl bg-surface p-4 shadow-lg dark:bg-surface-dark sm:p-6">
+        <div class="flex min-w-0 flex-wrap items-center justify-between gap-3"><div class="min-w-0 break-words"><h2 class="text-xl font-bold sm:text-2xl">{{ t('adminMain.manageUsers') }}</h2><p class="text-sm opacity-75">{{ t('adminMain.manageUsersHelp') }}</p></div><div class="flex min-w-0 max-w-full flex-wrap gap-3"><button class="max-w-full whitespace-normal break-words rounded border border-accent px-4 py-2 font-semibold text-accent" @click="openResidentImport">{{ t('adminMain.updateResidents') }}</button><button class="max-w-full whitespace-normal break-words rounded bg-accent px-4 py-2 font-semibold text-white" @click="openAddUserModal">{{ t('adminMain.addUser') }}</button><button class="max-w-full whitespace-normal break-words rounded border border-border px-4 py-2 font-semibold" :aria-pressed="!showInactiveUsers" @click="showInactiveUsers = !showInactiveUsers">{{ t(showInactiveUsers ? 'adminMain.hideInactive' : 'adminMain.showInactive') }}</button><select v-model="filterDorm" class="max-w-full min-w-0 rounded border border-border p-2"><option value="all">{{ t('adminMain.allDorms') }}</option><option v-for="dorm in dorms" :key="dorm.dormID" :value="String(dorm.dormID)">{{ dormLabel(dorm) }}</option></select></div></div>
+        <div class="mt-5 max-h-[32rem] max-w-full overflow-auto rounded-lg border border-border/60"><table class="w-full min-w-[44rem] text-left text-sm"><thead class="sticky top-0 z-10 bg-surface shadow-sm dark:bg-surface-dark"><tr class="border-b border-border"><th class="p-3">{{ t('adminMain.emailUsername') }}</th><th class="p-3">{{ t('adminMain.roomLabel') }}</th><th class="p-3">{{ t('adminMain.role') }}</th><th class="p-3">{{ t('adminMain.status') }}</th><th class="p-3"></th></tr></thead><tbody><tr v-for="user in filteredUsers" :key="user.userID" class="border-b border-border/50"><td class="max-w-72 break-all p-3"><div class="font-semibold">{{ user.email }}</div><div class="break-words opacity-70">{{ user.username || t('adminMain.setupIncomplete') }}</div></td><td class="p-3">{{ user.role === 'ADMIN' ? t('adminMain.globalAccess') : user.roomID }}</td><td class="p-3">{{ t(user.role === 'ADMIN' ? 'adminMain.administrator' : 'adminMain.student') }}</td><td class="p-3">{{ user.active ? (user.mustChangePassword ? t('adminMain.temporaryPassword') : t('common.active')) : t('common.inactive') }}</td><td class="p-3"><button class="rounded bg-accent px-3 py-2 text-white" @click="startEdit(user)">{{ t('adminMain.edit') }}</button></td></tr></tbody></table></div>
       </section>
 
-      <section class="flex flex-wrap items-center justify-between gap-5 rounded-2xl bg-surface p-6 shadow-lg dark:bg-surface-dark">
-        <div class="max-w-3xl"><h2 class="text-xl font-bold">{{ t('adminMain.schedule') }}</h2><p class="mt-1 text-sm opacity-75">{{ t('adminMain.scheduleHelp') }}</p><p v-if="cleaningFeedback" class="mt-3 text-sm font-semibold" :class="cleaningFeedbackClass">{{ cleaningFeedback }}</p></div>
-        <button :disabled="isGeneratingCleaning" class="rounded-lg bg-accent px-5 py-3 font-semibold text-white disabled:opacity-50" @click="generateCleaningSchedule">{{ t(isGeneratingCleaning ? 'adminMain.checkingSchedule' : 'adminMain.generateWeeks') }}</button>
+      <section class="flex min-w-0 flex-wrap items-center justify-between gap-5 rounded-2xl bg-surface p-4 shadow-lg dark:bg-surface-dark sm:p-6">
+        <div class="min-w-0 max-w-3xl break-words"><h2 class="text-xl font-bold">{{ t('adminMain.schedule') }}</h2><p class="mt-1 text-sm opacity-75">{{ t('adminMain.scheduleHelp') }}</p><p v-if="cleaningFeedback" class="mt-3 text-sm font-semibold" :class="cleaningFeedbackClass">{{ cleaningFeedback }}</p></div>
+        <button :disabled="isGeneratingCleaning" class="max-w-full whitespace-normal break-words rounded-lg bg-accent px-5 py-3 font-semibold text-white disabled:opacity-50" @click="generateCleaningSchedule">{{ t(isGeneratingCleaning ? 'adminMain.checkingSchedule' : 'adminMain.generateWeeks') }}</button>
       </section>
     </template>
 
     <template v-else-if="activeSection === 'buildings'">
       <div class="grid gap-6 lg:grid-cols-2">
-        <section class="rounded-2xl bg-surface p-8 shadow-lg dark:bg-surface-dark">
-          <h2 class="text-2xl font-bold">{{ t('adminMain.addFloor') }}</h2>
+        <section class="min-w-0 rounded-2xl bg-surface p-5 shadow-lg dark:bg-surface-dark sm:p-8">
+          <h2 class="break-words text-xl font-bold sm:text-2xl">{{ t('adminMain.addFloor') }}</h2>
           <p class="mt-2 text-sm opacity-75">{{ t('adminMain.addFloorHelp') }}</p>
           <form class="mt-6 space-y-4" @submit.prevent="createFloor">
             <input v-model.trim="newAddress" required inputmode="numeric" pattern="[0-9]+" maxlength="255" class="w-full rounded border border-border p-3" :placeholder="t('adminMain.addressPlaceholder')" />
@@ -83,8 +83,8 @@
           </form>
         </section>
 
-        <section class="rounded-2xl bg-surface p-8 shadow-lg dark:bg-surface-dark">
-          <h2 class="text-2xl font-bold">{{ t('adminMain.addRooms') }}</h2>
+        <section class="min-w-0 rounded-2xl bg-surface p-5 shadow-lg dark:bg-surface-dark sm:p-8">
+          <h2 class="break-words text-xl font-bold sm:text-2xl">{{ t('adminMain.addRooms') }}</h2>
           <p class="mt-2 text-sm opacity-75">{{ t('adminMain.addRoomsHelp') }}</p>
           <form class="mt-6 space-y-4" @submit.prevent="addRooms">
             <select v-model.number="roomDormID" required class="w-full rounded border border-border p-3"><option disabled value="">{{ t('adminMain.selectDorm') }}</option><option v-for="dorm in dorms" :key="dorm.dormID" :value="dorm.dormID">{{ dormLabel(dorm) }}</option></select>
@@ -98,10 +98,10 @@
 
       <p v-if="buildingFeedback" class="rounded-lg bg-surface p-4 font-semibold shadow dark:bg-surface-dark" :class="buildingFeedbackClass">{{ buildingFeedback }}</p>
 
-      <section class="rounded-2xl bg-surface p-6 shadow-lg dark:bg-surface-dark">
-        <h2 class="text-2xl font-bold">{{ t('adminMain.housesAndFloors') }}</h2>
+      <section class="min-w-0 rounded-2xl bg-surface p-4 shadow-lg dark:bg-surface-dark sm:p-6">
+        <h2 class="break-words text-xl font-bold sm:text-2xl">{{ t('adminMain.housesAndFloors') }}</h2>
         <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <article v-for="dorm in dorms" :key="dorm.dormID" class="rounded-xl border border-border p-4">
+          <article v-for="dorm in dorms" :key="dorm.dormID" class="min-w-0 break-words rounded-xl border border-border p-4">
             <h3 class="font-bold">{{ t('common.houseLabel', { house: dorm.address }) }}</h3>
             <p class="mt-1 opacity-75">{{ t('survey.floor', { floor: dorm.floor }) }}</p>
             <p class="mt-3 text-sm">{{ t('adminMain.roomCount', { count: dorm.rooms.length }) }}</p>
@@ -112,15 +112,15 @@
     </template>
 
     <template v-else>
-      <section class="rounded-2xl bg-surface p-6 shadow-lg dark:bg-surface-dark">
+      <section class="min-w-0 rounded-2xl bg-surface p-4 shadow-lg dark:bg-surface-dark sm:p-6">
         <div class="flex flex-wrap items-end justify-between gap-4">
-          <div><h2 class="text-2xl font-bold">{{ t('adminMain.registeredSensors') }}</h2><p class="text-sm opacity-75">{{ t('adminMain.registeredHelp') }}</p></div>
-          <div class="flex flex-wrap gap-3">
-            <label class="text-sm font-semibold">{{ t('adminMain.house') }}<select v-model="sensorHouseFilter" class="mt-1 block min-w-44 rounded border border-border p-2 font-normal"><option value="all">{{ t('adminMain.allHouses') }}</option><option v-for="house in sensorHouses" :key="house" :value="house">{{ t('common.houseLabel', { house }) }}</option></select></label>
-            <label class="text-sm font-semibold">{{ t('adminMain.floor') }}<select v-model="sensorFloorFilter" class="mt-1 block min-w-32 rounded border border-border p-2 font-normal"><option value="all">{{ t('adminMain.allFloors') }}</option><option v-for="floor in sensorFloors" :key="floor" :value="String(floor)">{{ t('survey.floor', { floor }) }}</option></select></label>
+          <div class="min-w-0 break-words"><h2 class="text-xl font-bold sm:text-2xl">{{ t('adminMain.registeredSensors') }}</h2><p class="text-sm opacity-75">{{ t('adminMain.registeredHelp') }}</p></div>
+          <div class="flex w-full min-w-0 flex-wrap gap-3 sm:w-auto">
+            <label class="w-full min-w-0 text-sm font-semibold sm:w-auto">{{ t('adminMain.house') }}<select v-model="sensorHouseFilter" class="mt-1 block w-full min-w-0 rounded border border-border p-2 font-normal sm:min-w-44"><option value="all">{{ t('adminMain.allHouses') }}</option><option v-for="house in sensorHouses" :key="house" :value="house">{{ t('common.houseLabel', { house }) }}</option></select></label>
+            <label class="w-full min-w-0 text-sm font-semibold sm:w-auto">{{ t('adminMain.floor') }}<select v-model="sensorFloorFilter" class="mt-1 block w-full min-w-0 rounded border border-border p-2 font-normal sm:min-w-32"><option value="all">{{ t('adminMain.allFloors') }}</option><option v-for="floor in sensorFloors" :key="floor" :value="String(floor)">{{ t('survey.floor', { floor }) }}</option></select></label>
           </div>
         </div>
-        <div class="mt-5 max-h-[32rem] overflow-auto rounded-lg border border-border/60">
+        <div class="mt-5 max-h-[32rem] max-w-full overflow-auto rounded-lg border border-border/60">
           <table class="w-full min-w-[900px] text-left text-sm">
             <thead class="sticky top-0 z-10 bg-surface shadow-sm dark:bg-surface-dark"><tr class="border-b border-border"><th v-for="column in sensorColumns" :key="column.key" class="p-3"><button class="flex items-center gap-1 font-semibold" @click="sortSensors(column.key)">{{ column.label }} <span class="opacity-60">{{ sortIndicator(column.key) }}</span></button></th></tr></thead>
             <tbody>
@@ -133,12 +133,12 @@
         </div>
       </section>
 
-      <section class="rounded-2xl bg-surface p-6 shadow-lg dark:bg-surface-dark">
-        <h2 class="text-2xl font-bold">{{ t('adminMain.registerSensors') }}</h2>
+      <section class="min-w-0 rounded-2xl bg-surface p-4 shadow-lg dark:bg-surface-dark sm:p-6">
+        <h2 class="break-words text-xl font-bold sm:text-2xl">{{ t('adminMain.registerSensors') }}</h2>
         <p class="mt-2 text-sm opacity-75">{{ t('adminMain.registerHelp') }}</p>
-        <div class="mt-5 flex gap-2" role="tablist">
-          <button type="button" class="rounded-lg px-4 py-2 font-semibold" :class="sensorEntryMode === 'single' ? 'bg-accent text-white' : 'border border-border'" @click="sensorEntryMode = 'single'">{{ t('adminMain.oneSensor') }}</button>
-          <button type="button" class="rounded-lg px-4 py-2 font-semibold" :class="sensorEntryMode === 'bulk' ? 'bg-accent text-white' : 'border border-border'" @click="sensorEntryMode = 'bulk'">{{ t('adminMain.multipleSensors') }}</button>
+        <div class="mt-5 flex max-w-full flex-wrap gap-2" role="tablist">
+          <button type="button" class="max-w-full whitespace-normal break-words rounded-lg px-4 py-2 font-semibold" :class="sensorEntryMode === 'single' ? 'bg-accent text-white' : 'border border-border'" @click="sensorEntryMode = 'single'">{{ t('adminMain.oneSensor') }}</button>
+          <button type="button" class="max-w-full whitespace-normal break-words rounded-lg px-4 py-2 font-semibold" :class="sensorEntryMode === 'bulk' ? 'bg-accent text-white' : 'border border-border'" @click="sensorEntryMode = 'bulk'">{{ t('adminMain.multipleSensors') }}</button>
         </div>
         <form v-if="sensorEntryMode === 'single'" class="mt-5 grid gap-4 md:grid-cols-2" @submit.prevent="addSensors">
           <label class="text-sm font-semibold">{{ t('adminMain.devEui') }}<input v-model.trim="singleSensorDevEUI" required maxlength="16" pattern="[0-9A-Fa-f]{16}" class="mt-1 w-full rounded border border-border p-3 font-mono" placeholder="8C1F64619000228D" /></label>
@@ -152,7 +152,7 @@
           <div class="rounded-lg border border-border bg-black/[.03] p-4 text-sm dark:bg-white/[.03]"><p class="font-semibold">{{ t('adminMain.csvInstructions') }}</p><code class="mt-2 block overflow-x-auto whitespace-pre font-mono text-xs">House Number,Floor Number,Sensor Placement,Water Type,DevEUI
 14,3,Left Shower,Cold Water,8C1F64619000228D
 14,3,Left Shower,Warm Water,8C1F646190001BEA</code></div>
-          <label class="block text-sm font-semibold">{{ t('adminMain.csvFile') }}<input type="file" accept=".csv,text/csv" class="mt-1 block w-full rounded border border-border p-3 font-normal" @change="loadSensorCsvFile" /></label>
+          <label class="block min-w-0 text-sm font-semibold">{{ t('adminMain.csvFile') }}<input type="file" accept=".csv,text/csv" class="mt-1 block w-full min-w-0 max-w-full rounded border border-border p-3 font-normal" @change="loadSensorCsvFile" /></label>
           <label class="block text-sm font-semibold">{{ t('adminMain.csvData') }}<textarea v-model="sensorCsv" required rows="10" class="mt-1 w-full rounded border border-border p-3 font-mono text-sm" :placeholder="sensorCsvExample"></textarea></label>
           <p v-if="sensorCsvError" class="text-sm font-semibold text-red-500">{{ sensorCsvError }}</p>
           <p v-else-if="parsedCsvSensors.length" class="text-sm text-green-700 dark:text-green-400">{{ t('adminMain.csvReady', { count: parsedCsvSensors.length }) }}</p>
@@ -161,14 +161,14 @@
         <p v-if="sensorFeedback" class="mt-4" :class="sensorFeedbackClass">{{ sensorFeedback }}</p>
       </section>
 
-      <section class="flex flex-wrap items-center justify-between gap-5 rounded-2xl border border-red-400/60 bg-red-50 p-6 shadow-lg dark:bg-red-950/30">
-        <div class="max-w-3xl">
+      <section class="flex min-w-0 flex-wrap items-center justify-between gap-5 rounded-2xl border border-red-400/60 bg-red-50 p-4 shadow-lg dark:bg-red-950/30 sm:p-6">
+        <div class="min-w-0 max-w-3xl break-words">
           <h2 class="text-xl font-bold text-red-800 dark:text-red-300">{{ t('adminMain.recovery') }}</h2>
           <p class="mt-1 text-sm font-semibold">{{ t('adminMain.recoveryWarning') }}</p>
           <p class="mt-1 text-sm opacity-80">{{ t('adminMain.recoveryHelp') }}</p>
           <p v-if="historicalImportFeedback" class="mt-3 text-sm font-semibold" :class="historicalImportFeedbackClass">{{ historicalImportFeedback }}</p>
         </div>
-        <button :disabled="isImportingHistory" class="rounded-lg bg-red-700 px-5 py-3 font-semibold text-white disabled:opacity-50" @click="importHistoricalData">{{ t(isImportingHistory ? 'adminMain.importing' : 'adminMain.importAll') }}</button>
+        <button :disabled="isImportingHistory" class="max-w-full whitespace-normal break-words rounded-lg bg-red-700 px-5 py-3 font-semibold text-white disabled:opacity-50" @click="importHistoricalData">{{ t(isImportingHistory ? 'adminMain.importing' : 'adminMain.importAll') }}</button>
       </section>
     </template>
 
@@ -405,3 +405,42 @@ watch(sensorHouses, houses => { if (sensorHouseFilter.value !== 'all' && !houses
 watch(sensorFloors, floors => { if (sensorFloorFilter.value !== 'all' && !floors.includes(Number(sensorFloorFilter.value))) sensorFloorFilter.value = 'all' })
 onMounted(() => { if (!isResearcher.value) loadDorms().catch(error => { feedbackMessage.value = error.message; feedbackClass.value = 'text-red-500' }) })
 </script>
+
+<style scoped>
+/* Keep every admin dialog usable on short and narrow viewports. */
+main > .fixed {
+  align-items: flex-start;
+  overflow-y: auto;
+  padding-top: max(0.75rem, env(safe-area-inset-top));
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
+main > .fixed > div,
+main > .fixed > form {
+  max-height: calc(100dvh - 1.5rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  min-width: 0;
+  margin-block: auto;
+  overflow-y: auto;
+}
+
+@media (max-width: 639px) {
+  main > .fixed > div,
+  main > .fixed > form {
+    padding: 1rem;
+  }
+
+  main > .fixed .grid-cols-2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  main > .fixed :is(input, select, textarea) {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  main > .fixed .justify-end {
+    flex-wrap: wrap;
+  }
+}
+</style>

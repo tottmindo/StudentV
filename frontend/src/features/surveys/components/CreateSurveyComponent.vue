@@ -1,20 +1,20 @@
 <template>
-  <div class="max-w-4xl mx-auto flex flex-col gap-6">
+  <div class="mx-auto flex w-full min-w-0 max-w-4xl flex-col gap-4 sm:gap-6">
 
     <!-- Form -->
     <form
       @submit.prevent="saveSurvey"
-      class="order-2 bg-surface dark:bg-surface-dark rounded-lg p-6 shadow-sm"
+      class="order-2 min-w-0 max-w-full rounded-lg bg-surface p-4 shadow-sm dark:bg-surface-dark sm:p-6"
     >
 
-      <div class="flex items-center justify-between mb-6">
-        <h2 class="text-2xl font-bold text-headline dark:text-text-dark">
+      <div class="mb-6 flex min-w-0 items-start justify-between gap-3">
+        <h2 class="min-w-0 pr-8 text-xl font-bold leading-tight text-headline [overflow-wrap:anywhere] dark:text-text-dark sm:pr-12 sm:text-2xl">
           {{ t(props.survey ? 'surveyBuilder.edit' : 'surveyBuilder.create') }}
         </h2>
 
         <span
           v-if="props.survey"
-          class="text-sm px-3 py-1 rounded-full bg-secondary dark:bg-secondary-dark"
+          class="shrink-0 rounded-full bg-secondary px-3 py-1 text-sm dark:bg-secondary-dark"
         >
           #{{ props.survey.eID }}
         </span>
@@ -22,7 +22,7 @@
 
       <div
         v-if="message"
-        class="mb-5 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-4 py-3"
+        class="mb-5 rounded-lg bg-green-100 px-4 py-3 text-green-700 [overflow-wrap:anywhere] dark:bg-green-900/30 dark:text-green-300"
       >
         {{ message }}
       </div>
@@ -42,7 +42,7 @@
             v-model="question"
             :placeholder="t('surveyBuilder.questionPlaceholder')"
             :disabled="!!props.survey"
-            class="w-full rounded-lg border border-gray-300 dark:border-gray-700
+            class="w-full min-w-0 max-w-full rounded-lg border border-gray-300 dark:border-gray-700
                   bg-white dark:bg-background-dark
                   px-4 py-3
                   disabled:opacity-60
@@ -63,7 +63,7 @@
             type="date"
             v-model="expiresAt"
             :disabled="!!props.survey"
-            class="rounded-lg border border-gray-300 dark:border-gray-700
+            class="w-full min-w-0 max-w-full rounded-lg border border-gray-300 dark:border-gray-700 sm:w-auto
                   bg-white dark:bg-background-dark
                   px-4 py-3
                   disabled:opacity-60
@@ -82,7 +82,7 @@
           <select
             v-model="selectedDorm"
             :disabled="!!props.survey"
-            class="w-full rounded-lg
+            class="w-full min-w-0 max-w-full rounded-lg
                   border border-gray-300 dark:border-gray-700
                   bg-white dark:bg-background-dark
                   px-4 py-3
@@ -108,14 +108,14 @@
           </p>
         </div>
         <!-- Settings -->
-        <div class="grid md:grid-cols-2 gap-4">
+        <div class="grid min-w-0 gap-4 md:grid-cols-2">
 
           <label
-            class="flex items-center justify-between rounded-lg
+            class="flex min-w-0 items-center justify-between gap-3 rounded-lg
                    bg-secondary dark:bg-secondary-dark
                    p-4 cursor-pointer"
           >
-            <div>
+            <div class="min-w-0 [overflow-wrap:anywhere]">
               <p class="font-semibold">
                 {{ t('common.active') }}
               </p>
@@ -128,16 +128,16 @@
             <input
               type="checkbox"
               v-model="active"
-              class="h-5 w-5"
+              class="h-5 w-5 shrink-0"
             />
           </label>
 
           <label
-            class="flex items-center justify-between rounded-lg
+            class="flex min-w-0 items-center justify-between gap-3 rounded-lg
                    bg-secondary dark:bg-secondary-dark
                    p-4 cursor-pointer"
           >
-            <div>
+            <div class="min-w-0 [overflow-wrap:anywhere]">
               <p class="font-semibold">
                 {{ t('surveyBuilder.multipleChoice') }}
               </p>
@@ -151,7 +151,7 @@
               type="checkbox"
               v-model="multipleChoice"
               :disabled="!!props.survey"
-              class="h-5 w-5"
+              class="h-5 w-5 shrink-0"
             />
           </label>
 
@@ -161,8 +161,8 @@
           v-if="multipleChoice"
           class="space-y-3"
         >
-          <div class="flex items-center justify-between">
-            <div>
+          <div class="flex min-w-0 flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div class="min-w-0 [overflow-wrap:anywhere]">
               <h3 class="font-semibold">
                 {{ t('surveyBuilder.answerOptions') }}
               </h3>
@@ -176,7 +176,7 @@
               v-if="!props.survey"
               type="button"
               @click="options.push({ optiontext: '' })"
-              class="px-3 py-2 rounded-lg
+              class="w-full max-w-full whitespace-normal rounded-lg px-3 py-2 leading-snug [overflow-wrap:anywhere] sm:w-auto sm:shrink-0
                     bg-secondary dark:bg-secondary-dark
                     hover:opacity-90"
             >
@@ -187,14 +187,14 @@
           <div
             v-for="(option, index) in options"
             :key="option.eID ?? index"
-            class="flex gap-2"
+            class="flex min-w-0 flex-col gap-2 sm:flex-row"
           >
             <input
               v-model="option.optiontext"
               type="text"
               :placeholder="t('surveyBuilder.optionPlaceholder')"
               :disabled="!!props.survey"
-              class="flex-1 rounded-lg
+              class="w-full min-w-0 max-w-full flex-1 rounded-lg
                     border border-gray-300 dark:border-gray-700
                     bg-white dark:bg-background-dark
                     px-4 py-3
@@ -207,7 +207,7 @@
               v-if="!props.survey"
               type="button"
               @click="options.splice(index, 1)"
-              class="px-4 rounded-lg
+              class="w-full max-w-full whitespace-normal rounded-lg px-4 py-2 leading-snug [overflow-wrap:anywhere] sm:w-auto sm:shrink-0
                     bg-red-100 text-red-700
                     hover:bg-red-200"
             >
@@ -217,13 +217,13 @@
         </div>
 
         <!-- Buttons -->
-        <div class="flex justify-between items-center pt-4">
+        <div class="flex flex-col items-stretch gap-3 pt-4 sm:flex-row sm:items-center sm:justify-between">
 
           <button
             v-if="props.survey"
             type="button"
             @click="deleteSurvey"
-            class="px-5 py-2 rounded-lg
+            class="w-full max-w-full whitespace-normal rounded-lg px-5 py-2 leading-snug [overflow-wrap:anywhere] sm:w-auto
                    bg-red-600 text-white
                    hover:bg-red-700
                    transition-colors"
@@ -233,7 +233,7 @@
 
           <button
             type="submit"
-            class="ml-auto px-6 py-2 rounded-lg
+            class="w-full max-w-full whitespace-normal rounded-lg px-6 py-2 leading-snug [overflow-wrap:anywhere] sm:ml-auto sm:w-auto
                    bg-accent text-white font-semibold
                    hover:opacity-90 transition-opacity"
           >
@@ -249,19 +249,19 @@
     <!-- Answers -->
     <section
       v-if="props.survey"
-      class="order-1 bg-surface dark:bg-surface-dark rounded-lg p-6 shadow-sm"
+      class="order-1 min-w-0 max-w-full rounded-lg bg-surface p-4 shadow-sm dark:bg-surface-dark sm:p-6"
     >
       <!-- Header -->
-      <div class="flex justify-between items-center mb-6">
-        <h3 class="text-xl font-semibold">
+      <div class="mb-6 flex min-w-0 flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h3 class="min-w-0 text-lg font-semibold leading-tight [overflow-wrap:anywhere] sm:text-xl">
           {{ t('surveyBuilder.results') }}
         </h3>
 
-        <div class="flex flex-wrap items-center justify-end gap-2">
-          <span class="rounded-full bg-secondary px-3 py-1 text-sm dark:bg-secondary-dark">
+        <div class="flex w-full min-w-0 flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+          <span class="max-w-full rounded-full bg-secondary px-3 py-1 text-center text-sm [overflow-wrap:anywhere] dark:bg-secondary-dark">
             {{ t('surveyBuilder.answerCount', { count: answers.length }) }}
           </span>
-          <button type="button" class="rounded-lg border border-border-border px-3 py-2 text-sm font-bold transition hover:border-accent hover:text-accent" @click="downloadCSV">
+          <button type="button" class="max-w-full whitespace-normal rounded-lg border border-border-border px-3 py-2 text-sm font-bold leading-snug [overflow-wrap:anywhere] transition hover:border-accent hover:text-accent" @click="downloadCSV">
             ↓ {{ t('surveyBuilder.downloadCsv') }}
           </button>
         </div>
@@ -285,12 +285,12 @@
           :key="option.optionid"
         >
           <!-- Option name + count -->
-          <div class="flex justify-between mb-1">
-            <span class="font-medium">
+          <div class="mb-1 flex min-w-0 items-start justify-between gap-3">
+            <span class="min-w-0 font-medium [overflow-wrap:anywhere]">
               {{ option.optiontext }}
             </span>
 
-            <span class="text-sm opacity-70">
+            <span class="shrink-0 text-sm opacity-70">
               {{ option.count }}
             </span>
           </div>
@@ -321,7 +321,7 @@
         <div
           v-for="answer in answers"
           :key="answer.answerid"
-          class="rounded-lg
+          class="max-w-full rounded-lg [overflow-wrap:anywhere]
                 bg-secondary dark:bg-secondary-dark
                 p-4"
         >

@@ -1,8 +1,8 @@
 <template>
-  <div class="events-page min-h-screen bg-background p-6 text-text dark:bg-background-dark dark:text-text-dark lg:min-h-0 lg:overflow-hidden">
-    <div class="events-workspace grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-      <section class="flex h-[32rem] min-h-0 flex-col overflow-hidden rounded-lg border border-gray-200 bg-surface p-5 dark:border-gray-700 dark:bg-surface-dark lg:h-full">
-        <div class="min-h-0 w-full max-w-full flex-1">
+  <div class="events-page min-h-screen min-w-0 max-w-full overflow-x-clip bg-background p-3 text-text dark:bg-background-dark dark:text-text-dark sm:p-6 lg:min-h-0 lg:overflow-hidden">
+    <div class="events-workspace grid min-w-0 gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+      <section class="flex min-w-0 flex-col rounded-lg border border-gray-200 bg-surface p-3 dark:border-gray-700 dark:bg-surface-dark sm:p-5 lg:h-full lg:min-h-0 lg:overflow-hidden">
+        <div class="h-[22rem] min-h-0 w-full min-w-0 max-w-full flex-none sm:h-[28rem] lg:h-auto lg:flex-1">
                 <CalendarComponent
                   :marked-dates="filteredEventDates"
                   :cleaning-dates="filteredCleaningWeeks"
@@ -10,13 +10,13 @@
                   :nation-dates="filteredNationDates"
                   @day-click="onCalendarDayClick"
                   @month-change="onCalendarMonthChange"
-                  class="w-full h-full"
+                  class="h-full w-full min-w-0"
                 />
         </div>
-        <div class="mt-4 flex flex-wrap items-center justify-end gap-2">
+        <div class="mt-4 flex flex-wrap items-stretch justify-end gap-2 sm:items-center">
           <button
             type="button"
-            class="cursor-pointer rounded-lg border px-3 py-2 text-sm font-semibold transition-colors"
+            class="w-full max-w-full cursor-pointer whitespace-normal rounded-lg border px-3 py-2 text-sm font-semibold leading-snug [overflow-wrap:anywhere] transition-colors sm:w-auto"
             :class="showHistoricalEvents ? 'border-gray-700 bg-gray-700 text-white dark:border-gray-200 dark:bg-gray-200 dark:text-gray-900' : 'border-gray-300 bg-surface text-text hover:bg-gray-100 dark:border-gray-600 dark:bg-surface-dark dark:text-text-dark dark:hover:bg-gray-800'"
             :aria-pressed="showHistoricalEvents"
             @click="showHistoricalEvents = !showHistoricalEvents"
@@ -24,41 +24,41 @@
             {{ t(showHistoricalEvents ? 'eventsView.hideHistory' : 'eventsView.showHistory') }}
           </button>
 
-          <button type="button" class="cursor-pointer rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90" @click="openCreateEvent()">
+          <button type="button" class="w-full max-w-full cursor-pointer whitespace-normal rounded-lg bg-accent px-3 py-2 text-sm font-semibold leading-snug text-white [overflow-wrap:anywhere] transition-opacity hover:opacity-90 sm:w-auto" @click="openCreateEvent()">
             {{ t('eventsView.add') }}
           </button>
         </div>
 
         <div class="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-background/60 p-2 dark:border-gray-700 dark:bg-background-dark/60" role="group" :aria-label="t('eventsView.filter')">
-          <span class="px-1 text-xs font-bold uppercase tracking-wide opacity-60">{{ t('eventsView.filter') }}</span>
+          <span class="max-w-full px-1 text-xs font-bold uppercase tracking-wide opacity-60 [overflow-wrap:anywhere]">{{ t('eventsView.filter') }}</span>
 
-          <button type="button" @click="filters.events = !filters.events" class="cursor-pointer rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors" :class="filters.events ? 'border-accent bg-accent text-white' : 'border-gray-300 bg-surface text-text opacity-60 dark:border-gray-600 dark:bg-surface-dark dark:text-text-dark'" :aria-pressed="filters.events">
+          <button type="button" @click="filters.events = !filters.events" class="max-w-full cursor-pointer whitespace-normal rounded-md border px-3 py-1.5 text-xs font-semibold leading-snug [overflow-wrap:anywhere] transition-colors" :class="filters.events ? 'border-accent bg-accent text-white' : 'border-gray-300 bg-surface text-text opacity-60 dark:border-gray-600 dark:bg-surface-dark dark:text-text-dark'" :aria-pressed="filters.events">
             {{ t('eventsView.internal') }}
           </button>
 
-          <button type="button" @click="filters.cleaning = !filters.cleaning" class="cursor-pointer rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors" :class="filters.cleaning ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-gray-300 bg-surface text-text opacity-60 dark:border-gray-600 dark:bg-surface-dark dark:text-text-dark'" :aria-pressed="filters.cleaning">
+          <button type="button" @click="filters.cleaning = !filters.cleaning" class="max-w-full cursor-pointer whitespace-normal rounded-md border px-3 py-1.5 text-xs font-semibold leading-snug [overflow-wrap:anywhere] transition-colors" :class="filters.cleaning ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-gray-300 bg-surface text-text opacity-60 dark:border-gray-600 dark:bg-surface-dark dark:text-text-dark'" :aria-pressed="filters.cleaning">
             {{ t('eventsView.cleaningWeeks') }}
           </button>
 
-          <button type="button" @click="filters.external = !filters.external" class="cursor-pointer rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors" :class="filters.external ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-300 bg-surface text-text opacity-60 dark:border-gray-600 dark:bg-surface-dark dark:text-text-dark'" :aria-pressed="filters.external">
+          <button type="button" @click="filters.external = !filters.external" class="max-w-full cursor-pointer whitespace-normal rounded-md border px-3 py-1.5 text-xs font-semibold leading-snug [overflow-wrap:anywhere] transition-colors" :class="filters.external ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-300 bg-surface text-text opacity-60 dark:border-gray-600 dark:bg-surface-dark dark:text-text-dark'" :aria-pressed="filters.external">
             {{ t('eventsView.external') }}
           </button>
 
-          <button type="button" @click="filters.nation = !filters.nation" class="cursor-pointer rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors" :class="filters.nation ? 'border-purple-600 bg-purple-600 text-white' : 'border-gray-300 bg-surface text-text opacity-60 dark:border-gray-600 dark:bg-surface-dark dark:text-text-dark'" :aria-pressed="filters.nation">
+          <button type="button" @click="filters.nation = !filters.nation" class="max-w-full cursor-pointer whitespace-normal rounded-md border px-3 py-1.5 text-xs font-semibold leading-snug [overflow-wrap:anywhere] transition-colors" :class="filters.nation ? 'border-purple-600 bg-purple-600 text-white' : 'border-gray-300 bg-surface text-text opacity-60 dark:border-gray-600 dark:bg-surface-dark dark:text-text-dark'" :aria-pressed="filters.nation">
             {{ t('eventsView.nationEvent') }}
           </button>
 
         </div>
       </section>
 
-      <section class="flex h-[32rem] min-h-0 flex-col overflow-hidden rounded-lg border border-gray-200 bg-surface p-5 dark:border-gray-700 dark:bg-surface-dark lg:h-full">
-        <div class="mb-4 flex shrink-0 items-start justify-between gap-3">
-          <h2 class="text-xl font-semibold">
+      <section class="flex min-h-80 min-w-0 flex-col rounded-lg border border-gray-200 bg-surface p-3 dark:border-gray-700 dark:bg-surface-dark sm:p-5 lg:h-full lg:min-h-0 lg:overflow-hidden">
+        <div class="mb-4 flex shrink-0 flex-col items-stretch gap-3 xl:flex-row xl:items-start xl:justify-between">
+          <h2 class="min-w-0 text-lg font-semibold leading-tight [overflow-wrap:anywhere] sm:text-xl">
             {{ showMultiDayEvents ? t('eventsView.multiDayEventsTitle', { month: selectedMonthLabel }) : t(showHistoricalEvents ? 'eventsView.all' : 'eventsView.upcoming') }}
           </h2>
           <button
             type="button"
-            class="inline-flex h-10 w-52 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-accent px-3 text-center text-sm font-semibold leading-tight text-accent transition-colors hover:bg-accent hover:text-white disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-text disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-text dark:disabled:border-gray-600 dark:disabled:text-text-dark dark:disabled:hover:text-text-dark"
+            class="inline-flex min-h-10 w-full max-w-full cursor-pointer items-center justify-center whitespace-normal rounded-lg border border-accent px-3 py-2 text-center text-sm font-semibold leading-tight text-accent [overflow-wrap:anywhere] transition-colors hover:bg-accent hover:text-white disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-text disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-text xl:w-52 xl:shrink-0 dark:disabled:border-gray-600 dark:disabled:text-text-dark dark:disabled:hover:text-text-dark"
             :disabled="!showMultiDayEvents && !monthlyMultiDayEvents.length"
             @click="showMultiDayEvents = !showMultiDayEvents"
           >
@@ -67,27 +67,27 @@
         </div>
         <p v-if="showMultiDayEvents" class="mb-4 text-sm opacity-65">{{ t('eventsView.multiDayEventsHelp') }}</p>
         <p v-else-if="showHistoricalEvents" class="mb-4 text-sm opacity-65">{{ t('eventsView.historyHelp') }}</p>
-        <ul v-if="displayedEvents.length" class="min-h-0 flex-1 list-none overflow-y-auto pr-2 [scrollbar-gutter:stable]">
+        <ul v-if="displayedEvents.length" class="min-h-0 min-w-0 flex-1 list-none lg:overflow-y-auto lg:pr-2 lg:[scrollbar-gutter:stable]">
           <li
             v-for="event in displayedEvents"
             :key="event.id"
             @click="openEventDetail(event)"
-            class="cursor-pointer flex flex-col gap-2 py-3 border-b border-gray-100 dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800"
+            class="flex min-w-0 cursor-pointer flex-col gap-2 border-b border-gray-100 py-3 last:border-0 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
           >
-            <div class="flex items-center justify-between">
+            <div class="flex min-w-0 flex-col items-start gap-2 xl:flex-row xl:items-center xl:justify-between">
               <!-- Event information -->
-              <div>
-                <strong class="font-semibold">
+              <div class="min-w-0 max-w-full">
+                <strong class="block font-semibold [overflow-wrap:anywhere]">
                   {{ event.title }}
                 </strong>
 
-                <p class="text-sm opacity-70">
+                <p class="text-sm opacity-70 [overflow-wrap:anywhere]">
                   {{ event.description }}
                 </p>
               </div>
 
               <!-- Date + type -->
-              <div class="text-sm opacity-70 text-right">
+              <div class="max-w-full text-left text-sm opacity-70 [overflow-wrap:anywhere] xl:shrink-0 xl:text-right">
                 <div>
                   {{ showMultiDayEvents ? formatDateRange(event.startDate, event.endDate) : isMultiDayEvent(event) ? formatDate(event.startDate, false) : formatDateRange(event.startDate, event.endDate) }}
                 </div>
@@ -135,10 +135,10 @@
     </div>
 
     <ModalComponent v-model="showEventDetailsModal">
-      <div class="space-y-4">
-        <div class="flex items-center justify-between gap-4">
-          <h3 class="text-xl font-semibold">{{ eventModalTitle }}</h3>
-          <button v-if="selectedEventDay" type="button" class="shrink-0 cursor-pointer rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90" @click="openCreateEvent(selectedEventDay)">
+      <div class="min-w-0 max-w-full space-y-4">
+        <div class="flex min-w-0 flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <h3 class="min-w-0 pr-8 text-lg font-semibold leading-tight [overflow-wrap:anywhere] sm:pr-12 sm:text-xl">{{ eventModalTitle }}</h3>
+          <button v-if="selectedEventDay" type="button" class="w-full max-w-full cursor-pointer whitespace-normal rounded-lg bg-accent px-3 py-2 text-sm font-semibold leading-snug text-white [overflow-wrap:anywhere] transition-opacity hover:opacity-90 sm:w-auto sm:shrink-0" @click="openCreateEvent(selectedEventDay)">
             {{ t('eventsView.addOnThisDay') }}
           </button>
         </div>
@@ -146,84 +146,84 @@
           <div
             v-for="event in selectedEvents"
             :key="event.id"
-            class="space-y-2 rounded-lg border border-gray-200 bg-white p-4 text-gray-900
+            class="min-w-0 max-w-full space-y-2 rounded-lg border border-gray-200 bg-white p-3 text-gray-900 sm:p-4
                   dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
           >
-            <div class="flex items-start justify-between gap-4">
-              <div>
-                <p class="text-lg font-semibold">{{ event.title }}</p>
-                <p class="text-sm text-gray-600 dark:text-gray-400">
+            <div class="flex min-w-0 flex-col items-start gap-2 sm:flex-row sm:justify-between sm:gap-4">
+              <div class="min-w-0 max-w-full">
+                <p class="font-semibold [overflow-wrap:anywhere] sm:text-lg">{{ event.title }}</p>
+                <p class="text-sm text-gray-600 [overflow-wrap:anywhere] dark:text-gray-400">
                   {{ event.type }}
                   <span v-if="!event.active" class="text-red-600 dark:text-red-400">
                     ({{ t('eventsView.inactive') }})
                   </span>
                 </p>
               </div>
-              <div class="text-sm opacity-70 text-right">
+              <div class="max-w-full text-left text-sm opacity-70 [overflow-wrap:anywhere] sm:shrink-0 sm:text-right">
                 <div>{{ formatDateRange(event.startDate, event.endDate) }}</div>
               </div>
             </div>
-            <p class="text-sm opacity-80">{{ event.description }}</p>
+            <p class="text-sm opacity-80 [overflow-wrap:anywhere]">{{ event.description }}</p>
             <div v-if="event.invitationStatus" class="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-3 dark:border-gray-700">
-              <p class="text-sm font-semibold">
+              <p class="min-w-0 text-sm font-semibold [overflow-wrap:anywhere]">
                 {{ t('eventsView.attendingCount', { count: event.attendeeCount || 0 }) }}
                 <span class="ml-2 font-normal opacity-70">{{ t(`eventsView.rsvp.${event.invitationStatus}`) }}</span>
               </p>
-              <div v-if="event.createdByUserID !== userID" class="flex gap-2">
+              <div v-if="event.createdByUserID !== userID" class="flex max-w-full flex-wrap gap-2">
                 <button
                   type="button"
-                  class="rounded-lg px-3 py-2 text-sm font-bold disabled:cursor-not-allowed"
+                  class="min-w-0 flex-1 whitespace-normal rounded-lg px-3 py-2 text-sm font-bold leading-snug [overflow-wrap:anywhere] disabled:cursor-not-allowed sm:flex-none"
                   :class="event.invitationStatus === 'accepted' ? 'bg-gray-400 text-gray-700 dark:bg-gray-600 dark:text-gray-300' : 'bg-accent text-white disabled:opacity-50'"
                   :disabled="eventActionPending || event.invitationStatus === 'accepted'"
                   @click="respondToInvitation(event, true)"
                 >{{ t('eventsView.accept') }}</button>
-                <button type="button" class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-bold disabled:opacity-50 dark:border-gray-600" :disabled="eventActionPending" @click="respondToInvitation(event, false)">{{ t('eventsView.decline') }}</button>
+                <button type="button" class="min-w-0 flex-1 whitespace-normal rounded-lg border border-gray-300 px-3 py-2 text-sm font-bold leading-snug [overflow-wrap:anywhere] disabled:opacity-50 sm:flex-none dark:border-gray-600" :disabled="eventActionPending" @click="respondToInvitation(event, false)">{{ t('eventsView.decline') }}</button>
               </div>
             </div>
-            <button v-if="event.createdByUserID === userID && event.active" type="button" class="w-fit rounded-lg bg-red-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-50" :disabled="eventActionPending" @click="cancelEvent(event)">{{ t('eventsView.cancelEvent') }}</button>
-            <p v-if="eventActionError" class="text-sm font-semibold text-red-600 dark:text-red-400">{{ eventActionError }}</p>
+            <button v-if="event.createdByUserID === userID && event.active" type="button" class="max-w-full whitespace-normal rounded-lg bg-red-600 px-3 py-2 text-sm font-bold leading-snug text-white [overflow-wrap:anywhere] disabled:opacity-50 sm:w-fit" :disabled="eventActionPending" @click="cancelEvent(event)">{{ t('eventsView.cancelEvent') }}</button>
+            <p v-if="eventActionError" class="text-sm font-semibold text-red-600 [overflow-wrap:anywhere] dark:text-red-400">{{ eventActionError }}</p>
           </div>
           <div
               v-for="week in selectedCleaningWeeks"
               :key="week.weekID"
-              class="space-y-2 rounded-lg border border-emerald-300
-                    bg-emerald-50 p-4 text-emerald-950
+              class="min-w-0 max-w-full space-y-2 rounded-lg border border-emerald-300
+                    bg-emerald-50 p-3 text-emerald-950 sm:p-4
                     dark:border-emerald-700
                     dark:bg-emerald-950/50
                     dark:text-emerald-100"
             >
-            <div class="flex items-start justify-between gap-4">
-              <div>
-                <p class="text-lg font-semibold">{{ t('calendar.cleaning') }}</p>
-                <p class="text-sm text-emerald-800 dark:text-emerald-300">
+            <div class="flex min-w-0 flex-col items-start gap-2 sm:flex-row sm:justify-between sm:gap-4">
+              <div class="min-w-0 max-w-full">
+                <p class="font-semibold [overflow-wrap:anywhere] sm:text-lg">{{ t('calendar.cleaning') }}</p>
+                <p class="text-sm text-emerald-800 [overflow-wrap:anywhere] dark:text-emerald-300">
                   {{ t('eventsView.assignedTo', { name: week.assignedUsername }) }}
                 </p>
               </div>
-              <div class="text-sm opacity-80 text-right">
+              <div class="max-w-full text-left text-sm opacity-80 [overflow-wrap:anywhere] sm:shrink-0 sm:text-right">
                 <div>{{ formatDateRange(week.startDate, week.endDate) }}</div>
               </div>
             </div>
-            <p class="text-sm opacity-80">
+            <p class="text-sm opacity-80 [overflow-wrap:anywhere]">
               {{ t('eventsView.tasksCompleted', { completed: week.completedTasks, total: week.totalTasks }) }}
             </p>
           </div>
           <div
             v-for="event in selectedExternalEvents"
             :key="event.eventID"
-            class="space-y-2 rounded-lg border border-blue-300
-                  bg-blue-50 p-4 text-blue-950
+            class="min-w-0 max-w-full space-y-2 rounded-lg border border-blue-300
+                  bg-blue-50 p-3 text-blue-950 sm:p-4
                   dark:border-blue-700
                   dark:bg-blue-950/50
                   dark:text-blue-100"
           >
-            <div class="flex items-start justify-between gap-4">
-            <div>
-              <p class="text-lg font-semibold">{{ event.title }}</p>
-              <p class="text-sm font-medium uppercase text-blue-700 dark:text-blue-300">
+            <div class="flex min-w-0 flex-col items-start gap-2 sm:flex-row sm:justify-between sm:gap-4">
+            <div class="min-w-0 max-w-full">
+              <p class="font-semibold [overflow-wrap:anywhere] sm:text-lg">{{ event.title }}</p>
+              <p class="text-sm font-medium uppercase text-blue-700 [overflow-wrap:anywhere] dark:text-blue-300">
                 {{ t('eventsView.externalEvent') }}
               </p>
             </div>
-            <div class="text-sm opacity-80 text-right">
+            <div class="max-w-full text-left text-sm opacity-80 [overflow-wrap:anywhere] sm:shrink-0 sm:text-right">
               <div>{{ formatDateRange(event.startDate, event.endDate) }}</div>
             </div>
           </div>
@@ -231,7 +231,7 @@
             :href="event.externalurl"
             target="_blank"
             rel="noopener noreferrer"
-            class="text-sm font-semibold text-blue-600 hover:underline
+            class="inline-block max-w-full text-sm font-semibold text-blue-600 [overflow-wrap:anywhere] hover:underline
                   dark:text-blue-400"
           >
             {{ t('eventsView.viewPage') }} →
@@ -240,38 +240,38 @@
         <div
           v-for="event in selectedNationEvents"
           :key="event.eventID"
-          class="space-y-2 rounded-lg border border-purple-300
-                bg-purple-50 p-4 text-purple-950
+          class="min-w-0 max-w-full space-y-2 rounded-lg border border-purple-300
+                bg-purple-50 p-3 text-purple-950 sm:p-4
                 dark:border-purple-700
                 dark:bg-purple-950/50
                 dark:text-purple-100"
         >
-          <div class="flex items-start justify-between gap-4">
-            <div>
-              <p class="text-lg font-semibold">
+          <div class="flex min-w-0 flex-col items-start gap-2 sm:flex-row sm:justify-between sm:gap-4">
+            <div class="min-w-0 max-w-full">
+              <p class="font-semibold [overflow-wrap:anywhere] sm:text-lg">
                 {{ event.title }}
               </p>
 
-              <p class="text-sm font-medium uppercase text-purple-700 dark:text-purple-300">
+              <p class="text-sm font-medium uppercase text-purple-700 [overflow-wrap:anywhere] dark:text-purple-300">
                 {{ t('eventsView.nationEvent') }}
               </p>
 
               <p
                 v-if="event.organiser"
-                class="text-sm opacity-80"
+                class="text-sm opacity-80 [overflow-wrap:anywhere]"
               >
                 {{ event.organiser }}
               </p>
 
               <p
                 v-if="event.category"
-                class="text-sm opacity-80"
+                class="text-sm opacity-80 [overflow-wrap:anywhere]"
               >
                 {{ event.category }}
               </p>
             </div>
 
-            <div class="text-sm opacity-80 text-right">
+            <div class="max-w-full text-left text-sm opacity-80 [overflow-wrap:anywhere] sm:shrink-0 sm:text-right">
               <div>
                 {{ formatDateRange(event.startDate, event.endDate) }}
               </div>
@@ -282,7 +282,7 @@
             :href="event.externalurl"
             target="_blank"
             rel="noopener noreferrer"
-            class="text-sm font-semibold text-purple-600 hover:underline
+            class="inline-block max-w-full text-sm font-semibold text-purple-600 [overflow-wrap:anywhere] hover:underline
                   dark:text-purple-400"
           >
             {{ t('eventsView.viewPage') }} →
@@ -294,31 +294,31 @@
     </ModalComponent>
 
     <ModalComponent v-model="showCreateEventModal">
-      <div class="space-y-4">
-      <h2 class="text-xl font-semibold">{{ t('eventsView.create') }}</h2>
-      <form @submit.prevent="addEvent" class="grid gap-4">
-        <label class="grid gap-1">
+      <div class="min-w-0 max-w-full space-y-4">
+      <h2 class="pr-8 text-lg font-semibold leading-tight [overflow-wrap:anywhere] sm:pr-12 sm:text-xl">{{ t('eventsView.create') }}</h2>
+      <form @submit.prevent="addEvent" class="grid min-w-0 max-w-full gap-4">
+        <label class="grid min-w-0 gap-1">
           <span class="font-semibold">{{ t('eventsView.title') }}</span>
-          <input v-model="newEvent.title" type="text" :placeholder="t('eventsView.titlePlaceholder')" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded" />
+          <input v-model="newEvent.title" type="text" :placeholder="t('eventsView.titlePlaceholder')" required class="min-w-0 max-w-full w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600" />
         </label>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <label class="grid gap-1">
+        <div class="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
+          <label class="grid min-w-0 gap-1">
             <span class="font-semibold">{{ t('eventsView.startDate') }}</span>
             <input
               v-model="newEvent.startDateLocal"
               type="date"
               required
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded"
+              class="w-full min-w-0 max-w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600"
             />
           </label>
 
-          <label class="grid gap-1">
+          <label class="grid min-w-0 gap-1">
             <span class="font-semibold">{{ t('eventsView.endDate') }}</span>
             <input
               v-model="newEvent.endDateLocal"
               type="date"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded"
+              class="w-full min-w-0 max-w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600"
             />
           </label>
         </div>
@@ -332,40 +332,40 @@
           <span class="text-sm font-semibold">{{ t('eventsView.specifyTime') }}</span>
         </label>
 
-        <div v-if="newEvent.hasTime" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <label class="grid gap-1">
+        <div v-if="newEvent.hasTime" class="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
+          <label class="grid min-w-0 gap-1">
             <span class="font-semibold">{{ t('eventsView.startTime') }}</span>
             <input
               v-model="newEvent.startTime"
               type="time"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded"
+              class="w-full min-w-0 max-w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600"
             />
           </label>
 
-          <label class="grid gap-1">
+          <label class="grid min-w-0 gap-1">
             <span class="font-semibold">{{ t('eventsView.endTime') }}</span>
             <input
               v-model="newEvent.endTime"
               type="time"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded"
+              class="w-full min-w-0 max-w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600"
             />
           </label>
         </div>
 
-        <label class="grid gap-1">
+        <label class="grid min-w-0 gap-1">
           <span class="font-semibold">{{ t('eventsView.description') }}</span>
-          <textarea v-model="newEvent.description" :placeholder="t('eventsView.description')" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded"></textarea>
+          <textarea v-model="newEvent.description" :placeholder="t('eventsView.description')" class="w-full min-w-0 max-w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600"></textarea>
         </label>
 
-        <div class="flex items-center gap-4">
-          <label class="flex items-center gap-2">
+        <div class="flex min-w-0 flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+          <label class="flex min-w-0 flex-wrap items-center gap-2">
             <input type="checkbox" v-model="newEvent.active" class="w-4 h-4" />
             <span class="text-sm">{{ t('common.active') }}</span>
           </label>
 
           <label class="flex items-center gap-2">
             <span class="text-sm font-semibold">{{ t('eventsView.type') }}</span>
-            <select v-model="newEvent.type" class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded">
+            <select v-model="newEvent.type" class="min-w-0 max-w-full flex-1 rounded border border-gray-300 px-2 py-1 dark:border-gray-600 sm:flex-none">
               <option value="SOCIAL">{{ t('eventsView.social') }}</option>
               <option value="MEETING">{{ t('eventsView.meeting') }}</option>
               <option value="OTHER">{{ t('eventsView.other') }}</option>
@@ -374,11 +374,11 @@
         </div>
 
         <label class="flex items-start gap-2 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
-          <input type="checkbox" v-model="newEvent.inviteFloor" class="mt-0.5 h-4 w-4" />
-          <span><span class="block text-sm font-semibold">{{ t('eventsView.inviteFloor') }}</span><span class="block text-xs opacity-70">{{ t('eventsView.inviteFloorHelp') }}</span></span>
+          <input type="checkbox" v-model="newEvent.inviteFloor" class="mt-0.5 h-4 w-4 shrink-0" />
+          <span class="min-w-0 [overflow-wrap:anywhere]"><span class="block text-sm font-semibold">{{ t('eventsView.inviteFloor') }}</span><span class="block text-xs opacity-70">{{ t('eventsView.inviteFloorHelp') }}</span></span>
         </label>
 
-        <button type="submit" class="w-fit px-4 py-2 bg-accent text-background-light rounded cursor-pointer hover:opacity-90">{{ t('eventsView.add') }}</button>
+        <button type="submit" class="w-full max-w-full cursor-pointer whitespace-normal rounded bg-accent px-4 py-2 leading-snug text-background-light [overflow-wrap:anywhere] hover:opacity-90 sm:w-fit">{{ t('eventsView.add') }}</button>
       </form>
       </div>
     </ModalComponent>

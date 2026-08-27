@@ -2,7 +2,7 @@
   <main
     class="min-h-screen bg-background-light px-4 py-6 text-text dark:bg-background-dark dark:text-text-dark sm:px-6 lg:px-8"
   >
-    <div class="mx-auto flex max-w-7xl flex-col gap-8">
+    <div class="mx-auto flex min-w-0 max-w-7xl flex-col gap-8">
 
       <!-- Header -->
       <header>
@@ -10,11 +10,11 @@
           {{ t('information.information') }}
         </p>
 
-        <h1 class="mt-1 text-3xl font-bold">
+        <h1 class="mt-1 break-words text-3xl font-bold">
           {{ t('information.communityInformation') }}
         </h1>
 
-        <p class="mt-2 max-w-2xl text-sm leading-6 opacity-70">
+        <p class="mt-2 max-w-2xl break-words text-sm leading-6 opacity-70">
           {{ t('information.communityInformationText') }}
         </p>
       </header>
@@ -22,14 +22,14 @@
       <!-- Information sections -->
       <div class="grid gap-6 md:grid-cols-2">
 
-        <section class="rounded-2xl border border-accent/30 bg-accent/5 p-6 shadow-sm md:col-span-2">
+        <section class="min-w-0 rounded-2xl border border-accent/30 bg-accent/5 p-5 shadow-sm sm:p-6 md:col-span-2">
           <span class="text-3xl">📘</span>
 
-          <h2 class="mt-4 text-xl font-bold">
+          <h2 class="mt-4 break-words text-xl font-bold">
             {{ t('information.houseGuide') }}
           </h2>
 
-          <p class="mt-2 text-sm leading-6 opacity-70">
+          <p class="mt-2 break-words text-sm leading-6 opacity-70">
             {{ t('information.houseGuideText') }}
           </p>
 
@@ -52,14 +52,14 @@
           </p>
         </section>
 
-        <section class="rounded-2xl border border-border-border bg-surface p-6 shadow-sm dark:bg-surface-dark">
+        <section class="min-w-0 rounded-2xl border border-border-border bg-surface p-5 shadow-sm dark:bg-surface-dark sm:p-6">
           <span class="text-3xl">🏠</span>
 
-          <h2 class="mt-4 text-xl font-bold">
+          <h2 class="mt-4 break-words text-xl font-bold">
             {{ t('information.livingHere') }}
           </h2>
 
-          <p class="mt-2 text-sm leading-6 opacity-70">
+          <p class="mt-2 break-words text-sm leading-6 opacity-70">
             {{ t('information.livingHereText') }}
           </p>
 
@@ -102,14 +102,14 @@
           </div>
         </section>
 
-        <section class="rounded-2xl border border-border-border bg-surface p-6 shadow-sm dark:bg-surface-dark">
+        <section class="min-w-0 rounded-2xl border border-border-border bg-surface p-5 shadow-sm dark:bg-surface-dark sm:p-6">
           <span class="text-3xl">⚠️</span>
 
-          <h2 class="mt-4 text-xl font-bold">
+          <h2 class="mt-4 break-words text-xl font-bold">
             {{ t('information.emergencies') }}
           </h2>
 
-          <p class="mt-2 text-sm leading-6 opacity-70">
+          <p class="mt-2 break-words text-sm leading-6 opacity-70">
             {{ t('information.emergenciesText')}}
           </p>
 
@@ -134,14 +134,14 @@
           </div>
         </section>
 
-        <section class="rounded-2xl border border-border-border bg-surface p-6 shadow-sm dark:bg-surface-dark">
+        <section class="min-w-0 rounded-2xl border border-border-border bg-surface p-5 shadow-sm dark:bg-surface-dark sm:p-6">
           <span class="text-3xl">☎️</span>
 
-          <h2 class="mt-4 text-xl font-bold">
+          <h2 class="mt-4 break-words text-xl font-bold">
             {{ t('information.contact') }}
           </h2>
 
-          <p class="mt-2 text-sm leading-6 opacity-70">
+          <p class="mt-2 break-words text-sm leading-6 opacity-70">
             {{ t('information.contactText')}}
           </p>
 
@@ -157,14 +157,14 @@
           </div>
         </section>
 
-        <section class="rounded-2xl border border-border-border bg-surface p-6 shadow-sm dark:bg-surface-dark">
+        <section class="min-w-0 rounded-2xl border border-border-border bg-surface p-5 shadow-sm dark:bg-surface-dark sm:p-6">
           <span class="text-3xl">🔗</span>
 
-          <h2 class="mt-4 text-xl font-bold">
+          <h2 class="mt-4 break-words text-xl font-bold">
             {{ t('information.usefullLinks') }}
           </h2>
 
-          <p class="mt-2 text-sm leading-6 opacity-70">
+          <p class="mt-2 break-words text-sm leading-6 opacity-70">
             {{ t('information.usefullLinksText') }}
           </p>
 
@@ -232,6 +232,7 @@ onBeforeUnmount(() => socket.off('dashboard', applyDashboard))
 
 <style scoped>
 .info-link {
-  @apply block rounded-xl border border-border-border px-4 py-3 text-sm font-semibold transition hover:border-accent hover:bg-accent/5 hover:text-accent;
+  @apply block min-w-0 rounded-xl border border-border-border px-4 py-3 text-sm font-semibold transition hover:border-accent hover:bg-accent/5 hover:text-accent;
+  overflow-wrap: anywhere;
 }
 </style>

@@ -4,26 +4,26 @@
   <div
     v-if="notification"
     :class="[
-      'fixed top-4 left-4 z-50 px-4 py-3 rounded-lg text-white shadow-lg transition-all',
+      'fixed left-4 right-4 top-4 z-50 max-w-xl break-words rounded-lg px-4 py-3 text-white shadow-lg transition-all sm:right-auto',
       notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'
     ]"
   >
     {{ notification.message }}
   </div>
 
-  <main class="min-h-[calc(100dvh-4rem-env(safe-area-inset-top))] space-y-6 bg-background p-3 text-text dark:bg-background-dark dark:text-text-dark sm:p-6">
-    <div class="grid gap-3 sm:gap-6 lg:h-[calc(100dvh-7rem-env(safe-area-inset-top))] lg:min-h-[38rem] lg:grid-cols-[1.15fr_1fr_1.15fr] lg:grid-rows-1">
+  <main class="min-h-[calc(100dvh-4rem-env(safe-area-inset-top))] min-w-0 max-w-full space-y-6 overflow-x-clip bg-background p-3 text-text dark:bg-background-dark dark:text-text-dark sm:p-6 lg:min-h-[calc(100dvh-7.75rem-env(safe-area-inset-top))] xl:min-h-[calc(100dvh-4rem-env(safe-area-inset-top))]">
+    <div class="cleaning-grid grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 sm:gap-6 lg:h-[calc(100dvh-7.75rem-3rem-env(safe-area-inset-top))] lg:min-h-0 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_minmax(0,1.15fr)] lg:grid-rows-1 xl:h-[calc(100dvh-4rem-3rem-env(safe-area-inset-top))]">
 
       <!-- =====================================================
            WEEKS LIST
       ====================================================== -->
-      <section class="flex min-h-0 flex-col overflow-hidden rounded-lg border border-gray-200 bg-surface p-3 dark:border-gray-700 dark:bg-surface-dark sm:p-5">
+      <section class="cleaning-weeks flex min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border border-gray-200 bg-surface p-3 dark:border-gray-700 dark:bg-surface-dark sm:p-5">
         <div class="mb-3 shrink-0 sm:mb-4">
-          <h2 class="text-2xl font-bold">{{ t('cleaningView.weeks') }}</h2>
-          <p class="text-sm opacity-70">{{ t('cleaningView.selectHelp') }}</p>
+          <h2 class="break-words text-xl font-bold sm:text-2xl">{{ t('cleaningView.weeks') }}</h2>
+          <p class="break-words text-sm opacity-70">{{ t('cleaningView.selectHelp') }}</p>
         </div>
 
-        <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable]">
+        <div class="weeks-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable]">
         <div class="mb-4 flex flex-wrap gap-2">
           <button
             type="button"
@@ -42,8 +42,8 @@
         </div>
 
         <div v-if="swapMode" class="mb-4 rounded-lg border-2 border-accent/40 bg-accent/5 p-3">
-          <p class="text-sm font-bold">{{ t('cleaningView.swapSelectionTitle') }}</p>
-          <p class="mt-1 text-xs opacity-70">{{ t('cleaningView.swapSelectionHelp') }}</p>
+          <p class="break-words text-sm font-bold">{{ t('cleaningView.swapSelectionTitle') }}</p>
+          <p class="mt-1 break-words text-xs opacity-70">{{ t('cleaningView.swapSelectionHelp') }}</p>
           <div class="mt-3 space-y-1 text-sm">
             <p><span class="font-bold">1.</span> {{ swapSourceWeek ? t('cleaningView.week', { week: getWeekLabel(swapSourceWeek.startDate) }) : t('cleaningView.chooseYourWeek') }}</p>
             <p><span class="font-bold">2.</span> {{ swapTargetWeek ? `${t('cleaningView.week', { week: getWeekLabel(swapTargetWeek.startDate) })} — ${swapTargetWeek.assignedUsername}` : t('cleaningView.chooseTheirWeek') }}</p>
@@ -59,14 +59,14 @@
           </button>
         </div>
 
-        <div v-if="visibleWeeks.length" class="space-y-3">
+        <div v-if="visibleWeeks.length" class="week-list space-y-2 sm:space-y-3">
           <button
             v-for="week in visibleWeeks"
             :key="week.weekID"
             @click="handleWeekClick(week)"
             :aria-current="!swapMode && week.weekID === selectedWeek?.weekID ? 'true' : undefined"
             :class="[
-              'w-full text-left rounded-lg border p-4 transition hover:border-accent hover:bg-accent/10',
+              'week-card w-full text-left rounded-lg border p-4 transition hover:border-accent hover:bg-accent/10',
               isSwapWeekSelected(week)
                 ? 'border-accent bg-accent/20 shadow-lg ring-2 ring-accent'
                 : !swapMode && week.weekID === selectedWeek?.weekID
@@ -78,7 +78,7 @@
               swapMode && !isWeekEligibleForSwapSelection(week) ? 'cursor-not-allowed opacity-45' : ''
             ]"
           >
-            <div class="flex items-center justify-between gap-4">
+            <div class="week-card-row flex min-w-0 flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <span
                 v-if="swapMode"
                 class="flex h-6 w-6 shrink-0 items-center justify-center rounded border-2 text-sm font-black"
@@ -87,8 +87,8 @@
               >
                 {{ isSwapWeekSelected(week) ? '✓' : '' }}
               </span>
-              <div class="flex-1">
-                <p class="font-semibold">
+              <div class="min-w-0 flex-1">
+                <p class="break-words font-semibold">
                   {{ t('cleaningView.week', { week: getWeekLabel(week.startDate) }) }}
                   <span
                     v-if="!swapMode && week.weekID === selectedWeek?.weekID"
@@ -97,14 +97,14 @@
                     ✓ {{ t('cleaningView.selected') }}
                   </span>
                 </p>
-                <p class="text-sm opacity-70">
+                <p class="break-words text-sm opacity-70">
                   {{ formatDate(week.startDate) }}
                   —
                   {{ formatDate(week.endDate) }}
                 </p>
               </div>
 
-              <div class="text-right">
+              <div class="min-w-0 break-words text-left sm:text-right">
                 <div class="text-sm opacity-80">
                   <span
                     v-if="isWeekAssignedToCurrentUser(week)"
@@ -112,7 +112,7 @@
                   >
                     {{ t('cleaningView.assignedToYou') }}
                   </span>
-                  <p>{{ week.assignedUsername }}</p>
+                  <p class="break-all">{{ week.assignedUsername }}</p>
                   <p>{{ t('cleaningView.done', { completed: week.completedTasks, total: week.totalTasks }) }}</p>
                 </div>
                 
@@ -197,25 +197,25 @@
       <!-- =====================================================
            TASKS
       ====================================================== -->
-      <section class="flex min-h-0 flex-col overflow-hidden rounded-lg border border-gray-200 bg-surface p-3 dark:border-gray-700 dark:bg-surface-dark sm:p-5">
+      <section class="cleaning-tasks flex min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border border-gray-200 bg-surface p-3 dark:border-gray-700 dark:bg-surface-dark sm:p-5">
 
-        <div class="mb-3 flex shrink-0 items-start justify-between gap-3 sm:mb-4">
-          <div>
-            <h2 class="text-2xl font-bold">{{ t('cleaningView.tasks') }}</h2>
+        <div class="mb-3 flex shrink-0 flex-col items-start gap-3 sm:mb-4 sm:flex-row sm:justify-between">
+          <div class="min-w-0 break-words">
+            <h2 class="break-words text-xl font-bold sm:text-2xl">{{ t('cleaningView.tasks') }}</h2>
             <p class="text-sm opacity-70">
               {{ t('cleaningView.checklist') }}
             </p>
           </div>
           <button
             type="button"
-            class="shrink-0 rounded-lg border border-accent px-3 py-2 text-sm font-bold text-accent transition hover:bg-accent/10"
+            class="max-w-full whitespace-normal break-words rounded-lg border border-accent px-3 py-2 text-sm font-bold text-accent transition hover:bg-accent/10 sm:shrink-0"
             @click="showCleaningRulesModal = true"
           >
             {{ t('cleaningView.rulesButton') }}
           </button>
         </div>
 
-        <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable]">
+        <div class="tasks-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable]">
         <div v-if="selectedWeek">
 
           <!-- Week header -->
@@ -237,17 +237,17 @@
           </div>
 
           <!-- Task list -->
-          <ol class="space-y-3">
+          <ol class="task-list space-y-3">
 
             <li
               v-for="task in tasks"
               :key="task.weekTaskID"
-              class="rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-surface dark:bg-surface-dark"
+              class="task-card min-w-0 break-words rounded-lg border border-gray-200 bg-surface p-4 dark:border-gray-700 dark:bg-surface-dark"
             >
 
-              <div class="flex items-center justify-between gap-4">
+              <div class="flex min-w-0 items-center justify-between gap-4">
 
-                <label class="flex items-center gap-3 cursor-pointer">
+                <label class="flex min-w-0 cursor-pointer items-center gap-3">
                   <input
                     type="checkbox"
                     :checked="task.isCompleted"
@@ -256,7 +256,7 @@
                     class="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
                   />
 
-                  <span>
+                  <span class="min-w-0 break-words">
                     <span :class="task.isCompleted ? 'line-through opacity-70' : ''">
                       {{ task.title }}
                     </span>
@@ -268,7 +268,7 @@
 
               </div>
 
-              <p v-if="task.description" class="text-xs opacity-70 mt-1">
+              <p v-if="task.description" class="mt-1 break-words text-xs opacity-70">
                 {{ task.description }}
               </p>
 
@@ -309,7 +309,7 @@
       <!-- =====================================================
            TASK ROTATION
       ====================================================== -->
-      <div class="min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1 lg:[scrollbar-gutter:stable]">
+      <div class="cleaning-governance min-h-0 min-w-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1 lg:[scrollbar-gutter:stable]">
         <CleaningTaskGovernance />
       </div>
 
@@ -327,7 +327,7 @@
       <div class="relative max-h-[calc(100dvh-1.5rem)] w-full max-w-lg overflow-y-auto rounded-lg border border-gray-200 bg-surface p-5 shadow-xl dark:border-gray-700 dark:bg-surface-dark sm:p-6">
         <button
           type="button"
-          class="absolute right-4 top-3 text-2xl leading-none opacity-60 transition hover:opacity-100"
+          class="absolute right-2 top-2 grid h-11 w-11 place-items-center rounded-full text-2xl leading-none opacity-70 transition hover:bg-black/5 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-accent sm:right-3 sm:top-2"
           :aria-label="t('cleaningView.closeRules')"
           @click="showCleaningRulesModal = false"
         >
@@ -742,3 +742,56 @@ onUnmounted(() => {
   socket.off('error')
 })
 </script>
+
+<style scoped>
+@media (max-width: 639px) {
+  /* Keep the checklist immediately available while containing long lists. */
+  .cleaning-tasks {
+    order: 1;
+    min-height: min(18rem, 60dvh);
+    max-height: min(60dvh, 36rem);
+  }
+
+  .cleaning-weeks {
+    order: 2;
+    max-height: min(84dvh, 44rem);
+    padding: 0.75rem;
+  }
+
+  .cleaning-governance {
+    order: 3;
+    max-height: min(55dvh, 32rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+
+  .cleaning-weeks h2 {
+    font-size: 1.125rem;
+    line-height: 1.4;
+  }
+
+  .cleaning-weeks .weeks-scroll,
+  .cleaning-tasks .tasks-scroll {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .cleaning-weeks .week-card {
+    padding: 0.5rem 0.625rem;
+  }
+
+  .cleaning-weeks .week-card-row {
+    gap: 0.25rem;
+  }
+
+  .cleaning-weeks .week-card p {
+    line-height: 1.25;
+  }
+
+  .cleaning-tasks .task-card {
+    padding: 0.75rem;
+  }
+}
+</style>

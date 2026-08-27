@@ -32,7 +32,7 @@
         :class="navigationVisible ? 'max-h-16 opacity-100' : 'max-h-0 -translate-y-3 border-transparent py-0 opacity-0'"
         :aria-label="t('nav.main')"
       >
-        <router-link v-for="item in navigationLinks" :key="item.to" :to="item.to" class="top-nav-link" active-class="top-nav-link-active">
+        <router-link v-for="item in navigationLinks" :key="item.to" :to="item.to" class="top-nav-link" :aria-label="item.label" active-class="top-nav-link-active">
           <span class="text-base" aria-hidden="true">{{ item.icon }}</span><span>{{ item.label }}</span>
         </router-link>
       </nav>
@@ -291,7 +291,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .app-top-bar { padding-top: env(safe-area-inset-top); }
 .notification-panel { padding-bottom: env(safe-area-inset-bottom); }
-.top-nav-link { @apply flex min-h-11 min-w-0 flex-1 basis-0 items-center justify-center gap-2 rounded-xl px-2 text-center text-sm font-bold transition hover:bg-surface focus:outline-none focus:ring-2 focus:ring-accent dark:hover:bg-surface-dark; }
+.top-nav-link { @apply flex min-h-11 min-w-0 flex-1 basis-0 flex-col items-center justify-center gap-0 rounded-xl px-1 text-center text-[10px] font-bold leading-tight transition hover:bg-surface focus:outline-none focus:ring-2 focus:ring-accent dark:hover:bg-surface-dark; }
 .top-nav-link-active { @apply bg-accent text-white hover:bg-accent dark:hover:bg-accent; }
 .bell-ring svg { transform-origin: 50% 15%; animation: bell-ring 1.1s ease-in-out; }
 @keyframes bell-ring {
@@ -302,5 +302,8 @@ onBeforeUnmount(() => {
 @media (prefers-reduced-motion: reduce) { .bell-ring svg { animation: none; } }
 @media (max-width: 380px) {
   .app-top-bar > div { gap: .5rem; padding-left: .625rem; padding-right: .625rem; }
+}
+@media (min-width: 480px) {
+  .top-nav-link { @apply flex-row gap-2 px-2 text-sm; }
 }
 </style>

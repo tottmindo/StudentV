@@ -1117,7 +1117,7 @@ async getFloorWaterConsumption(dormID: number): Promise<FloorWaterConsumption> {
 }
 
 async getFloorWaterStats(dormID: number, requestedDays: number, sensorCode?: string): Promise<FloorWaterStats> {
-  const periodDays = [1, 7, 30, 90].includes(requestedDays) ? requestedDays : 30;
+  const periodDays = [1, 7, 30, 365].includes(requestedDays) ? requestedDays : 30;
   const [dormRows] = await pool.query(
     `SELECT floor, address FROM dorms WHERE dormID = ? LIMIT 1`,
     [dormID]
@@ -1153,6 +1153,12 @@ async getFloorWaterStats(dormID: number, requestedDays: number, sensorCode?: str
             COALESCE(SUM(liters) FILTER (WHERE type = 'Cold Water Meter'), 0)::real AS coldLiters,
             COALESCE(SUM(liters) FILTER (WHERE type = 'Warm Water Meter'), 0)::real AS warmLiters,
             AVG(NULLIF((tempMin + tempMax) / 2.0, 0))::real AS averageWaterTemp,
+            AVG(NULLIF((tempMin + tempMax) / 2.0, 0)) FILTER (WHERE type = 'Cold Water Meter')::real AS averageColdWaterTemp,
+            AVG(NULLIF((tempMin + tempMax) / 2.0, 0)) FILTER (WHERE type = 'Warm Water Meter')::real AS averageWarmWaterTemp,
+            MIN(NULLIF(tempMin, 0)) FILTER (WHERE type = 'Cold Water Meter')::real AS minimumColdWaterTemp,
+            MAX(NULLIF(tempMax, 0)) FILTER (WHERE type = 'Cold Water Meter')::real AS maximumColdWaterTemp,
+            MIN(NULLIF(tempMin, 0)) FILTER (WHERE type = 'Warm Water Meter')::real AS minimumWarmWaterTemp,
+            MAX(NULLIF(tempMax, 0)) FILTER (WHERE type = 'Warm Water Meter')::real AS maximumWarmWaterTemp,
             MAX(NULLIF(tempMax, 0))::real AS peakWaterTemp,
             MAX((SELECT latestReadingAt FROM latest)) AS latestReadingAt
      FROM deltas
@@ -1167,6 +1173,12 @@ async getFloorWaterStats(dormID: number, requestedDays: number, sensorCode?: str
     coldLiters: Number(row.coldLiters) || 0,
     warmLiters: Number(row.warmLiters) || 0,
     averageWaterTemp: row.averageWaterTemp == null ? null : Number(row.averageWaterTemp),
+    averageColdWaterTemp: row.averageColdWaterTemp == null ? null : Number(row.averageColdWaterTemp),
+    averageWarmWaterTemp: row.averageWarmWaterTemp == null ? null : Number(row.averageWarmWaterTemp),
+    minimumColdWaterTemp: row.minimumColdWaterTemp == null ? null : Number(row.minimumColdWaterTemp),
+    maximumColdWaterTemp: row.maximumColdWaterTemp == null ? null : Number(row.maximumColdWaterTemp),
+    minimumWarmWaterTemp: row.minimumWarmWaterTemp == null ? null : Number(row.minimumWarmWaterTemp),
+    maximumWarmWaterTemp: row.maximumWarmWaterTemp == null ? null : Number(row.maximumWarmWaterTemp),
     peakWaterTemp: row.peakWaterTemp == null ? null : Number(row.peakWaterTemp),
   }));
   const today = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Stockholm" }).format(new Date());
@@ -1193,6 +1205,12 @@ async getFloorWaterStats(dormID: number, requestedDays: number, sensorCode?: str
               COALESCE(SUM(GREATEST(totalVolume - previousVolume, 0)) FILTER (WHERE type = 'Cold Water Meter'), 0)::real AS coldLiters,
               COALESCE(SUM(GREATEST(totalVolume - previousVolume, 0)) FILTER (WHERE type = 'Warm Water Meter'), 0)::real AS warmLiters,
               AVG(NULLIF((tempMin + tempMax) / 2.0, 0))::real AS averageWaterTemp,
+              AVG(NULLIF((tempMin + tempMax) / 2.0, 0)) FILTER (WHERE type = 'Cold Water Meter')::real AS averageColdWaterTemp,
+              AVG(NULLIF((tempMin + tempMax) / 2.0, 0)) FILTER (WHERE type = 'Warm Water Meter')::real AS averageWarmWaterTemp,
+              MIN(NULLIF(tempMin, 0)) FILTER (WHERE type = 'Cold Water Meter')::real AS minimumColdWaterTemp,
+              MAX(NULLIF(tempMax, 0)) FILTER (WHERE type = 'Cold Water Meter')::real AS maximumColdWaterTemp,
+              MIN(NULLIF(tempMin, 0)) FILTER (WHERE type = 'Warm Water Meter')::real AS minimumWarmWaterTemp,
+              MAX(NULLIF(tempMax, 0)) FILTER (WHERE type = 'Warm Water Meter')::real AS maximumWarmWaterTemp,
               MAX(NULLIF(tempMax, 0))::real AS peakWaterTemp
        FROM readings
        WHERE previousVolume IS NOT NULL
@@ -1204,6 +1222,12 @@ async getFloorWaterStats(dormID: number, requestedDays: number, sensorCode?: str
             AVG(coldLiters)::real AS averageColdLiters,
             AVG(warmLiters)::real AS averageWarmLiters,
             AVG(averageWaterTemp)::real AS averageWaterTemp,
+            AVG(averageColdWaterTemp)::real AS averageColdWaterTemp,
+            AVG(averageWarmWaterTemp)::real AS averageWarmWaterTemp,
+            MIN(minimumColdWaterTemp)::real AS minimumColdWaterTemp,
+            MAX(maximumColdWaterTemp)::real AS maximumColdWaterTemp,
+            MIN(minimumWarmWaterTemp)::real AS minimumWarmWaterTemp,
+            MAX(maximumWarmWaterTemp)::real AS maximumWarmWaterTemp,
             AVG(peakWaterTemp)::real AS averagePeakWaterTemp
      FROM hourly GROUP BY 1 ORDER BY 1`,
     [dormID, sensorCode ?? null, sensorCode ?? null, dormID, sensorCode ?? null, sensorCode ?? null, periodDays, periodDays]
@@ -1245,6 +1269,12 @@ async getFloorWaterStats(dormID: number, requestedDays: number, sensorCode?: str
       averageColdLiters: Number(row.averageColdLiters) || 0,
       averageWarmLiters: Number(row.averageWarmLiters) || 0,
       averageWaterTemp: row.averageWaterTemp == null ? null : Number(row.averageWaterTemp),
+      averageColdWaterTemp: row.averageColdWaterTemp == null ? null : Number(row.averageColdWaterTemp),
+      averageWarmWaterTemp: row.averageWarmWaterTemp == null ? null : Number(row.averageWarmWaterTemp),
+      minimumColdWaterTemp: row.minimumColdWaterTemp == null ? null : Number(row.minimumColdWaterTemp),
+      maximumColdWaterTemp: row.maximumColdWaterTemp == null ? null : Number(row.maximumColdWaterTemp),
+      minimumWarmWaterTemp: row.minimumWarmWaterTemp == null ? null : Number(row.minimumWarmWaterTemp),
+      maximumWarmWaterTemp: row.maximumWarmWaterTemp == null ? null : Number(row.maximumWarmWaterTemp),
       averagePeakWaterTemp: row.averagePeakWaterTemp == null ? null : Number(row.averagePeakWaterTemp),
     })),
   };

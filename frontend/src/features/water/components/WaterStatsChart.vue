@@ -1,6 +1,6 @@
 <template>
-  <div class="relative h-80 w-full md:h-96">
-    <canvas ref="canvas" :aria-label="ariaLabel"></canvas>
+  <div class="relative min-w-0 max-w-full overflow-hidden" :class="compact ? 'h-72 w-full sm:h-80 xl:h-auto' : 'h-72 w-full sm:h-80 md:h-96'">
+    <canvas ref="canvas" class="max-w-full" :aria-label="ariaLabel"></canvas>
   </div>
 </template>
 
@@ -13,7 +13,7 @@ import { useTheme } from '@/shared/composables/theme'
 
 Chart.register(BarController, BarElement, CategoryScale, LineController, LineElement, LinearScale, PointElement, Tooltip, Legend, Filler)
 
-const props = defineProps<{ stats: FloorWaterStats; view: 'usage' | 'split' | 'temperature' | 'hourly' }>()
+const props = withDefaults(defineProps<{ stats: FloorWaterStats; view: 'usage' | 'split' | 'temperature' | 'hourly'; compact?: boolean }>(), { compact: false })
 const { t, locale } = useI18n()
 const { isDark } = useTheme()
 const canvas = ref<HTMLCanvasElement | null>(null)
@@ -40,8 +40,10 @@ function renderChart() {
     { label: t('charts.warmWater'), data: isHourly ? labels.map((_, hour) => hourly.get(hour)?.averageWarmLiters ?? 0) : props.stats.days.map(day => day.warmLiters), backgroundColor: '#f97316', borderRadius: 4, stack: 'water' },
   ]
   else if (props.view === 'temperature') datasets = [
-    { ...common, label: t('charts.averageTemperature'), data: isHourly ? labels.map((_, hour) => hourly.get(hour)?.averageWaterTemp ?? null) : props.stats.days.map(day => day.averageWaterTemp), borderColor: '#cf2e2e', backgroundColor: 'rgba(207,46,46,.12)', fill: true },
-    { ...common, label: t('charts.peakTemperature'), data: isHourly ? labels.map((_, hour) => hourly.get(hour)?.averagePeakWaterTemp ?? null) : props.stats.days.map(day => day.peakWaterTemp), borderColor: '#f97316', borderDash: [5, 5] },
+    { ...common, label: t('charts.coldWaterMinimum'), data: isHourly ? labels.map((_, hour) => hourly.get(hour)?.minimumColdWaterTemp ?? null) : props.stats.days.map(day => day.minimumColdWaterTemp ?? null), borderColor: '#60a5fa', borderDash: [5, 4] },
+    { ...common, label: t('charts.coldWaterMaximum'), data: isHourly ? labels.map((_, hour) => hourly.get(hour)?.maximumColdWaterTemp ?? null) : props.stats.days.map(day => day.maximumColdWaterTemp ?? null), borderColor: '#1d4ed8', backgroundColor: 'rgba(37,99,235,.08)', fill: false },
+    { ...common, label: t('charts.warmWaterMinimum'), data: isHourly ? labels.map((_, hour) => hourly.get(hour)?.minimumWarmWaterTemp ?? null) : props.stats.days.map(day => day.minimumWarmWaterTemp ?? null), borderColor: '#fb923c', borderDash: [5, 4] },
+    { ...common, label: t('charts.warmWaterMaximum'), data: isHourly ? labels.map((_, hour) => hourly.get(hour)?.maximumWarmWaterTemp ?? null) : props.stats.days.map(day => day.maximumWarmWaterTemp ?? null), borderColor: '#c2410c', backgroundColor: 'rgba(249,115,22,.08)', fill: false },
   ]
   else if (props.view === 'hourly') datasets = [{ ...common, label: t('charts.averageUsage'), data: labels.map((_, hour) => hourly.get(hour)?.averageLiters ?? 0), borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,.14)', fill: true }]
   else datasets = [{ ...common, label: isHourly ? t('charts.hourlyUsage') : t('charts.dailyUsage'), data: isHourly ? labels.map((_, hour) => hourly.get(hour)?.averageLiters ?? 0) : props.stats.days.map(day => day.totalLiters), borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,.14)', fill: true }]

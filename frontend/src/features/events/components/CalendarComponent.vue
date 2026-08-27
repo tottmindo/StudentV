@@ -1,24 +1,24 @@
 <template>
-  <div class="grid h-full min-h-0 grid-rows-[auto_auto_minmax(0,1fr)] gap-4">
+  <div class="grid h-full min-h-0 min-w-0 grid-rows-[auto_auto_minmax(0,1fr)] gap-2 sm:gap-4">
     <!-- Header: month/year + navigation -->
-    <div class="flex items-center justify-between">
+    <div class="flex min-w-0 items-center justify-between gap-2">
       <button
         type="button"
         @click="goToPrevMonth"
-        class="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-300 dark:hover:bg-gray-700 cursor-pointer"
+        class="inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded border border-gray-300 text-lg hover:bg-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
         :aria-label="t('calendar.previous')"
       >
         &lsaquo;
       </button>
 
-      <h3 class="text-lg font-semibold">
+      <h3 class="min-w-0 text-center text-base font-semibold leading-tight [overflow-wrap:anywhere] sm:text-lg">
         {{ monthLabel }} {{ currentYear }}
       </h3>
 
       <button
         type="button"
         @click="goToNextMonth"
-        class="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-300 dark:hover:bg-gray-700 cursor-pointer"
+        class="inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded border border-gray-300 text-lg hover:bg-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
         :aria-label="t('calendar.next')"
       >
         &rsaquo;
@@ -26,25 +26,25 @@
     </div>
 
     <!-- Weekday labels -->
-    <div class="grid grid-cols-7 text-center text-xs font-semibold opacity-70">
-      <span v-for="day in weekdayLabels" :key="day">{{ day }}</span>
+    <div class="grid min-w-0 grid-cols-7 text-center text-xs font-semibold opacity-70">
+      <span v-for="day in weekdayLabels" :key="day" class="min-w-0 truncate px-0.5">{{ day }}</span>
     </div>
 
     <!-- Day grid -->
-    <div class="grid min-h-0 grid-cols-7 grid-rows-6 gap-1">
+    <div class="grid min-h-0 min-w-0 grid-cols-7 grid-rows-6 gap-0.5 sm:gap-1">
       <div
         v-for="(cell, index) in calendarCells"
         :key="index"
-        class="aspect-square lg:aspect-auto flex min-h-0 flex-col items-center justify-center gap-1 rounded text-sm hover:bg-gray-300 dark:hover:bg-gray-700 cursor-pointer"
+        class="flex aspect-square w-full min-w-0 cursor-pointer flex-col items-center justify-center gap-0.5 rounded text-xs hover:bg-gray-300 dark:hover:bg-gray-700 sm:aspect-auto sm:gap-1 sm:text-sm"
           @click="cell.day && emitDayClick(cell.dateKey)"
         :class="cellClasses(cell)"
       >
         <span v-if="cell.day">{{ cell.day }}</span>
-        <span v-if="cell.day && (cell.hasEvent || cell.hasCleaning || cell.hasExternal || cell.hasNation)" class="flex gap-1">
-          <span v-if="cell.hasEvent" class="h-1.5 w-1.5 rounded-full bg-accent"></span>
-          <span v-if="cell.hasCleaning" class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-          <span v-if="cell.hasExternal" class="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
-          <span v-if="cell.hasNation" class="h-1.5 w-1.5 rounded-full bg-purple-500"></span>
+        <span v-if="cell.day && (cell.hasEvent || cell.hasCleaning || cell.hasExternal || cell.hasNation)" class="grid grid-cols-2 gap-0.5 sm:flex sm:gap-1">
+          <span v-if="cell.hasEvent" class="h-1 w-1 rounded-full bg-accent sm:h-1.5 sm:w-1.5"></span>
+          <span v-if="cell.hasCleaning" class="h-1 w-1 rounded-full bg-emerald-500 sm:h-1.5 sm:w-1.5"></span>
+          <span v-if="cell.hasExternal" class="h-1 w-1 rounded-full bg-blue-500 sm:h-1.5 sm:w-1.5"></span>
+          <span v-if="cell.hasNation" class="h-1 w-1 rounded-full bg-purple-500 sm:h-1.5 sm:w-1.5"></span>
         </span>
       </div>
     </div>

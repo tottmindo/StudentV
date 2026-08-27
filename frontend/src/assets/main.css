@@ -19,6 +19,40 @@
   --field-focus-ring: rgb(207 46 46 / 0.18);
 }
 
+/*
+ * Keep intrinsic content (charts, media and unexpectedly long values) inside
+ * the viewport. Individual tables retain their deliberate local horizontal
+ * scrollers, while ordinary page content never creates a page-wide scrollbar.
+ */
+html {
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
+body {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+#app {
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
+:is(img, picture, video, canvas, svg) {
+  max-width: 100%;
+}
+
+/* Grid/flex children should be allowed to shrink below their content size. */
+:where(main, section, article, aside, form, nav, header, footer) {
+  min-width: 0;
+}
+
+:where(button, input, select, textarea) {
+  max-width: 100%;
+}
+
 :root.dark {
   color-scheme: dark;
   --color-accent: 207 46 46;

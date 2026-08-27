@@ -1,7 +1,7 @@
 <template>
-  <div class="grid gap-8">
+  <div class="grid min-w-0 gap-8">
     <!-- Form -->
-    <form @submit.prevent="login" class="w-full max-w-md space-y-4">
+    <form @submit.prevent="login" class="w-full min-w-0 max-w-md space-y-4">
       
       <!-- Username Input -->
       <input
@@ -38,7 +38,7 @@
       >
         {{ isSubmitting ? t('auth.signingIn') : t('auth.login') }}
       </button>
-      <router-link to="/forgot-password" class="block text-center text-sm text-accent hover:underline">
+      <router-link to="/forgot-password" class="flex min-h-11 items-center justify-center text-center text-sm text-accent hover:underline">
         {{ t('auth.forgotPassword') }}
       </router-link>
     </form>

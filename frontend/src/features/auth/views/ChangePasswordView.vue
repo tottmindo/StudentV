@@ -1,8 +1,8 @@
 <template>
-  <main class="flex min-h-screen items-center justify-center px-4">
-    <form class="w-full max-w-md space-y-4 rounded-2xl bg-surface p-8 shadow-lg dark:bg-surface-dark" @submit.prevent="submit">
-      <h1 class="text-2xl font-bold">{{ t('auth.setupTitle') }}</h1>
-      <p class="text-sm opacity-75">{{ t('auth.setupHelp') }}</p>
+  <main class="flex min-h-screen items-center justify-center px-4 py-6 sm:px-6">
+    <form class="w-full min-w-0 max-w-md space-y-4 rounded-2xl bg-surface p-5 shadow-lg dark:bg-surface-dark sm:p-8" @submit.prevent="submit">
+      <h1 class="break-words text-2xl font-bold">{{ t('auth.setupTitle') }}</h1>
+      <p class="break-words text-sm opacity-75">{{ t('auth.setupHelp') }}</p>
       <input :value="email" type="email" autocomplete="username" readonly tabindex="-1" class="sr-only" aria-hidden="true" />
       <label class="block">
         <span class="text-sm font-semibold">{{ t('auth.publicUsername') }}</span>
@@ -16,7 +16,7 @@
       <button :disabled="submitting" class="w-full rounded bg-accent p-3 font-semibold text-white disabled:opacity-50">
         {{ submitting ? t('common.saving') : t('auth.savePassword') }}
       </button>
-      <p v-if="error" class="text-center text-red-500" role="alert">{{ error }}</p>
+      <p v-if="error" class="break-words text-center text-red-500" role="alert">{{ error }}</p>
     </form>
   </main>
 </template>

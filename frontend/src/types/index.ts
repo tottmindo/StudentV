@@ -142,6 +142,12 @@ export type WaterStatsDay = {
   coldLiters: number
   warmLiters: number
   averageWaterTemp: number | null
+  averageColdWaterTemp?: number | null
+  averageWarmWaterTemp?: number | null
+  minimumColdWaterTemp?: number | null
+  maximumColdWaterTemp?: number | null
+  minimumWarmWaterTemp?: number | null
+  maximumWarmWaterTemp?: number | null
   peakWaterTemp: number | null
 }
 
@@ -160,7 +166,7 @@ export type FloorWaterStats = {
   activeSensors: number
   alerts: number
   days: WaterStatsDay[]
-  hourlyProfile: { hour: number; averageLiters: number; averageColdLiters: number; averageWarmLiters: number; averageWaterTemp: number | null; averagePeakWaterTemp: number | null }[]
+  hourlyProfile: { hour: number; averageLiters: number; averageColdLiters: number; averageWarmLiters: number; averageWaterTemp: number | null; averageColdWaterTemp?: number | null; averageWarmWaterTemp?: number | null; minimumColdWaterTemp?: number | null; maximumColdWaterTemp?: number | null; minimumWarmWaterTemp?: number | null; maximumWarmWaterTemp?: number | null; averagePeakWaterTemp: number | null }[]
 }
 
 export type MenuItem = {

@@ -71,6 +71,12 @@ export interface WaterStatsDay {
   coldLiters: number;
   warmLiters: number;
   averageWaterTemp: number | null;
+  averageColdWaterTemp?: number | null;
+  averageWarmWaterTemp?: number | null;
+  minimumColdWaterTemp?: number | null;
+  maximumColdWaterTemp?: number | null;
+  minimumWarmWaterTemp?: number | null;
+  maximumWarmWaterTemp?: number | null;
   peakWaterTemp: number | null;
 }
 
@@ -95,6 +101,12 @@ export interface FloorWaterStats {
     averageColdLiters: number;
     averageWarmLiters: number;
     averageWaterTemp: number | null;
+    averageColdWaterTemp?: number | null;
+    averageWarmWaterTemp?: number | null;
+    minimumColdWaterTemp?: number | null;
+    maximumColdWaterTemp?: number | null;
+    minimumWarmWaterTemp?: number | null;
+    maximumWarmWaterTemp?: number | null;
     averagePeakWaterTemp: number | null;
   }>;
 }

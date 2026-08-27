@@ -1,18 +1,18 @@
 <template>
-  <main class="flex min-h-screen items-start justify-center px-4 py-6 sm:py-8">
-    <div class="grid w-full max-w-5xl grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
-      <section class="rounded-2xl bg-surface p-6 shadow-lg dark:bg-surface-dark lg:p-8">
-        <div class="flex items-center justify-between gap-4">
-          <h2 class="text-xl font-bold">{{ t('account.profile') }}</h2>
+  <main class="flex min-h-screen min-w-0 items-start justify-center px-4 py-6 sm:px-6 sm:py-8">
+    <div class="grid w-full min-w-0 max-w-5xl grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
+      <section class="min-w-0 rounded-2xl bg-surface p-5 shadow-lg dark:bg-surface-dark sm:p-6 lg:p-8">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h2 class="min-w-0 break-words text-xl font-bold">{{ t('account.profile') }}</h2>
           <button
             type="button"
-            class="shrink-0 rounded-lg border border-error/40 px-3 py-2 text-sm font-bold text-error transition hover:bg-error/10 focus:outline-none focus:ring-2 focus:ring-error/50"
+            class="min-h-11 shrink-0 rounded-lg border border-error/40 px-3 py-2 text-sm font-bold text-error transition hover:bg-error/10 focus:outline-none focus:ring-2 focus:ring-error/50"
             @click="signOut"
           >
             {{ t('auth.signOut') }}
           </button>
         </div>
-        <p class="mt-2 text-sm opacity-75">{{ t('account.emailHelp') }}</p>
+        <p class="mt-2 break-words text-sm opacity-75">{{ t('account.emailHelp') }}</p>
         <form class="mt-6 space-y-4" @submit.prevent="save">
         <label class="block">
           <span class="text-sm font-semibold">{{ t('account.loginEmail') }}</span>
@@ -27,12 +27,12 @@
           {{ saving ? t('account.saving') : t('account.saveProfile') }}
         </button>
         </form>
-        <p v-if="message" class="mt-4 text-center" :class="failed ? 'text-red-500' : 'text-green-600'" role="status">{{ message }}</p>
+        <p v-if="message" class="mt-4 break-words text-center" :class="failed ? 'text-red-500' : 'text-green-600'" role="status">{{ message }}</p>
       </section>
 
-      <section class="rounded-2xl bg-surface p-6 shadow-lg dark:bg-surface-dark lg:p-8">
-        <h2 class="text-xl font-bold">{{ t('account.changePassword') }}</h2>
-        <p class="mt-2 text-sm opacity-75">{{ t('account.passwordHelp') }}</p>
+      <section class="min-w-0 rounded-2xl bg-surface p-5 shadow-lg dark:bg-surface-dark sm:p-6 lg:p-8">
+        <h2 class="break-words text-xl font-bold">{{ t('account.changePassword') }}</h2>
+        <p class="mt-2 break-words text-sm opacity-75">{{ t('account.passwordHelp') }}</p>
         <form class="mt-6 space-y-4" @submit.prevent="changePassword">
         <input :value="email" type="email" autocomplete="username" readonly tabindex="-1" class="sr-only" aria-hidden="true" />
         <label class="block">
@@ -54,7 +54,7 @@
           {{ changingPassword ? t('account.changing') : t('account.changePassword') }}
         </button>
         </form>
-        <p v-if="passwordMessage" class="mt-4 text-center text-red-500" role="alert">{{ passwordMessage }}</p>
+        <p v-if="passwordMessage" class="mt-4 break-words text-center text-red-500" role="alert">{{ passwordMessage }}</p>
       </section>
 
     </div>

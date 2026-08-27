@@ -69,58 +69,67 @@
               class="message-row"
               :class="msg.userID === currentUserID ? 'own' : 'other'"
             >
-              <div class="message-bubble">
-                <div class="message-meta">
-                  <strong>
-                    {{ msg.userID === currentUserID ? t('chat.you') : msg.username }}
-                  </strong>
-                  <time :datetime="msg.sentAt">
-                    {{ formatTime(msg.sentAt) }}
-                  </time>
-                </div>
-
-                <p>{{ msg.msg }}</p>
-
-                <div
-                  v-if="msg.reactions.length"
-                  class="message-reactions"
-                >
-                  <button
-                    v-for="reaction in msg.reactions"
-                    :key="reaction.emoji"
-                    type="button"
-                    class="reaction-button"
-                    :class="{ reacted: reaction.reacted }"
-                    @click="toggleReaction(msg.messageID, reaction.emoji)"
-                  >
-                    <span>{{ reaction.emoji }}</span>
-                    <span>{{ reaction.count }}</span>
-                  </button>
-                </div>
-              </div>
-
-              <!-- Reaction button OUTSIDE the bubble -->
               <div
                 class="reaction-picker-wrapper"
                 :data-message-id="msg.messageID"
               >
-                <button
-                  type="button"
-                  class="reaction-add-button"
+                <div
+                  class="message-bubble"
+                  role="button"
+                  tabindex="0"
                   aria-label="Add reaction"
-                  @click="openReactionPicker(msg.messageID)"
+                  @pointerdown="startReactionHold(msg.messageID, $event)"
+                  @pointermove="moveReactionHold"
+                  @pointerup="cancelReactionHold"
+                  @pointercancel="cancelReactionHold"
+                  @pointerleave="cancelReactionHold"
+                  @contextmenu.prevent
+                  @keydown.enter.prevent="openReactionPicker(msg.messageID)"
+                  @keydown.space.prevent="openReactionPicker(msg.messageID)"
                 >
-                  +
-                </button>
+                  <div class="message-meta">
+                    <strong>
+                      {{ msg.userID === currentUserID ? t('chat.you') : msg.username }}
+                    </strong>
+                    <time :datetime="msg.sentAt">
+                      {{ formatTime(msg.sentAt) }}
+                    </time>
+                  </div>
 
-                <emoji-picker
-                  v-if="reactionPickerMessageID === msg.messageID"
-                  class="reaction-picker"
-                  @emoji-click="(event : CustomEvent <{ unicode : string}>) => addReaction(msg.messageID, event)"
-                />
+                  <p>{{ msg.msg }}</p>
+
+                  <div v-if="msg.reactions.length" class="message-reactions">
+                    <button
+                      v-for="reaction in msg.reactions"
+                      :key="reaction.emoji"
+                      type="button"
+                      class="reaction-button"
+                      :class="{ reacted: reaction.reacted }"
+                      @click.stop="toggleReaction(msg.messageID, reaction.emoji)"
+                    >
+                      <span>{{ reaction.emoji }}</span>
+                      <span>{{ reaction.count }}</span>
+                    </button>
+                  </div>
+                </div>
+
               </div>
             </div>
         </div>
+        <Teleport to="body">
+          <div
+            v-if="reactionPickerMessageID !== null"
+            class="reaction-picker-overlay"
+            role="presentation"
+            @click.self="closeReactionPicker"
+          >
+            <emoji-picker
+              class="reaction-picker"
+              @click.stop
+              @emoji-click="(event : CustomEvent <{ unicode : string}>) => addReaction(reactionPickerMessageID!, event)"
+            />
+          </div>
+        </Teleport>
         <form class="composer" @submit.prevent="sendMessage">
         <!-- Emoji picker -->
         <div ref="emojiPickerWrapper" class="emoji-picker-wrapper">
@@ -198,6 +207,9 @@ const chatError = ref('')
 const showEmojiPickerElement = ref(false)
 const emojiPickerWrapper = ref<HTMLElement | null>(null)
 const reactionPickerMessageID = ref<number | null>(null)
+let reactionHoldTimer: ReturnType<typeof setTimeout> | undefined
+let reactionHoldStart: { x: number; y: number } | null = null
+let reactionPickerOpenedAt = 0
 const roomMembers = ref<{ username: string}[]>([])
 const showMembersDropdown = ref(false)
 const membersDropdownRef = ref<HTMLElement | null>(null)
@@ -243,7 +255,7 @@ function handleClickOutsideEmojiPicker(event: MouseEvent) {
     )
 
     if (picker && !picker.contains(target)) {
-      reactionPickerMessageID.value = null
+      closeReactionPicker()
     }
   }
 }
@@ -253,7 +265,39 @@ function openReactionPicker(messageID: number) {
     reactionPickerMessageID.value = null
   } else {
     reactionPickerMessageID.value = messageID
+    reactionPickerOpenedAt = Date.now()
   }
+}
+
+function closeReactionPicker() {
+  // Ignore the click generated when the opening long press is released.
+  if (Date.now() - reactionPickerOpenedAt < 350) return
+  reactionPickerMessageID.value = null
+}
+
+function startReactionHold(messageID: number, event: PointerEvent) {
+  if (!event.isPrimary || (event.pointerType === 'mouse' && event.button !== 0)) return
+  cancelReactionHold()
+  reactionHoldStart = { x: event.clientX, y: event.clientY }
+  reactionHoldTimer = setTimeout(() => {
+    reactionHoldTimer = undefined
+    reactionHoldStart = null
+    openReactionPicker(messageID)
+    navigator.vibrate?.(25)
+  }, 450)
+}
+
+function moveReactionHold(event: PointerEvent) {
+  if (!reactionHoldStart) return
+  if (Math.hypot(event.clientX - reactionHoldStart.x, event.clientY - reactionHoldStart.y) > 10) {
+    cancelReactionHold()
+  }
+}
+
+function cancelReactionHold() {
+  if (reactionHoldTimer) clearTimeout(reactionHoldTimer)
+  reactionHoldTimer = undefined
+  reactionHoldStart = null
 }
 
 function addReaction(messageID: number, event: CustomEvent) {
@@ -482,6 +526,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  cancelReactionHold()
   leaveCurrentRoom()
   socket.off('chatRooms', handleRooms)
   socket.off('chatHistory', handleHistory)
@@ -613,15 +658,6 @@ onUnmounted(() => {
   border-color: #cf2e2e;
   background: rgb(207 46 46 / .2);
 }
-:global(html.dark .reaction-add-button) {
-  border-color: rgb(255 255 255 / .18);
-  background: rgb(255 255 255 / .08);
-}
-
-:global(html.dark .reaction-add-button:hover) {
-  background: rgb(255 255 255 / .14);
-}
-
 .message-reactions {
   display: flex;
   flex-wrap: wrap;
@@ -654,33 +690,24 @@ onUnmounted(() => {
   color: inherit;
 }
 .reaction-picker-wrapper {
-  position: static;
-  flex: none;
+  display: contents;
 }
 
-.reaction-add-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.8rem;
-  height: 1.8rem;
-  padding: 0;
-  border: 1px solid rgb(56 46 56 / .18);
-  border-radius: 999px;
-  background: rgb(255 255 255 / .55);
-  font-size: 1rem;
-  line-height: 1;
-}
-
-.reaction-add-button:hover {
-  background: rgb(255 255 255 / .8);
-}
-
-.reaction-picker {
-  position: absolute;
-  bottom: calc(100% + .5rem);
-  right: 0;
+.reaction-picker-overlay {
+  position: fixed;
+  inset: 0;
   z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+  background: rgb(0 0 0 / .2);
+}
+.reaction-picker {
+  position: static;
+  width: min(22rem, calc(100vw - 2rem));
+  height: min(25rem, calc(100dvh - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom)));
+  border-radius: 1rem;
+  box-shadow: 0 18px 50px rgb(0 0 0 / .35);
 }
 .emoji-picker-wrapper { position: relative; flex: none; }
 .emoji-button { display: flex; align-items: center; justify-content: center; width: 2.75rem; height: 2.75rem; padding: 0;
@@ -688,8 +715,8 @@ onUnmounted(() => {
   font-size: 1.25rem; line-height: 1;}
 .emoji-button:hover { background: rgb(0 0 0 / .06);}
 .emoji-picker { position: absolute; bottom: calc(100% + .5rem); left: 0; z-index: 100;}
-.chat-page { height: calc(100dvh - 4rem - env(safe-area-inset-top)); padding: 1rem; font-family: "Nunito Sans", "Twemoji Mozilla", system-ui, sans-serif; }
-.chat-shell { display: grid; grid-template-columns: minmax(15rem, 21rem) minmax(0, 1fr); height: 100%; max-width: 80rem; margin: auto; overflow: hidden; border: 1px solid rgb(56 46 56 / .18); border-radius: 1rem; background: #eee4d8; box-shadow: 0 12px 35px rgb(56 46 56 / .1); }
+.chat-page { height: calc(100dvh - 4rem - env(safe-area-inset-top)); overflow: hidden; padding: 1rem; font-family: "Nunito Sans", "Twemoji Mozilla", system-ui, sans-serif; }
+.chat-shell { display: grid; grid-template-columns: minmax(15rem, 21rem) minmax(0, 1fr); height: 100%; min-height: 0; max-width: 80rem; margin: auto; overflow: hidden; border: 1px solid rgb(56 46 56 / .18); border-radius: 1rem; background: #eee4d8; box-shadow: 0 12px 35px rgb(56 46 56 / .1); }
 .room-panel { display: flex; min-width: 0; flex-direction: column; border-right: 1px solid rgb(56 46 56 / .18); background: #cfc0af; }
 .room-header, .conversation-header { min-height: 4.5rem; padding: 1rem 1.25rem; border-bottom: 1px solid rgb(0 0 0 / .09); }
 .room-header h1, .conversation-header h2 { font-size: 1.25rem; font-weight: 800; }
@@ -704,7 +731,7 @@ onUnmounted(() => {
 .panel-state, .message-state { margin: auto; padding: 2rem; text-align: center; opacity: .75; }
 .retry-button { display: block; margin: .75rem auto 0; text-decoration: underline; }
 .conversation-panel { display: flex; min-width: 0; min-height: 0; flex-direction: column; }
-.message-list { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 1.25rem; }
+.message-list { min-height: 0; flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; padding: 1.25rem; -webkit-overflow-scrolling: touch; }
 .message-row {
   position: relative;
   display: flex;
@@ -716,12 +743,13 @@ onUnmounted(() => {
   justify-content: flex-start;
 }
 .message-row.own { justify-content: flex-end; }
-.message-bubble { max-width: min(75%, 38rem); padding: .7rem .9rem; border-radius: 1rem; background: #d8c9bb; overflow-wrap: anywhere; }
+.message-bubble { max-width: min(75%, 38rem); padding: .7rem .9rem; border-radius: 1rem; background: #d8c9bb; overflow-wrap: anywhere; cursor: pointer; }
+.message-bubble:focus-visible { outline: 2px solid #cf2e2e; outline-offset: 2px; }
 .message-row.own .message-bubble { border-bottom-right-radius: .25rem; background: #cf2e2e; color: white; }
 .message-row.other .message-bubble { border-bottom-left-radius: .25rem; }
 .message-meta { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: .2rem; font-size: .72rem; opacity: .72; }
 .message-bubble p { white-space: pre-wrap; }
-.composer { display: flex; gap: .65rem; padding: .85rem max(.85rem, env(safe-area-inset-right)) max(.85rem, env(safe-area-inset-bottom)) max(.85rem, env(safe-area-inset-left)); border-top: 1px solid rgb(0 0 0 / .09); }
+.composer { display: flex; flex: none; gap: .65rem; padding: .85rem max(.85rem, env(safe-area-inset-right)) max(.85rem, env(safe-area-inset-bottom)) max(.85rem, env(safe-area-inset-left)); border-top: 1px solid rgb(0 0 0 / .09); }
 .composer input { min-width: 0; flex: 1; padding: .7rem .9rem; font-family: inherit;}
 .composer button { padding: .7rem 1.1rem; border-radius: .75rem; background: #cf2e2e; color: white; font-weight: 800; }
 .composer button:disabled { cursor: not-allowed; opacity: .45; }
@@ -729,6 +757,9 @@ onUnmounted(() => {
 .empty-conversation span { font-size: 2.5rem; }
 .empty-conversation h2 { margin-top: .5rem; font-size: 1.25rem; font-weight: 800; }
 .back-button { display: none; width: 2.5rem; height: 2.5rem; flex: none; place-items: center; border-radius: 999px; background: rgb(0 0 0 / .06); font-size: 1.35rem; }
+@media (max-width: 1279px) {
+  .chat-page { height: calc(100dvh - 7.75rem - env(safe-area-inset-top)); }
+}
 @media (max-width: 639px) {
   .chat-page { padding: 0; }
   .chat-shell { display: block; border: 0; border-radius: 0; }
