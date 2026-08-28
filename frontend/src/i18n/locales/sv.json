@@ -857,6 +857,7 @@
     "matchedNotShown": "{count} exakt(a) matchning(ar) hittades och visas inte.",
     "sendResidentEmails": "Verkställ valda ({count})",
     "updatingResidents": "Uppdaterar boende…",
+    "residentImportProgress": "Uppdaterar boende… {completed} av {total} bearbetade.",
     "residentImportReadError": "Det gick inte att läsa boendefilen.",
     "residentImportApplyError": "Det gick inte att verkställa boendeuppdateringarna.",
     "residentImportReady": "Granska {count} rum/boende-kombination(er) som inte matchar. Avmarkera en rad för att ignorera den.",

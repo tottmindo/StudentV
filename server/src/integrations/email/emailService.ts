@@ -1,8 +1,17 @@
-import nodemailer from "nodemailer";
+import nodemailer, { type Transporter } from "nodemailer";
+import type SMTPPool from "nodemailer/lib/smtp-pool/index.js";
 import { isIP } from "node:net";
 import { resolve4 } from "node:dns/promises";
 
-async function smtpTransport() {
+type MailTransport = Transporter<SMTPPool.SentMessageInfo, SMTPPool.Options>;
+let transportPromise: Promise<MailTransport> | null = null;
+
+function positiveIntegerEnv(name: string, fallback: number) {
+  const value = Number(process.env[name] ?? fallback);
+  return Number.isInteger(value) && value > 0 ? value : fallback;
+}
+
+async function createSmtpTransport(): Promise<MailTransport> {
   const host = process.env.SMTP_HOST;
   const port = Number(process.env.SMTP_PORT || 587);
   const user = process.env.SMTP_USER;
@@ -23,12 +32,33 @@ async function smtpTransport() {
   }
 
   return nodemailer.createTransport({
+    pool: true,
     host: resolvedHost,
     port,
     secure: process.env.SMTP_SECURE === "true" || port === 465,
     auth: { user, pass },
     tls: isIP(host) ? undefined : { servername: host },
+    maxConnections: positiveIntegerEnv("SMTP_MAX_CONNECTIONS", 2),
+    maxMessages: positiveIntegerEnv("SMTP_MAX_MESSAGES", 100),
+    rateDelta: 1_000,
+    rateLimit: positiveIntegerEnv("SMTP_RATE_LIMIT", 4),
+    connectionTimeout: positiveIntegerEnv("SMTP_CONNECTION_TIMEOUT_MS", 30_000),
+    greetingTimeout: positiveIntegerEnv("SMTP_GREETING_TIMEOUT_MS", 30_000),
+    socketTimeout: positiveIntegerEnv("SMTP_SOCKET_TIMEOUT_MS", 60_000),
   });
+}
+
+function smtpTransport(): Promise<MailTransport> {
+  if (!transportPromise) {
+    // Cache both DNS resolution and the pooled transporter. If setup itself
+    // fails, clear the cache so a later request can recover from a transient
+    // DNS/configuration problem.
+    transportPromise = createSmtpTransport().catch(error => {
+      transportPromise = null;
+      throw error;
+    });
+  }
+  return transportPromise;
 }
 
 export async function sendResidentWelcomeEmail(

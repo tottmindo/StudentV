@@ -1,5 +1,6 @@
 
 import { z } from "zod";
+import { emailAddressSchema } from "../../shared/validation/emailAddress.js";
 
 const optionalRoomID = z.preprocess(
   value => value === "" || value === undefined ? null : value,
@@ -20,13 +21,13 @@ export const registerSchema = requireStudentLocation(z.object({
   roomID: optionalRoomID,
   dormID: optionalDormID,
   role: z.enum(["ADMIN", "RESEARCHER", "STUDENT"]),
-  email: z.string().trim().email().transform(email => email.toLowerCase()),
+  email: emailAddressSchema,
   password: z.string().min(12).max(128),
   replaceExisting: z.boolean().optional(),
 }));
 
 export const loginSchema = z.object({
-  email: z.string().trim().email().transform(email => email.toLowerCase()),
+  email: emailAddressSchema,
   password: z.string().min(6),
 });
 
@@ -39,25 +40,41 @@ const managedUserFields = {
 
 export const createResidentSchema = requireStudentLocation(z.object({
   ...managedUserFields,
-  email: z.string().trim().email().max(255).transform(email => email.toLowerCase()),
+  email: emailAddressSchema,
 }));
 
 export const adminResetPasswordSchema = z.object({
-  email: z.string().trim().email().transform(email => email.toLowerCase()),
+  email: emailAddressSchema,
   dormID: z.coerce.number().int().positive(),
 });
 
+const residentImportLocation = {
+  roomID: z.number().int().positive(),
+  dormID: z.number().int().positive(),
+};
+const residentImportRowSchema = z.discriminatedUnion("vacant", [
+  z.object({ ...residentImportLocation, email: emailAddressSchema, vacant: z.literal(false) }),
+  z.object({ ...residentImportLocation, email: z.string().max(255).optional().default(""), vacant: z.literal(true) }),
+]);
 export const residentImportApplySchema = z.object({
-  rows: z.array(z.object({
-    roomID: z.number().int().positive(),
-    dormID: z.number().int().positive(),
-    email: z.string().trim().email().max(255).transform(email => email.toLowerCase()),
-    vacant: z.boolean(),
-  })).min(1).max(500),
+  rows: z.array(residentImportRowSchema).min(1).max(500),
+}).superRefine((data, context) => {
+  const seenRooms = new Set<string>();
+  data.rows.forEach((row, index) => {
+    const room = `${row.dormID}:${row.roomID}`;
+    if (seenRooms.has(room)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["rows", index, "roomID"],
+        message: "The room occurs more than once in this update.",
+      });
+    }
+    seenRooms.add(room);
+  });
 });
 
 export const adminUpdateUserSchema = requireStudentLocation(z.object({
-  email: z.string().trim().email().transform(email => email.toLowerCase()),
+  email: emailAddressSchema,
   username: z.string().trim().min(3).max(50).nullable(),
   role: z.enum(["ADMIN", "RESEARCHER", "STUDENT"]),
   dormID: optionalDormID,
@@ -121,7 +138,7 @@ export const changePasswordSchema = z.object({
 
 export const updateAccountSchema = z.object({
   username: z.string().trim().min(3).max(50),
-  email: z.string().trim().email().max(255).transform(email => email.toLowerCase()),
+  email: emailAddressSchema,
 });
 
 export const updatePasswordSchema = z.object({
@@ -133,7 +150,7 @@ export const updatePasswordSchema = z.object({
 });
 
 export const emailSchema = z.object({
-  email: z.string().trim().email().transform(email => email.toLowerCase()),
+  email: emailAddressSchema,
 });
 
 export const resetPasswordSchema = z.object({

@@ -857,6 +857,7 @@
     "matchedNotShown": "{count} exact match(es) were found and are not shown.",
     "sendResidentEmails": "Apply selected ({count})",
     "updatingResidents": "Updating residents…",
+    "residentImportProgress": "Updating residents… {completed} of {total} processed.",
     "residentImportReadError": "Could not read the resident workbook.",
     "residentImportApplyError": "Could not apply the resident updates.",
     "residentImportReady": "Review {count} non-matching room/resident combination(s). Uncheck any row to ignore it.",

@@ -40,6 +40,67 @@ const residentWorkbookUpload = multer({
   limits: { fileSize: 5 * 1024 * 1024, files: 1 },
   fileFilter: (_req, file, callback) => callback(null, /\.xlsx$/i.test(file.originalname)),
 });
+const residentImportConcurrency = (() => {
+  const value = Number(process.env.RESIDENT_IMPORT_CONCURRENCY ?? 2);
+  return Number.isInteger(value) && value > 0 ? Math.min(value, 5) : 2;
+})();
+
+type ResidentImportApplyRow = { roomID: number; dormID: number; email: string; vacant: boolean };
+type ResidentImportResult = {
+  roomID: number;
+  dormID: number;
+  email?: string;
+  status: "created" | "vacant" | "failed";
+  scheduled?: number;
+  code?: string;
+  error?: string;
+};
+
+async function mapWithConcurrency<T, R>(items: T[], concurrency: number, worker: (item: T) => Promise<R>): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+  async function runWorker() {
+    while (nextIndex < items.length) {
+      const index = nextIndex++;
+      results[index] = await worker(items[index]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, runWorker));
+  return results;
+}
+
+function residentImportFailure(row: ResidentImportApplyRow, error: any): ResidentImportResult {
+  const cause = error?.cause ?? error;
+  console.error(`Resident import failed for room ${row.roomID}:`, cause);
+  if (error?.code === "ACCOUNT_DELIVERY_FAILED") {
+    return {
+      roomID: row.roomID,
+      dormID: row.dormID,
+      email: row.email,
+      status: "failed",
+      code: "EMAIL_DELIVERY_FAILED",
+      error: "The welcome email could not be sent. Try this row again.",
+    };
+  }
+  if (error?.message === "User already exists.") {
+    return {
+      roomID: row.roomID,
+      dormID: row.dormID,
+      email: row.email,
+      status: "failed",
+      code: "EMAIL_ALREADY_EXISTS",
+      error: "An account already exists for this email. Preview the latest workbook state and try again.",
+    };
+  }
+  return {
+    roomID: row.roomID,
+    dormID: row.dormID,
+    email: row.email,
+    status: "failed",
+    code: "UPDATE_FAILED",
+    error: error?.message || "The resident update failed.",
+  };
+}
 
 router.post("/register", authenticate, requireCompletedAccount, requireAdmin, validate(registerSchema), async (req: AuthenticatedRequest, res) => {
   try {
@@ -160,22 +221,21 @@ router.post("/admin/resident-import/preview", authenticate, requireCompletedAcco
 });
 
 router.post("/admin/resident-import/apply", authenticate, requireCompletedAccount, requireAdmin, validate(residentImportApplySchema), async (req, res) => {
-  const results = [];
-  for (const row of req.body.rows) {
+  const rows = req.body.rows as ResidentImportApplyRow[];
+  const results = await mapWithConcurrency(rows, residentImportConcurrency, async (row): Promise<ResidentImportResult> => {
     try {
       if (row.vacant) {
         const scheduled = await scheduleVacantRoomDeactivation(row.roomID, row.dormID);
-        results.push({ roomID: row.roomID, status: "vacant", scheduled });
-      } else {
-        const temporaryPassword = generateTemporaryPassword();
-        await registerUser(row.roomID, row.dormID, "STUDENT", row.email, temporaryPassword, true, true,
-          () => sendResidentWelcomeEmail(row.email, row.roomID, temporaryPassword));
-        results.push({ roomID: row.roomID, email: row.email, status: "created" });
+        return { roomID: row.roomID, dormID: row.dormID, status: "vacant", scheduled };
       }
+      const temporaryPassword = generateTemporaryPassword();
+      await registerUser(row.roomID, row.dormID, "STUDENT", row.email, temporaryPassword, true, true,
+        () => sendResidentWelcomeEmail(row.email, row.roomID, temporaryPassword));
+      return { roomID: row.roomID, dormID: row.dormID, email: row.email, status: "created" };
     } catch (error: any) {
-      results.push({ roomID: row.roomID, email: row.email, status: "failed", error: error.message || "Update failed." });
+      return residentImportFailure(row, error);
     }
-  }
+  });
   res.json({ results, succeeded: results.filter(result => result.status !== "failed").length, failed: results.filter(result => result.status === "failed").length });
 });
 

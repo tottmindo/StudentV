@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import pool from "../../database/pool.js";
+import { emailAddressSchema } from "../../shared/validation/emailAddress.js";
 
 export type ResidentImportRow = {
   rowNumber: number;
@@ -69,31 +70,59 @@ export async function previewResidentWorkbook(buffer: Buffer) {
   if (parsed.length > 500) throw new Error("The workbook may contain at most 500 resident rows.");
 
   const roomIDs = [...new Set(parsed.map(row => row.roomID).filter((id): id is number => id != null))];
+  const validEmails = [...new Set(parsed.flatMap(row => {
+    const result = emailAddressSchema.safeParse(row.email);
+    return !row.vacant && result.success ? [result.data] : [];
+  }))];
   const [rooms]: any = roomIDs.length ? await pool.query("SELECT roomID, dormID FROM room WHERE roomID IN (?)", [roomIDs]) : [[]];
   const [residents]: any = roomIDs.length ? await pool.query(
     `SELECT userID, roomID, dormID, email FROM users
      WHERE role = 'STUDENT' AND active = TRUE AND scheduledDeactivationAt IS NULL AND roomID IN (?)
      ORDER BY userID`, [roomIDs]
   ) : [[]];
+  const [emailAccounts]: any = validEmails.length ? await pool.query(
+    `SELECT userID, roomID, dormID, email, active, scheduledDeactivationAt
+     FROM users
+     WHERE email IN (?)`, [validEmails]
+  ) : [[]];
   const roomMap = new Map<number, number>(rooms.map((room: any) => [Number(room.roomID), Number(room.dormID)]));
   const residentMap = new Map<number, { email: string }>(residents.map((user: any) => [Number(user.roomID), { email: String(user.email) }]));
+  const emailAccountMap = new Map<string, { roomID: number | null }>(emailAccounts.map((user: any) => [
+    String(user.email).toLowerCase(),
+    { roomID: user.roomID == null ? null : Number(user.roomID) },
+  ]));
   const duplicateRooms = new Set<number>();
   const seenRooms = new Set<number>();
   for (const row of parsed) if (row.roomID != null) (seenRooms.has(row.roomID) ? duplicateRooms : seenRooms).add(row.roomID);
+  const duplicateEmails = new Set<string>();
+  const seenEmails = new Set<string>();
+  for (const row of parsed) {
+    const result = emailAddressSchema.safeParse(row.email);
+    if (!row.vacant && result.success) (seenEmails.has(result.data) ? duplicateEmails : seenEmails).add(result.data);
+  }
 
   const rows: ResidentImportRow[] = parsed.map(row => {
     const dormID = row.roomID == null ? null : roomMap.get(row.roomID) ?? null;
     const current = row.roomID == null ? null : residentMap.get(row.roomID);
+    const validatedEmail = emailAddressSchema.safeParse(row.email);
+    const normalizedEmail = validatedEmail.success ? validatedEmail.data : row.email;
+    const existingEmailAccount = validatedEmail.success ? emailAccountMap.get(validatedEmail.data) : undefined;
     let status: ResidentImportRow["status"] = "invalid";
     let issue: string | null = null;
     if (row.roomID == null) issue = "Object must be N followed by the numeric room ID.";
     else if (duplicateRooms.has(row.roomID)) issue = "The room occurs more than once in the workbook.";
     else if (dormID == null) issue = "Room does not exist in the database.";
     else if (row.vacant) status = "vacant";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)) issue = "A valid resident email is required.";
-    else if (current?.email?.toLowerCase() === row.email) status = "match";
+    else if (!validatedEmail.success) issue = "A valid resident email is required.";
+    else if (duplicateEmails.has(validatedEmail.data)) issue = "The email occurs more than once in the workbook.";
+    else if (current?.email?.toLowerCase() === validatedEmail.data) status = "match";
+    else if (existingEmailAccount) {
+      issue = existingEmailAccount.roomID == null
+        ? "An account already exists for this email."
+        : `An account already exists for this email in room ${existingEmailAccount.roomID}.`;
+    }
     else status = current ? "replace" : "create";
-    return { ...row, dormID, currentEmail: current?.email ?? null, status, issue };
+    return { ...row, email: normalizedEmail, dormID, currentEmail: current?.email ?? null, status, issue };
   });
   return { rows, matched: rows.filter(row => row.status === "match").length, changes: rows.filter(row => row.status !== "match").length };
 }

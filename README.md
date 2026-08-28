@@ -122,6 +122,7 @@ Authentication and account lifecycle:
 | `RESIDENT_DEACTIVATION_ENABLED` | No | `true` | The job runs unless this is exactly `false`. |
 | `RESIDENT_DEACTIVATION_CRON` | No | `0 * * * *` | Cron expression for the deactivation check (hourly by default). |
 | `RESIDENT_DEACTIVATION_TIMEZONE` | No | `Europe/Stockholm` | IANA timezone used by the deactivation cron job. |
+| `RESIDENT_IMPORT_CONCURRENCY` | No | `2` | Maximum resident workbook rows processed concurrently; capped at 5. |
 
 Cleaning schedule:
 
@@ -143,6 +144,12 @@ it is enabled, configure all credential/from fields together:
 | `SMTP_PASSWORD` | Yes | Provider password/API key | SMTP credential; keep it secret. |
 | `SMTP_SECURE` | No | `false` for port 587; `true` for 465 | Enables implicit TLS. Port 465 also enables it automatically. |
 | `SMTP_PREFER_IPV4` | No | `true` | Prefers IPv4 DNS results. Set `false` for normal dual-stack resolution, such as on IPv6-only hosting. |
+| `SMTP_MAX_CONNECTIONS` | No | `2` | Maximum reusable connections in the SMTP pool. |
+| `SMTP_MAX_MESSAGES` | No | `100` | Messages sent over one pooled connection before it is renewed. |
+| `SMTP_RATE_LIMIT` | No | `4` | Maximum messages started per second across the SMTP pool. |
+| `SMTP_CONNECTION_TIMEOUT_MS` | No | `30000` | Maximum time to establish an SMTP connection. |
+| `SMTP_GREETING_TIMEOUT_MS` | No | `30000` | Maximum time to wait for the SMTP greeting. |
+| `SMTP_SOCKET_TIMEOUT_MS` | No | `60000` | Maximum idle time for an SMTP operation. |
 | `EMAIL_FROM` | Yes | `StudentV <no-reply@example.com>` | Sender shown on application email. |
 | `APP_URL` | Yes | `http://localhost:5173` | Public frontend base URL placed in email links; omit a trailing slash. |
 
