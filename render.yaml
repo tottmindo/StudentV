@@ -17,6 +17,7 @@ services:
   - type: web
     name: StudentV
     runtime: node
+    region: frankfurt
     buildCommand: npm ci --include=dev && npm run build -w server
     startCommand: npm run start -w server
     envVars:
@@ -39,6 +40,7 @@ services:
   - type: cron
     name: studentv-destination-uppsala-events
     runtime: python
+    region: frankfurt
     rootDir: server/src/integrations/event-scrapers
     schedule: "15 2 * * *"
     buildCommand: pip install -r requirements.txt
@@ -50,6 +52,7 @@ services:
   - type: cron
     name: studentv-nationsguiden-events
     runtime: python
+    region: frankfurt
     rootDir: server/src/integrations/event-scrapers
     schedule: "45 2 * * *"
     buildCommand: pip install -r requirements.txt

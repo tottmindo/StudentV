@@ -7,10 +7,11 @@ database and includes the correct private-network host.
 
 ## 1. Create the database
 
-In Render, choose **New → PostgreSQL**, select the same region as the backend,
-and create the database. On its **Info** page, copy the **Internal Database
-URL**. Use the internal URL for a Render web service; the external URL is only
-for running the commands from your own computer.
+In Render, choose **New → PostgreSQL**, select Frankfurt to match the backend
+and cron jobs in `render.yaml`, and create the database. On its **Info** page,
+copy the **Internal Database URL**. Use the internal URL for a Render service in
+the same workspace and region; the external URL is only for running commands
+from your own computer.
 
 ## 2. Set backend environment variables
 
@@ -134,6 +135,16 @@ Uppsala and Nationsguiden. Create or update a Render Blueprint from this
 repository, then set `DATABASE_URL` on both cron services to the database's
 Internal Database URL. The jobs install their Python requirements during the
 build and run the individual source commands from the scraper directory.
+
+The backend and both cron jobs are explicitly pinned to Frankfurt because an
+internal Render database hostname only resolves for services in the same
+workspace and region. Verify that the database's **Region** is also Frankfurt.
+Render cannot move an existing service between regions: if either cron job was
+previously created in Oregon (the Blueprint default when `region` is omitted),
+delete and recreate that cron job in Frankfurt, then set its `DATABASE_URL`
+again. If the existing production database intentionally uses another region,
+change every non-static service's `region` in `render.yaml` to that region
+instead.
 
 Render interprets cron schedules as UTC. The committed schedules are 02:15 UTC
 and 02:45 UTC, staggered so they do not write concurrently. A failed source or
