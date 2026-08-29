@@ -211,16 +211,16 @@ INSERT INTO page_visit_stats (visitdate, page, visits) VALUES
   (current_date, '/sensors', 9);
 
 -- Base cleaning tasks based on the residence cleaning rules.
--- createdByUserID and dormID are NULL because these tasks apply to every dorm.
-INSERT INTO cleaningtasktemplate (taskname, description, active, createdbyuserid, isimportant) VALUES
-  ('Sink', 'Clean the sink with cleaning spray, remove food residue, and unclog it if needed.', true, NULL, true),
-  ('Floors', 'Vacuum and mop shared floors as needed.', true, NULL, false),
-  ('Trash and recycling', 'Always empty bins on Sunday evening. Sort recycling and deposit-return cans and bottles, replace bin bags, and clean dirty bins and the area under the sink.', true, NULL, true),
-  ('Tables and counters', 'Wipe tables and kitchen counters with cleaning spray and scrape away anything stuck to them.', true, NULL, false),
-  ('Stove and oven', 'Clean the stove with cleaning spray, scrape away burnt residue, and clean the oven when needed, especially the bottom.', true, NULL, true),
-  ('Microwave', 'Clean the microwave inside and outside, including the microwave cover.', true, NULL, false),
-  ('Drying rack', 'Put dry dishes in the shared cupboards and clean the area around and underneath the drying rack with cleaning spray.', true, NULL, false),
-  ('Refrigerator', 'Clean the shared refrigerator and check its contents.', true, NULL, false);
+-- createdByUserID, dormID, and houseAddress are NULL because these apply everywhere.
+INSERT INTO cleaningtasktemplate (taskname, description, active, createdbyuserid, isimportant, dormid, houseaddress) VALUES
+  ('Sink', 'Clean the sink with cleaning spray, remove food residue, and unclog it if needed.', true, NULL, true, NULL, NULL),
+  ('Floors', 'Vacuum and mop shared floors as needed.', true, NULL, false, NULL, NULL),
+  ('Trash and recycling', 'Always empty bins on Sunday evening. Sort recycling and deposit-return cans and bottles, replace bin bags, and clean dirty bins and the area under the sink.', true, NULL, true, NULL, NULL),
+  ('Tables and counters', 'Wipe tables and kitchen counters with cleaning spray and scrape away anything stuck to them.', true, NULL, false, NULL, NULL),
+  ('Stove and oven', 'Clean the stove with cleaning spray, scrape away burnt residue, and clean the oven when needed, especially the bottom.', true, NULL, true, NULL, NULL),
+  ('Microwave', 'Clean the microwave inside and outside, including the microwave cover.', true, NULL, false, NULL, NULL),
+  ('Drying rack', 'Put dry dishes in the shared cupboards and clean the area around and underneath the drying rack with cleaning spray.', true, NULL, false, NULL, NULL),
+  ('Refrigerator', 'Clean the shared refrigerator and check its contents.', true, NULL, false, NULL, NULL);
 
 -- Multiple cleaning weeks (current and future) for testing swaps
 INSERT INTO cleaningweeks (dormid, assigneduserid, startdate, enddate) VALUES
@@ -243,8 +243,11 @@ SELECT cw.weekid, ctt.templateid,
        ctt.templateid = 1 AND cw.weekid = 1,
        CASE WHEN ctt.templateid = 1 AND cw.weekid = 1 THEN now() - interval '2 hours' END,
        cw.assigneduserid
-FROM cleaningweeks cw CROSS JOIN cleaningtasktemplate ctt
-WHERE ctt.active = true;
+FROM cleaningweeks cw
+JOIN dorms d ON d.dormid = cw.dormid
+CROSS JOIN cleaningtasktemplate ctt
+WHERE ctt.active = true
+  AND (ctt.dormid = cw.dormid OR ctt.houseaddress = d.address OR (ctt.dormid IS NULL AND ctt.houseaddress IS NULL));
 
 -- Custom tasks created by users (non-base tasks)
 INSERT INTO cleaningtasktemplate (taskname, description, active, createdbyuserid, isimportant) VALUES

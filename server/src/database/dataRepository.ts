@@ -1388,14 +1388,20 @@ async getCleaningBaseTasks(dormID: number): Promise<any[]> {
   try {
     const [rows] = await pool.query(
       `SELECT
-         templateID AS baseTaskID,
-         taskName AS title,
-         description,
-         FALSE AS isImportant
-       FROM cleaningTaskTemplate
-       WHERE active = TRUE AND (dormID IS NULL OR dormID = ?)
-       ORDER BY templateID ASC`
-      , [dormID]
+         ctt.templateID AS baseTaskID,
+         ctt.taskName AS title,
+         ctt.description,
+         ctt.isImportant
+       FROM cleaningTaskTemplate ctt
+       INNER JOIN dorms currentDorm ON currentDorm.dormID = ?
+       WHERE ctt.active = TRUE
+         AND (
+           ctt.dormID = currentDorm.dormID
+           OR (ctt.dormID IS NULL AND ctt.houseAddress = currentDorm.address)
+           OR (ctt.dormID IS NULL AND ctt.houseAddress IS NULL)
+         )
+       ORDER BY ctt.templateID ASC`,
+      [dormID]
     );
 
     return rows as any[];

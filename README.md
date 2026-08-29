@@ -229,9 +229,13 @@ PG_DB_PASSWORD=your-password
 
 The application accepts the former `DB_*` names as a temporary fallback, but
 new deployments should use the `PG_DB_*` variables. PostgreSQL is the only
-supported database. The database directory contains one complete schema and
-one development-data script; changes to database features belong in those two
-files instead of separate migration or fixture fragments.
+supported database. `generate-postgres.sql` is the complete schema for new
+databases. Existing databases can add house-wide cleaning-task targeting with
+the non-destructive, idempotent migration:
+
+```sh
+npm run db:migrate-cleaning-task-scopes -w server
+```
 
 To load the PostgreSQL development fixtures, which erase the current
 application data, run:

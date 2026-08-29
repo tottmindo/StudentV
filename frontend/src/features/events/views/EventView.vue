@@ -782,6 +782,7 @@ watch(() => route.query.eventID, () => {
 const bindSocket = () => {
   socket.off('eventsData')
   socket.off('cleaningWeeks')
+  socket.off('cleaningTemplatesUpdated', fetchCalendarData)
   socket.off('externalEvents')
   socket.off('nationsguidenEvents')
   socket.off('eventInvitationsUpdated', fetchCalendarData)
@@ -803,6 +804,7 @@ const bindSocket = () => {
   socket.on('cleaningWeeks', (weeks: CleaningWeek[]) => {
     cleaningWeeks.value = weeks
   })
+  socket.on('cleaningTemplatesUpdated', fetchCalendarData)
 
   socket.on('externalEvents', (eEvents: ExternalEvent[]) => {
     externalEvents.value = eEvents
@@ -1081,6 +1083,7 @@ onMounted(() => {
 onUnmounted(() => {
   socket.off('eventsData')
   socket.off('cleaningWeeks')
+  socket.off('cleaningTemplatesUpdated', fetchCalendarData)
   socket.off('externalEvents')
   socket.off('nationsguidenEvents')
   socket.off('eventInvitationsUpdated', fetchCalendarData)

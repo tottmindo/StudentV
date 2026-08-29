@@ -397,6 +397,7 @@ const bindSocket = () => {
   socket.off('cleaningWeekTasks')
   socket.off('cleaningTaskUpdated')
   socket.off('cleaningTaskDeleted')
+  socket.off('cleaningTemplatesUpdated')
   socket.off('cleaningWeekSwapRequests')
   socket.off('cleaningWeekSwapRequestCreated')
   socket.off('cleaningWeekSwapRequestResponded')
@@ -431,6 +432,11 @@ const bindSocket = () => {
   socket.on('cleaningTaskDeleted', (payload) => {
     tasks.value = tasks.value.filter(t => t.weekTaskID !== payload.weekTaskID)
     fetchWeeks()
+  })
+
+  socket.on('cleaningTemplatesUpdated', () => {
+    fetchWeeks()
+    if (selectedWeek.value) fetchTasks(selectedWeek.value.weekID)
   })
 
   socket.on('cleaningWeekSwapRequests', (data: CleaningWeekSwapRequest[]) => {
@@ -734,6 +740,7 @@ onUnmounted(() => {
   socket.off('cleaningWeekTasks')
   socket.off('cleaningTaskUpdated')
   socket.off('cleaningTaskDeleted')
+  socket.off('cleaningTemplatesUpdated')
   socket.off('cleaningWeekSwapRequests')
   socket.off('cleaningWeekSwapRequestCreated')
   socket.off('cleaningWeekSwapRequestResponded')

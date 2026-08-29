@@ -25,7 +25,7 @@
 import express from "express";
 import multer from "multer";
 import { addRoomsToDorm, adminResetResidentPassword, completeTemporaryPassword, createDormFloors, generateTemporaryPassword, getAccount, registerUser, loginUser, requestPasswordReset, resetPasswordWithToken, scheduleVacantRoomDeactivation, updateAccount, updatePassword, listDormsForAdmin, listUsersForAdmin, updateUserForAdmin } from "./authService.js";
-import { addDormRoomsSchema, adminResetPasswordSchema, adminUpdateUserSchema, changePasswordSchema, createAdminEventSchema, createDormFloorSchema, createResidentSchema, emailSchema, registerSchema, loginSchema, resetPasswordSchema, residentImportApplySchema, updateAccountSchema, updatePasswordSchema } from "./authSchemas.js";
+import { addDormRoomsSchema, adminCleaningTaskSchema, adminResetPasswordSchema, adminUpdateUserSchema, changePasswordSchema, createAdminEventSchema, createDormFloorSchema, createResidentSchema, emailSchema, registerSchema, loginSchema, resetPasswordSchema, residentImportApplySchema, updateAccountSchema, updatePasswordSchema } from "./authSchemas.js";
 import { validate } from "../../shared/middleware/validate.js";
 import { authenticate, AuthenticatedRequest, requireAdmin, requireCompletedAccount, requireResearchAccess } from "../../shared/middleware/authenticate.js";
 import { sendResidentWelcomeEmail } from "../../integrations/email/emailService.js";
@@ -33,6 +33,7 @@ import { generateCleaningWeeks } from "../../jobs/scheduler.js";
 import { createTargetedAdminEvent } from "../events/eventService.js";
 import { getIO } from "../../infrastructure/socketManager.js";
 import { previewResidentWorkbook } from "./residentImportService.js";
+import { createAdminCleaningTask, listAdminCleaningTasks, removeAdminCleaningTask, updateAdminCleaningTask } from "../cleaning/adminCleaningTaskService.js";
 
 const router = express.Router();
 const residentWorkbookUpload = multer({
@@ -242,6 +243,45 @@ router.post("/admin/resident-import/apply", authenticate, requireCompletedAccoun
 router.post("/admin/cleaning-weeks/generate", authenticate, requireCompletedAccount, requireAdmin, async (_req, res) => {
   try { res.json({ message: "Cleaning schedule check completed.", summary: await generateCleaningWeeks() }); }
   catch (error) { console.error("Manual cleaning schedule check failed:", error); res.status(500).json({ error: "Could not generate cleaning weeks." }); }
+});
+
+function emitCleaningTemplateUpdate(dormIDs: number[]) {
+  for (const dormID of dormIDs) getIO().to(`dorm-${dormID}`).emit("cleaningTemplatesUpdated");
+}
+
+router.get("/admin/cleaning-tasks", authenticate, requireCompletedAccount, requireAdmin, async (_req, res) => {
+  try { res.json(await listAdminCleaningTasks()); }
+  catch (error) { console.error("Could not load base cleaning tasks:", error); res.status(500).json({ error: "Could not load base cleaning tasks." }); }
+});
+
+router.post("/admin/cleaning-tasks", authenticate, requireCompletedAccount, requireAdmin, validate(adminCleaningTaskSchema), async (req, res) => {
+  try {
+    const result = await createAdminCleaningTask(req.body);
+    emitCleaningTemplateUpdate(result.affectedDormIDs);
+    res.status(201).json({ templateID: result.templateID });
+  } catch (error: any) {
+    res.status(error.message?.includes("not found") ? 404 : 400).json({ error: error.message || "Could not create the base cleaning task." });
+  }
+});
+
+router.patch("/admin/cleaning-tasks/:templateID", authenticate, requireCompletedAccount, requireAdmin, validate(adminCleaningTaskSchema), async (req, res) => {
+  try {
+    const result = await updateAdminCleaningTask(Number(req.params.templateID), req.body);
+    emitCleaningTemplateUpdate(result.affectedDormIDs);
+    res.json({ templateID: result.templateID });
+  } catch (error: any) {
+    res.status(error.message?.includes("not found") ? 404 : 400).json({ error: error.message || "Could not update the base cleaning task." });
+  }
+});
+
+router.delete("/admin/cleaning-tasks/:templateID", authenticate, requireCompletedAccount, requireAdmin, async (req, res) => {
+  try {
+    const result = await removeAdminCleaningTask(Number(req.params.templateID));
+    emitCleaningTemplateUpdate(result.affectedDormIDs);
+    res.json({ removed: true });
+  } catch (error: any) {
+    res.status(error.message?.includes("not found") ? 404 : 400).json({ error: error.message || "Could not remove the base cleaning task." });
+  }
 });
 
 router.patch("/admin/users/:userID", authenticate, requireCompletedAccount, requireAdmin, validate(adminUpdateUserSchema), async (req: AuthenticatedRequest, res) => {

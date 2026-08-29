@@ -9,6 +9,7 @@
     "dev:backend": "nodemon --watch src --ext ts,json --exec \"node --import tsx src/index.ts\"",
     "start:scheduler": "node dist/jobs/scheduler.js",
     "db:schema": "node scripts/run-sql.mjs database/migrations/generate-postgres.sql",
+    "db:migrate-cleaning-task-scopes": "node scripts/run-sql.mjs database/migrations/add-cleaning-task-scopes.sql",
     "db:seed": "node scripts/run-sql.mjs database/seeds/add-test-data-postgres.sql --seed"
   },
   "dependencies": {

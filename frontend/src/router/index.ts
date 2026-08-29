@@ -102,6 +102,12 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
+      path: '/admin/cleaning-tasks',
+      name: 'admin-cleaning-tasks',
+      component: () => import('@/features/admin/views/AdminCleaningTasksView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
       path: '/chat',
       name: 'chat',
       component: () => import('@/features/chat/views/ChatView.vue'),

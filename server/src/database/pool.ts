@@ -46,6 +46,7 @@ const camelCaseColumns: Record<string, string> = {
   proposedisimportant: "proposedIsImportant", creatoruserid: "creatorUserID",
   creatorusername: "creatorUsername", resolvedat: "resolvedAt", eligiblevoters: "eligibleVoters",
   approvecount: "approveCount", rejectcount: "rejectCount", currentuservote: "currentUserVote",
+  houseaddress: "houseAddress",
   adminnote: "adminNote", noteupdatedat: "noteUpdatedAt",
   bio: "bio", isblocked: "isBlocked", isdirect: "isDirect", otheruserid: "otherUserID",
   unreadcount: "unreadCount", lastreadmessageid: "lastReadMessageID",

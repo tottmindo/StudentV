@@ -28,6 +28,11 @@
         <h2 class="mt-5 text-xl font-bold sm:text-2xl">{{ t('adminEvents.title') }}</h2>
         <p class="mt-2 opacity-75">{{ t('adminEvents.cardHelp') }}</p>
       </router-link>
+      <router-link to="/admin/cleaning-tasks" class="min-w-0 break-words rounded-2xl bg-surface p-5 text-left shadow-lg transition hover:-translate-y-1 hover:shadow-xl dark:bg-surface-dark sm:p-8">
+        <div class="text-4xl">🧹</div>
+        <h2 class="mt-5 text-xl font-bold sm:text-2xl">{{ t('adminCleaning.title') }}</h2>
+        <p class="mt-2 opacity-75">{{ t('adminCleaning.cardHelp') }}</p>
+      </router-link>
       <button class="min-w-0 break-words rounded-2xl bg-surface p-5 text-left shadow-lg transition hover:-translate-y-1 hover:shadow-xl dark:bg-surface-dark sm:p-8" @click="openSection('users')">
         <div class="text-4xl">👥</div>
         <h2 class="mt-5 text-xl font-bold sm:text-2xl">{{ t('adminMain.users') }}</h2>

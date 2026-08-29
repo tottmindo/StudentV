@@ -131,6 +131,19 @@ export const createAdminEventSchema = z.object({
   path: ["endDate"],
 });
 
+const cleaningTaskTargetSchema = z.discriminatedUnion("scope", [
+  z.object({ scope: z.literal("all") }),
+  z.object({ scope: z.literal("house"), address: z.string().trim().regex(/^\d+$/).max(255) }),
+  z.object({ scope: z.literal("dorm"), dormID: z.coerce.number().int().positive() }),
+]);
+
+export const adminCleaningTaskSchema = z.object({
+  title: z.string().trim().min(2).max(100),
+  description: z.string().trim().max(1000).default(""),
+  isImportant: z.boolean().default(false),
+  target: cleaningTaskTargetSchema,
+});
+
 export const changePasswordSchema = z.object({
   username: z.string().trim().min(3).max(50),
   newPassword: z.string().min(12).max(128),

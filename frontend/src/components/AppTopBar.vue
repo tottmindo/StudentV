@@ -142,6 +142,7 @@ const pages = computed<Record<string, PageInfo>>(() => ({
   chatRoom: { title: t('topbar.conversation'), description: t('topbar.chatDescription') },
   account: { title: t('nav.account'), description: t('topbar.accountDescription') },
   admin: { title: t('nav.administration'), description: t('topbar.adminDescription') },
+  'admin-cleaning-tasks': { title: t('adminCleaning.title'), description: t('adminCleaning.cardHelp') },
   'admin-water-analytics': { title: t('nav.waterAnalytics'), description: t('topbar.waterDescription') },
   survey: { title: t('nav.surveys'), description: t('topbar.surveyDescription') },
   'change-password': { title: t('topbar.finishSetup'), description: t('topbar.setupDescription') },
@@ -262,6 +263,7 @@ onMounted(() => {
   socket.on('authenticated', requestUnreadChats)
   socket.on('swapRequestUpdated', requestDashboard)
   socket.on('cleaningTaskProposalsUpdated', requestDashboard)
+  socket.on('cleaningTemplatesUpdated', requestDashboard)
   socket.on('eventInvitationsUpdated', requestDashboard)
   socket.on('chatUnreadCounts', receiveUnreadChats)
   requestDashboard()
@@ -277,6 +279,7 @@ onBeforeUnmount(() => {
   socket.off('authenticated', requestUnreadChats)
   socket.off('swapRequestUpdated', requestDashboard)
   socket.off('cleaningTaskProposalsUpdated', requestDashboard)
+  socket.off('cleaningTemplatesUpdated', requestDashboard)
   socket.off('eventInvitationsUpdated', requestDashboard)
   socket.off('chatUnreadCounts', receiveUnreadChats)
   if (bellTimer) clearTimeout(bellTimer)
