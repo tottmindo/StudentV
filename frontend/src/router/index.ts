@@ -123,15 +123,20 @@ const router = createRouter({
   ],
 });
 
-router.afterEach((to) => {
+router.afterEach((to, _from, failure) => {
+  if (failure) return;
   const token = sessionStorage.getItem('authToken');
   const page = typeof to.name === 'string' ? to.name : '';
-  if (!token || !page || page === 'admin-app-usage') return;
+  if (!page) return;
   // Analytics must never make navigation fail. keepalive also lets the final
-  // visit reach the server when navigation unloads the current document.
+  // visit reach the server when navigation unloads the current document. Route
+  // names are used instead of URLs so parameters and query values are not sent.
   void fetch(apiUrl('/api/usage/visit'), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify({ page }),
     keepalive: true,
   }).catch(() => undefined);

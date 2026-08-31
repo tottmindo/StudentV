@@ -202,13 +202,13 @@ INSERT INTO externalevents (externalurl, title, startdate, enddate, createdat, u
   ('https://example.test/events/library-workshop', 'Library study workshop', now() + interval '8 days', now() + interval '8 days 2 hours', now() - interval '3 days', now() - interval '1 day', now());
 
 INSERT INTO page_visit_stats (visitdate, page, visits) VALUES
-  (current_date - 2, '/', 14),
-  (current_date - 1, '/', 21),
-  (current_date, '/', 8),
-  (current_date - 1, '/events', 12),
-  (current_date, '/events', 7),
-  (current_date, '/cleaning', 5),
-  (current_date, '/sensors', 9);
+  (current_date - 2, 'login', 14),
+  (current_date - 1, 'login', 21),
+  (current_date, 'login', 8),
+  (current_date - 1, 'events', 12),
+  (current_date, 'events', 7),
+  (current_date, 'cleaning', 5),
+  (current_date, 'stats', 9);
 
 -- Base cleaning tasks based on the residence cleaning rules.
 -- createdByUserID, dormID, and houseAddress are NULL because these apply everywhere.

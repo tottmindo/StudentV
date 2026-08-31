@@ -4,10 +4,6 @@ import { authenticate, requireCompletedAccount, requireResearchAccess } from "..
 
 const router = Router();
 const PAGE_PATTERN = /^[a-z0-9-]{1,80}$/;
-const APP_PAGES = new Set([
-  "home", "survey", "answersurvey", "createsurvey", "stats", "account",
-  "events", "cleaning", "admin", "admin-water-analytics", "chat", "chatroom",
-]);
 
 let tableReady: Promise<void> | null = null;
 function ensureUsageTable() {
@@ -27,11 +23,12 @@ function ensureUsageTable() {
   return tableReady;
 }
 
-// Store only an aggregate counter. Authentication confirms that the visit came
-// from an app user, but no account or request metadata is written to the table.
-router.post("/visit", authenticate, requireCompletedAccount, async (req, res) => {
+// Store only a validated route name and its aggregate counter. This endpoint is
+// intentionally public so sign-in and password-recovery pages are counted too;
+// no account, URL parameters, IP address, or other request metadata is stored.
+router.post("/visit", async (req, res) => {
   const page = typeof req.body?.page === "string" ? req.body.page.trim().toLowerCase() : "";
-  if (!PAGE_PATTERN.test(page) || !APP_PAGES.has(page)) {
+  if (!PAGE_PATTERN.test(page)) {
     res.status(400).json({ error: "Invalid page name." });
     return;
   }
